@@ -1,0 +1,228 @@
+.douban-post-actions svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor; 
+    position: relative;
+    top: -1px; 
+}
+
+.douban-feather-btn {
+    font-size: 24px;
+    padding: 0;
+    width: 38px;
+    height: 38px;
+    line-height: 38px;
+    text-align: center;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0; 
+    margin-right: 8px; 
+    background-color: #f0f2f5;
+    color: #555;
+    transition: background-color 0.2s;
+}
+
+.douban-feather-btn:hover {
+    background-color: #e2e6ea;
+}
+
+.douban-feather-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+#douban-post-detail-screen {
+    background-color: #F6F6F1; 
+}
+
+#phone-screen.dark-mode #douban-post-detail-screen {
+    background-color: #1a1a1a;
+}
+
+#douban-detail-content-wrapper {
+    background-color: var(--secondary-bg);
+    padding: 0; 
+    padding-bottom: 80px; 
+}
+
+#douban-post-detail-body {
+    padding: 20px 18px 25px 18px; 
+    border-bottom: 1px solid #f0f0f0;
+}
+
+#phone-screen.dark-mode #douban-post-detail-body {
+    border-bottom-color: #38383a;
+}
+
+.douban-post-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.douban-detail-content {
+    white-space: pre-wrap;
+    line-height: 1.8;
+    font-size: 15px;
+    color: #333;
+}
+
+#phone-screen.dark-mode .douban-detail-content {
+    color: #dcdcdc;
+}
+
+.douban-comments-section {
+    margin-top: 0;
+    padding: 15px 18px;
+}
+
+.douban-comments-section h4 {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin: 0 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+#phone-screen.dark-mode .douban-comments-section h4 {
+    border-bottom-color: #38383a;
+}
+
+.douban-comment-item {
+    display: flex;
+    gap: 12px;
+    padding: 15px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.douban-comment-item:last-child {
+    border-bottom: none;
+}
+
+#phone-screen.dark-mode .douban-comment-item {
+    border-bottom-color: #38383a;
+}
+
+.douban-comment-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.douban-comment-body {
+    flex-grow: 1;
+}
+
+.douban-comment-author {
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.douban-comment-text {
+    font-size: 14px;
+    color: #555;
+    margin-top: 6px;
+    line-height: 1.7;
+    word-break: break-word;
+}
+
+#phone-screen.dark-mode .douban-comment-text {
+    color: #b0b0b0;
+}
+
+#douban-comment-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px 18px; 
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    box-sizing: border-box; 
+    background-color: rgba(247, 247, 247, 0.9);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border-color); 
+}
+
+#douban-send-comment-btn {
+    background-color: #007722; 
+}
+
+#douban-screen .header .header-actions {
+    flex-shrink: 0;
+    display: flex;       
+    align-items: center; 
+}
+
+.header .action-btn svg {
+    width: 24px;   
+    height: 24px;
+    display: block; 
+}
+
+.header .action-btn {
+    min-width: 30px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header .header-left-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px; 
+}
+
+.char-photo-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px; 
+            box-sizing: border-box;
+        }
+
+.char-photo-description {
+            font-size: 13px;
+            color: var(--text-secondary); 
+            text-align: center;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 5; 
+            overflow: hidden;
+            word-break: break-all; 
+        }
+
+.char-product-description-overlay {
+            width: 100%;
+            aspect-ratio: 1 / 1; 
+            background-color: #f7f8fa; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px; 
+            box-sizing: border-box;
+            border-bottom: 1px solid #eee; 
+            border-radius: 8px 8px 0 0; 
+        }
+
+.char-product-description-overlay .char-photo-description,
+        .char-browser-image-description { 
+            font-size: 14px; 
+            color: var(--text-secondary);
+            text-align: center;
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 6; 
+            overflow: hidden;
+            word-break: break-all;
+        }

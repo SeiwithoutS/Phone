@@ -1,0 +1,32 @@
+{
+  "name": "eephone",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node build/server/index.js",
+    "dev": "vite",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.server.json --noEmit",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.server.json && vite build",
+    "preview": "npm start",
+    "test": "tsc -p tsconfig.server.json && node --test build/tests/storage.test.js"
+  },
+  "dependencies": {
+    "jszip": "3.10.1",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
+    "react-router-dom": "7.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "tailwindcss": "4.3.5",
+    "typescript": "5.9.3",
+    "vite": "6.4.5",
+    "@types/node": "22.20.5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

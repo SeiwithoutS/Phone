@@ -1,0 +1,8 @@
+node_modules/
+dist/
+data/
+SillyTavern/
+.migration/
+*.local
+.env
+build/

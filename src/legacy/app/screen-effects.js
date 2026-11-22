@@ -1,0 +1,96 @@
+import { renderNpcListScreen } from '../npc/npcs.js'
+import { renderFavoritesScreen } from '../qzone/favorites.js'
+import { renderQzonePosts, renderQzoneScreen, updateUnreadIndicator } from '../qzone/feed.js'
+import { runtime } from '../runtime/state.js'
+import { applyCustomFont } from '../appearance/fonts.js'
+import { loadFontPresetsDropdown } from '../appearance/presets.js'
+import { renderWallpaperScreen } from '../appearance/wallpaper.js'
+import { renderApiSettings } from '../api/settings.js'
+import { renderChatList } from '../chat/list.js'
+import { renderDoubanScreen } from '../douban/forum.js'
+import { updateListenTogetherIcon } from '../music/player.js'
+import { renderWorldBookScreen } from '../world-book/books.js'
+
+export function enterScreen(screenId) {
+    const screen = document.getElementById(screenId);
+    if (screenId === 'chat-list-screen') {
+        void renderChatList();
+        switchToChatListView('messages-view');
+    }
+    if (screenId === 'api-settings-screen') void renderApiSettings();
+    if (screenId === 'wallpaper-screen') void renderWallpaperScreen();
+    if (screenId === 'world-book-screen') void renderWorldBookScreen();
+    if (screenId === 'douban-screen') void renderDoubanScreen();
+    if (screenId === 'chat-interface-screen') updateListenTogetherIcon(runtime.state.activeChatId);
+    if (screenId === 'font-settings-screen') {
+        void loadFontPresetsDropdown();
+        const font = runtime.state.globalSettings.fontUrl || '';
+        document.getElementById('font-url-input').value = font;
+        applyCustomFont(font, true);
+    }
+    screen?.querySelector('.back-btn')?.blur();
+}
+
+export function switchToChatListView(viewId) {
+                    const chatListScreen = document.getElementById('chat-list-screen');
+                    const views = {
+                        'messages-view': document.getElementById('messages-view'),
+                        'qzone-screen': document.getElementById('qzone-screen'),
+                        'favorites-view': document.getElementById('favorites-view'),
+                'memories-view': document.getElementById('memories-view'),
+               'npc-list-view': document.getElementById('npc-list-view')
+            };
+                    const mainHeader = document.getElementById('main-chat-list-header');
+                    const mainBottomNav = document.getElementById('chat-list-bottom-nav'); 
+        
+                    if (runtime.isFavoritesSelectionMode) {
+                        document.getElementById('favorites-edit-btn').click(); 
+                    }
+        
+                    
+                    Object.values(views).forEach(v => v.classList.remove('active'));
+                    
+                    if (views[viewId]) {
+                        views[viewId].classList.add('active');
+                    }
+        
+                    
+                    document.querySelectorAll('#chat-list-bottom-nav .nav-item').forEach(item => {
+                        item.classList.toggle('active', item.dataset.view === viewId);
+                    });
+                    
+                    
+                    if (viewId === 'messages-view') {
+                        mainHeader.style.display = 'flex';
+                        mainBottomNav.style.display = 'flex';
+                    } else {
+                        mainHeader.style.display = 'none';
+                        mainBottomNav.style.display = 'none';
+                    }
+                    
+        
+            if (viewId !== 'memories-view') {
+                runtime.activeCountdownTimers.forEach(timerId => clearInterval(timerId));
+                runtime.activeCountdownTimers = [];
+            }
+        
+                    
+                    switch (viewId) {
+                        case 'qzone-screen':
+                            views['qzone-screen'].style.backgroundColor = '#f0f2f5';
+                            updateUnreadIndicator(0);
+                            renderQzoneScreen();
+                            renderQzonePosts();
+                            break;
+                        case 'favorites-view':
+                            views['favorites-view'].style.backgroundColor = '#f9f9f9';
+                            renderFavoritesScreen();
+                            break;
+                        case 'messages-view':
+                            
+                            break;
+        case 'npc-list-view':
+            renderNpcListScreen(); 
+            break;
+                    }
+                }

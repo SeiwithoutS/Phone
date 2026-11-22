@@ -1,0 +1,600 @@
+import { BackButton, FilePicker, FormField, Screen, ScreenHeader } from '../../components/phone'
+import { showScreen } from '../../app/routes'
+
+export function ChatSettingsScreen() {
+  return (
+    <Screen id="chat-settings-screen">
+      <ScreenHeader>
+        {" "}
+        <BackButton onClick={() => showScreen("chat-interface-screen")} />
+        {" "}
+        <span>Chat Settings</span>
+        {" "}
+        <span className="save-btn" id="save-chat-settings-btn">Save</span>
+        {" "}
+      </ScreenHeader>
+      <div className="form-container">
+        <div className="form-group" id="chat-name-group">
+          <label htmlFor="chat-name-input">Chat or Group Name</label>
+          <input type="text" id="chat-name-input" />
+        </div>
+        <div className="form-group" id="my-nickname-group">
+          {" "}
+          <label htmlFor="my-nickname-input">My Display Name</label>
+          {" "}
+          <input type="text" id="my-nickname-input" />
+          {" "}
+        </div>
+        <div className="form-group" id="assign-group-section" style={{ display: "none" }}>
+          {" "}
+          <label htmlFor="assign-group-select">Contact Group</label>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {" "}
+            <select id="assign-group-select" style={{ flexGrow: "1" }} />
+            {" "}
+            <button id="manage-groups-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Manage Groups</button>
+            {" "}
+          </div>
+        </div>
+        <div className="form-group" id="my-group-nickname-group">
+          <label htmlFor="my-group-nickname-input">My Group Display Name</label>
+          <input type="text" id="my-group-nickname-input" />
+        </div>
+        {" "}
+        <button className="form-button form-button-secondary" id="search-history-btn" style={{ marginTop: "10px" }} type="button">Search Chat History</button>
+        <div className="form-group" id="single-char-background-activity-group">
+          <div className="form-group" id="inject-thought-group">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              {" "}
+              <label htmlFor="inject-thought-toggle" style={{ marginBottom: "0" }}>
+                {" Include Latest Inner Monologue "}
+                <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Include the AI’s last inner monologue in its next prompt. This can improve continuity and increase token usage. "}</p>
+              </label>
+              {" "}
+              <label className="toggle-switch">
+                {" "}
+                <input type="checkbox" id="inject-thought-toggle" />
+                {" "}
+                <span className="slider" />
+                {" "}
+              </label>
+              {" "}
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {" "}
+            <label htmlFor="char-background-activity-switch" style={{ marginBottom: "0" }}>
+              {" Enable independent background activity "}
+              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Allow background posts and messages for this character. Enable background activity in API Connections as well. "}</p>
+              {" "}
+            </label>
+            <label className="toggle-switch">
+              {" "}
+              <input type="checkbox" id="char-background-activity-switch" />
+              {" "}
+              <span className="slider" />
+              {" "}
+            </label>
+            {" "}
+          </div>
+        </div>
+        <div className="form-group" id="ai-cooldown-group">
+          {" "}
+          <label htmlFor="ai-action-cooldown-input">
+            {" Action cooldown (minutes) "}
+            <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Minimum interval between this character’s background actions. "}</p>
+            {" "}
+          </label>
+          {" "}
+          <input type="number" id="ai-action-cooldown-input" min="1" style={{ width: "80px", textAlign: "center" }} defaultValue="10" />
+          {" "}
+        </div>
+        <div className="form-group" id="time-perception-group">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {" "}
+            <label htmlFor="time-perception-toggle" style={{ marginBottom: "0" }}>
+              {" Enable Time Awareness "}
+              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Turn off to omit the current time from the conversation prompt. "}</p>
+              {" "}
+            </label>
+            <label className="toggle-switch">
+              {" "}
+              <input type="checkbox" id="time-perception-toggle" />
+              {" "}
+              <span className="slider" />
+              {" "}
+            </label>
+          </div>
+        </div>
+        <div className="form-group" id="time-zone-group" style={{ display: "none" }}>
+          {" "}
+          <label htmlFor="time-zone-select">Time Zone</label>
+          {" "}
+          <input type="search" id="time-zone-search-input" placeholder={"Search time zones, e.g. Shanghai or New York…"} />
+          {" "}
+          <select id="time-zone-select" style={{ width: "100%" }} />
+        </div>
+        <div className="form-group" id="group-background-activity-group">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {" "}
+            <label htmlFor="group-background-activity-switch" style={{ marginBottom: "0" }}>
+              {" Enable Group Background Activity "}
+              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Allow AI members to act independently in this group. Enable background activity in API Connections as well. "}</p>
+              {" "}
+            </label>
+            <label className="toggle-switch">
+              {" "}
+              <input type="checkbox" id="group-background-activity-switch" />
+              {" "}
+              <span className="slider" />
+              {" "}
+            </label>
+            {" "}
+          </div>
+        </div>
+        <div className="form-group" id="group-cooldown-group">
+          {" "}
+          <label htmlFor="group-action-cooldown-input">
+            {" Group action cooldown (minutes) "}
+            <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Minimum interval between background actions in this group. "}</p>
+            {" "}
+          </label>
+          {" "}
+          <input type="number" id="group-action-cooldown-input" min="1" style={{ width: "80px", textAlign: "center" }} defaultValue="10" />
+          {" "}
+        </div>
+        <div className="form-group" id="group-avatar-group">
+          {" "}
+          <label>Group Avatar</label>
+          <div className="avatar-upload">
+            {" "}
+            <img id="group-avatar-preview" alt={""} />
+            {" "}
+            <button onClick={() => document.getElementById("group-avatar-input")?.click()} type="button">Upload Group Avatar</button>
+            {" "}
+            <button id="manage-group-avatar-library-btn" type="button">Manage Avatar Library</button>
+            {" "}
+            <input type="file" id="group-avatar-input" accept="image/*" />
+            {" "}
+          </div>
+        </div>
+        <div className="form-group" id="world-book-link-group">
+          {" "}
+          <label>Attach World Info (multiple allowed)</label>
+          <div className="custom-multiselect">
+            <div className="select-box">
+              {" "}
+              <span className="selected-options-text">Select entries</span>
+              {" "}
+              <span className="arrow-down">{"▼"}</span>
+              {" "}
+            </div>
+            <div id="world-book-checkboxes-container" className="checkboxes-container">{" "}</div>
+          </div>
+        </div>
+        <div className="form-group" id="lyrics-position-group" style={{ display: "none" }}>
+          <hr style={{ opacity: "0.3", margin: "20px 0" }} />
+          {" "}
+          <label>Lyrics Position</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "8px" }}>
+            <div>
+              {" "}
+              <label htmlFor="lyrics-vertical-pos" style={{ fontSize: "0.9em", color: "var(--text-secondary)" }}>Vertical Position</label>
+              {" "}
+              <select id="lyrics-vertical-pos" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "14px" }}>
+                <option value="top">Top</option>
+                <option value="bottom">Bottom</option>
+              </select>
+              {" "}
+            </div>
+            <div>
+              {" "}
+              <label htmlFor="lyrics-horizontal-pos" style={{ fontSize: "0.9em", color: "var(--text-secondary)" }}>Horizontal Alignment</label>
+              {" "}
+              <select id="lyrics-horizontal-pos" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "14px" }}>
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+              {" "}
+            </div>
+          </div>
+          <div style={{ marginTop: "10px" }}>
+            {" "}
+            <label htmlFor="lyrics-offset-input" style={{ fontSize: "0.9em", color: "var(--text-secondary)" }}>Vertical Offset (px)</label>
+            {" "}
+            <input type="number" id="lyrics-offset-input" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} defaultValue="10" />
+            {" "}
+          </div>
+        </div>
+        <div className="form-group" id="offline-mode-group">
+          <hr style={{ opacity: "0.3", margin: "20px 0" }} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+            {" "}
+            <label htmlFor="offline-mode-toggle" style={{ marginBottom: "0" }}>
+              {" Enable Offline Roleplay Mode "}
+              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>
+                {" The AI will write a scene with dialogue and"}
+                <i style={{ color: "#666" }}>actions or setting descriptions</i>
+                {". "}
+              </p>
+              {" "}
+            </label>
+            {" "}
+            <label className="toggle-switch">
+              {" "}
+              <input type="checkbox" id="offline-mode-toggle" />
+              {" "}
+              <span className="slider" />
+              {" "}
+            </label>
+            {" "}
+          </div>
+          <div id="offline-mode-options" style={{ display: "none", marginTop: "15px" }}>
+            {" "}
+            <label htmlFor="offline-min-length-input">Reply Length Range</label>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "5px" }}>
+              {" "}
+              <input type="number" id="offline-min-length-input" style={{ width: "80px", textAlign: "center" }} defaultValue="100" />
+              {" "}
+              <span>to</span>
+              {" "}
+              <input type="number" id="offline-max-length-input" style={{ width: "80px", textAlign: "center" }} defaultValue="300" />
+              {" "}
+              <span>characters</span>
+              {" "}
+            </div>
+            <div className="form-group" style={{ marginTop: "15px", marginBottom: "0" }}>
+              {" "}
+              <label htmlFor="offline-preset-select">Writing Style Preset</label>
+              {" "}
+              <select id="offline-preset-select" style={{ width: "100%", marginTop: "5px" }} />
+              {" "}
+            </div>
+          </div>
+        </div>
+        <div className="form-group" id="linked-memory-group">
+          {" "}
+          <label htmlFor="link-memory-toggle">Attach Memories from Other Chats</label>
+          {" "}
+          <input type="checkbox" id="link-memory-toggle" style={{ width: "auto", height: "20px", verticalAlign: "middle", marginLeft: "10px" }} />
+          <div id="linked-memory-selection" style={{ display: "none", marginTop: "10px" }}>
+            {" "}
+            <label>Select chats to draw memories from</label>
+            <div className="custom-multiselect">
+              <div className="select-box">
+                {" "}
+                <span className="selected-options-text">Select entries</span>
+                {" "}
+                <span className="arrow-down">{"▼"}</span>
+                {" "}
+              </div>
+              <div id="linked-chats-checkboxes-container" className="checkboxes-container" style={{ maxHeight: "120px" }}>{" "}</div>
+            </div>
+            <p style={{ fontSize: "12px", color: "#8a8a8a", marginTop: "8px", lineHeight: "1.5" }}>
+              {" Attached memories are provided to the AI as reference context and are hidden from the timeline."}
+              <br />
+              {" Start with 3–10 turns per attached chat to keep responses fast. "}
+            </p>
+          </div>
+        </div>
+        <div className="form-group" id="ai-original-name-group">
+          {" "}
+          <label htmlFor="ai-original-name-input">Character Name (used by the AI)</label>
+          {" "}
+          <input type="text" id="ai-original-name-input" />
+          {" "}
+        </div>
+        <div className="form-group" id="ai-persona-group">
+          <label htmlFor="ai-persona">Character Description</label>
+          <textarea id="ai-persona" rows={3} />
+        </div>
+        <div className="form-group" id="ai-avatar-group">
+          <label>Character Avatar</label>
+          <div className="avatar-upload">
+            <img id="ai-avatar-preview" alt={""} />
+            <button onClick={() => document.getElementById("ai-avatar-input")?.click()} type="button">Upload Character Avatar</button>
+            <button id="manage-ai-avatar-library-btn" type="button">Manage Avatar Library</button>
+            <button className="change-frame-btn" data-type="ai" type="button">Change Avatar Frame</button>
+            {" "}
+            <input type="file" id="ai-avatar-input" accept="image/*" />
+            {" "}
+          </div>
+        </div>
+        <div className="form-group" id="my-persona-group">
+          <label htmlFor="my-persona">My Persona</label>
+          <textarea id="my-persona" rows={3} />
+        </div>
+        <div className="form-group" id="switch-greeting-group" style={{ display: "none" }}>
+          {" "}
+          <label>Switch First Message (clears current chat)</label>
+          {" "}
+          <button id="switch-greeting-btn" className="form-button form-button-secondary" style={{ marginTop: "5px" }} type="button">{"Choose an alternate greeting…"}</button>
+          {" "}
+        </div>
+        <div className="form-group" id="my-avatar-group">
+          {" "}
+          <label>My Avatar</label>
+          <div className="avatar-upload">
+            {" "}
+            <img id="my-avatar-preview" alt={""} />
+            {" "}
+            <button onClick={() => document.getElementById("my-avatar-input")?.click()} type="button">Upload My Avatar</button>
+            {" "}
+            <button id="manage-my-avatar-library-btn" type="button">Manage Avatar Library</button>
+            {" "}
+            <button className="change-frame-btn" data-type="my" type="button">Change Avatar Frame</button>
+            {" "}
+            <button id="open-persona-library-btn" type="button">Presets</button>
+            {" "}
+            <input type="file" id="my-avatar-input" accept="image/*" />
+            {" "}
+          </div>
+        </div>
+        <div className="form-group" id="group-members-group">
+          <label>Group Member Descriptions</label>
+          <div id="group-members-settings" />
+          {" "}
+          <button id="manage-members-btn" className="form-button form-button-secondary" style={{ marginTop: "15px" }} type="button">Manage Group Members</button>
+        </div>
+        <div className="form-group" id="group-nai-settings-group" style={{ display: "none" }}>
+          <hr style={{ opacity: "0.2", margin: "20px 0" }} />
+          <label style={{ fontWeight: "600", color: "var(--accent-color)" }}>NovelAI Image Settings</label>
+          <p style={{ fontSize: "12px", color: "#666", marginTop: "5px" }}>{" Customize the image prompts for this character. "}</p>
+          <div style={{ marginTop: "15px" }}>
+            <label style={{ fontWeight: "500", color: "#333" }}>Prompt Source</label>
+            <div style={{ display: "flex", gap: "15px", marginTop: "10px" }}>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                <input type="radio" name="group-nai-prompt-source" defaultChecked style={{ width: "auto", marginRight: "8px" }} defaultValue="system" />
+                <span>Use Global Settings</span>
+              </label>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                <input type="radio" name="group-nai-prompt-source" style={{ width: "auto", marginRight: "8px" }} defaultValue="character" />
+                <span>Use Character Settings</span>
+              </label>
+            </div>
+          </div>
+          <button id="group-character-nai-prompts-btn" className="form-button form-button-secondary" style={{ width: "100%", marginTop: "15px" }} type="button">Edit Character Prompts</button>
+        </div>
+        <div className="form-group" id="tts-enable-group">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {" "}
+            <label htmlFor="enable-tts-switch" style={{ marginBottom: "0" }}>
+              {" Enable Text-to-Speech (TTS) "}
+              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Turn off to ignore the [V] voice-message prefix. "}</p>
+              {" "}
+            </label>
+            <label className="toggle-switch">
+              {" "}
+              <input type="checkbox" id="enable-tts-switch" />
+              {" "}
+              <span className="slider" />
+              {" "}
+            </label>
+          </div>
+        </div>
+        <div className="form-group" id="ai-voice-id-group">
+          {" "}
+          <label htmlFor="ai-voice-id-input">{"Voice ID (MiniMax voice_id)"}</label>
+          {" "}
+          <input type="text" id="ai-voice-id-input" placeholder="Example: female-shaonv-jingpin" />
+        </div>
+        <div className="form-group" id="nai-character-settings-group" style={{ display: "none" }}>
+          <hr style={{ opacity: "0.2", margin: "20px 0" }} />
+          <label style={{ fontWeight: "600", color: "var(--accent-color)" }}>NovelAI Image Settings</label>
+          <p style={{ fontSize: "12px", color: "#666", marginTop: "5px" }}>{" Customize the image prompts for this character. "}</p>
+          <div style={{ marginTop: "15px" }}>
+            <label style={{ fontWeight: "500", color: "#333" }}>Prompt Source</label>
+            <div style={{ display: "flex", gap: "15px", marginTop: "10px" }}>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                <input type="radio" name="nai-prompt-source" defaultChecked style={{ width: "auto", marginRight: "8px" }} defaultValue="system" />
+                <span>Use Global Settings</span>
+              </label>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                <input type="radio" name="nai-prompt-source" style={{ width: "auto", marginRight: "8px" }} defaultValue="character" />
+                <span>Use Character Settings</span>
+              </label>
+            </div>
+          </div>
+          <button id="character-nai-prompts-btn" className="form-button form-button-secondary" style={{ width: "100%", marginTop: "15px" }} type="button">Edit Character Prompts</button>
+        </div>
+        <FormField id="max-memory" label="Chat History Context (messages)">
+          <input type="number" id="max-memory" defaultValue="10" />
+        </FormField>
+        <div className="form-group">
+          {" "}
+          <label htmlFor="linked-memory-count">Attached Memory Limit</label>
+          {" "}
+          <input type="number" id="linked-memory-count" defaultValue="10" />
+          <p style={{ fontSize: "12px", color: "#8a8a8a", marginTop: "8px", lineHeight: "1.5" }}>
+            {" Most recent messages included from each attached chat. "}
+            <br />
+            {" Suggested range 5–20. Higher values add memory context and increase API usage. "}
+          </p>
+        </div>
+        <div className="form-group">
+          <label htmlFor="token-count-display">
+            {" Estimated Context Tokens "}
+            <span title="Estimate based on text and formatting. Actual token usage can vary by model." style={{ cursor: "help", color: "#999" }} />
+          </label>
+          <p id="token-count-display">{" Calculating… "}</p>
+        </div>
+        <hr style={{ opacity: "0.3", margin: "20px 0" }} />
+        <div className="form-group" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {" "}
+          <label htmlFor="auto-memory-toggle" style={{ marginBottom: "0" }}>
+            {" Automatically Summarize Long-Term Memory "}
+            <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Summarize older messages when the conversation reaches the configured interval. "}</p>
+          </label>
+          {" "}
+          <label className="toggle-switch">
+            {" "}
+            <input type="checkbox" id="auto-memory-toggle" />
+            {" "}
+            <span className="slider" />
+            {" "}
+          </label>
+          {" "}
+        </div>
+        <div className="form-group">
+          {" "}
+          <label htmlFor="auto-memory-interval">Summary Interval (messages)</label>
+          {" "}
+          <input type="number" id="auto-memory-interval" min="10" style={{ width: "80px", textAlign: "center" }} defaultValue="20" />
+          <p style={{ fontSize: "12px", color: "#8a8a8a", marginTop: "8px" }}>{" Suggested range 15–30. Smaller values summarize more often and increase API costs. "}</p>
+        </div>
+        <hr style={{ opacity: "0.3", margin: "20px 0" }} />
+        <div className="form-group">
+          {" "}
+          <label>
+            {"Chat Bubble Theme "}
+            <button id="reset-theme-btn" type="button">Reset</button>
+          </label>
+          <div className="theme-selector">
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" id="theme-default" defaultValue="default" />
+              {" Default"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="pink_blue" />
+              {" Pink and Blue"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="blue_white" />
+              {" Blue and White"}
+            </label>
+            <label>
+              <input type="radio" name="theme-select" defaultValue="purple_yellow" />
+              {" Purple and Yellow"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="black_white" />
+              {" Black and White"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="yellow_white" />
+              {" Yellow and White"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="red_black" />
+              {" Red and Black"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="blue_yellow" />
+              {" Blue and Yellow"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="pink_yellow" />
+              {" Pink and Yellow"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="pink_purple" />
+              {" Pink and Purple"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="gray_white" />
+              {" Gray and White"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="blue_green" />
+              {" Blue and Green"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="pink_white" />
+              {" Pink and White"}
+            </label>
+            <label>
+              <input type="radio" name="theme-select" defaultValue="pink_black" />
+              {" Pink and Black"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="pink_green" />
+              {" Pink and Green"}
+            </label>
+            {" "}
+            <label>
+              <input type="radio" name="theme-select" defaultValue="green_black" />
+              {" Green and Black"}
+            </label>
+          </div>
+        </div>
+        <div className="form-group">
+          {" "}
+          <label htmlFor="font-size-slider">
+            {"Chat Font Size "}
+            <span id="font-size-value">13px</span>
+          </label>
+          {" "}
+          <input type="range" id="font-size-slider" min="12" max="20" step="1" style={{ width: "100%", marginTop: "8px" }} defaultValue="13" />
+          {" "}
+        </div>
+        <hr style={{ opacity: "0.3", margin: "20px 0" }} />
+        <div className="form-group">
+          {" "}
+          <label htmlFor="theme-preset-select">Theme Presets</label>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            {" "}
+            <select id="theme-preset-select" style={{ flexGrow: "1" }} />
+            {" "}
+            <button id="save-theme-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Save</button>
+            {" "}
+            <button id="delete-theme-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "#ffebee", color: "#d32f2f", borderColor: "#ffcdd2" }} type="button">Delete</button>
+            {" "}
+          </div>
+        </div>
+        <div className="form-group">
+          {" "}
+          <label htmlFor="custom-css-input">
+            {" Custom Bubble CSS "}
+            <button id="reset-custom-css-btn" type="button" style={{ background: "none", border: "1px solid #ccc", color: "#555", fontSize: "12px", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", marginLeft: "10px" }}>Reset</button>
+          </label>
+          {" "}
+          <textarea id="custom-css-input" rows={5} style={{ width: "100%", marginTop: "8px", fontFamily: "monospace", fontSize: "16px", resize: "vertical" }} placeholder={"/* Add styles for your chat bubbles */ .message-bubble.user .content { border-radius: 15px 4px 15px 15px; }"} />
+          {" "}
+        </div>
+        <div className="form-group">
+          {" "}
+          <label>Live Preview</label>
+          <div id="settings-preview-area" />
+        </div>
+        <div className="form-group">
+          {" "}
+          <label>Chat Background</label>
+          <div className="bg-upload-container">
+            {" "}
+            <button type="button" className="form-button-secondary" style={{ width: "auto", padding: "8px 12px", marginTop: "0" }} onClick={() => document.getElementById("bg-input")?.click()}>Upload Background</button>
+            {" "}
+            <button type="button" id="remove-bg-btn">Remove Background</button>
+            {" "}
+          </div>
+          {" "}
+          <img id="bg-preview" className="bg-preview-img" alt={""} />
+          {" "}
+          <FilePicker id="bg-input" accept="image/*" />
+        </div>
+        <hr style={{ margin: "25px 0", border: "none", borderTop: "1px solid #eee" }} />
+        {" "}
+        <button className="form-button form-button-secondary" id="block-chat-btn" style={{ backgroundColor: "#ff3b30", color: "white", borderColor: "#ff3b30" }} type="button">Block Character</button>
+        <hr style={{ margin: "25px 0", border: "none", borderTop: "1px solid #eee" }} />
+        <button className="form-button form-button-secondary" id="export-single-chat-btn" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32", borderColor: "#c8e6c9" }} type="button">Export This Chat</button>
+        <button className="form-button form-button-secondary" id="import-single-chat-btn" style={{ backgroundColor: "#fff3e0", color: "#ef6c00", borderColor: "#ffe0b2" }} type="button">Import Chat</button>
+        <FilePicker id="import-single-chat-input" accept="application/json" />
+        {" "}
+        <button className="form-button form-button-secondary" id="clear-chat-btn" type="button">Clear Chat History</button>
+      </div>
+    </Screen>
+  )
+}
