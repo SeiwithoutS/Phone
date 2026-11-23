@@ -23,3 +23,12 @@ export function escapeHtml(value: string) {
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[char]!)
 }
+
+export function downloadJson(value: unknown, name: string) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = (name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim().slice(0, 100) || 'export') + '.json'
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}

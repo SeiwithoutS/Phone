@@ -14,14 +14,14 @@ const titles: Record<View, string> = {
   'change-opening': 'Choose opening', 'delete-messages': 'Delete messages',
 }
 
-export function ChatSessions() {
+export function ChatSessions({ onOpen }: { onOpen: () => void }) {
   const { key, pathname } = useLocation()
   const active = useContext(ScreenContext) === 'chat-interface-screen'
   const id = active && resolveScreen(pathname)?.chatId
-  return id ? <SessionControls key={id + ':' + key} id={id} /> : null
+  return id ? <SessionControls key={id + ':' + key} id={id} onOpen={onOpen} /> : null
 }
 
-function SessionControls({ id }: { id: string }) {
+function SessionControls({ id, onOpen }: { id: string; onOpen: () => void }) {
   const [view, setView] = useState<View>()
   const [option, setOption] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -89,7 +89,7 @@ function SessionControls({ id }: { id: string }) {
 
   return <>
     <button type="button" id="qq-chat-sessions-btn" ref={opener} className="phone-button qq-chat-menu-button"
-      aria-label="Chat actions" aria-haspopup="dialog" onClick={() => open('menu')}>
+      aria-label="Chat actions" aria-haspopup="dialog" onClick={() => { onOpen(); open('menu') }}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
     </button>
     {chat && view && <dialog ref={panel} className={'qq-chat-dialog phone-feature' + (view === 'menu' ? ' qq-chat-menu' : '')}

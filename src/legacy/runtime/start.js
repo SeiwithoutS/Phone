@@ -313,7 +313,6 @@ runtime.defaultGroupAvatar = 'https://i.postimg.cc/gc3QYCDy/1-NINE7-Five.jpg'
 runtime.notificationTimeout = undefined
 
 
-runtime.DEFAULT_NOTIFICATION_SOUND = 'https://www.myinstants.com/media/sounds/notification-sound-2.mp3'
 
 runtime.gomokuState = {}
 
@@ -485,15 +484,10 @@ runtime.charPlayerState = {
 runtime.editingPresetId = null
 
 runtime.DEFAULT_BUTTON_ORDER = [
-    'open-sticker-panel-btn', 'send-photo-btn', 'upload-image-btn', 
-    'transfer-btn', 'voice-message-btn', 'send-waimai-request-btn', 
-    'video-call-btn', 'group-video-call-btn', 'send-poll-btn', 
-    'share-link-btn', 'share-location-btn', 'gomoku-btn', 
-    'open-shopping-btn', 'pat-btn',
-    'propel-btn', 'show-announcement-board-btn',
-
-    
-    'read-together-btn'
+    'transfer-btn', 'open-shopping-btn', 'propel-btn', 'send-poll-btn', 'share-location-btn',
+    'send-photo-btn', 'upload-image-btn', 'voice-message-btn', 'send-waimai-request-btn',
+    'video-call-btn', 'group-video-call-btn', 'share-link-btn', 'gomoku-btn', 'pat-btn',
+    'show-announcement-board-btn', 'read-together-btn', 'chat-screenshot-tool', 'chat-todo-tool', 'chat-market-tool'
 ]
 
 runtime.selectedCharsForClear = []

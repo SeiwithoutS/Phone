@@ -1,3 +1,5 @@
+import { postTransfer, transferCents, TransferError } from '../../features/bank/bank'
+import { mutateConversation } from '../../features/chat/sessions'
 import { triggerAiResponse } from './ai.js'
 import { cleanupWaimaiTimers } from './attachments.js'
 import { appendMessage, renderChatInterface } from './conversation.js'
@@ -6,6 +8,7 @@ import { getDisplayNameInGroup } from './groups.js'
 import { renderChatList } from './list.js'
 import { showCustomPrompt } from '../dialogs/dialogs.js'
 import { runtime } from '../runtime/state.js'
+import { closeStickerPicker } from '../stickers/stickers.js'
 
 export async function sendSticker(sticker) {
     const chat = runtime.state.chats[runtime.state.activeChatId];
@@ -23,63 +26,49 @@ export async function sendSticker(sticker) {
     chat.history = history;
     if (runtime.state.activeChatId === chat.id) {
         appendMessage(message, chat);
-        document.getElementById('sticker-panel').classList.remove('visible');
+        closeStickerPicker(true);
     }
     renderChatList();
 }
 
-export async function sendUserTransfer() { if (!runtime.state.activeChatId) return; const amountInput = document.getElementById('transfer-amount'); const noteInput = document.getElementById('transfer-note'); const amount = parseFloat(amountInput.value); const note = noteInput.value.trim(); if (isNaN(amount) || amount < 0) { alert("Enter an amount greater than zero."); return; } const chat = runtime.state.chats[runtime.state.activeChatId]; const senderName = chat.isGroup ? (chat.settings.myNickname || '我') : '我'; const receiverName = chat.isGroup ? '群聊' : chat.name; const msg = { role: 'user', type: 'transfer', amount: amount, note: note, senderName, receiverName, timestamp: Date.now() }; chat.history.push(msg); await runtime.db.chats.put(chat); appendMessage(msg, chat); renderChatList(); document.getElementById('transfer-modal').classList.remove('visible'); amountInput.value = ''; noteInput.value = ''; }
-
-export async function sendWaimaiOrderForAI() {
-    if (!runtime.state.activeChatId) return;
-    
-    const productInfoInput = document.getElementById('waimai-product-info');
-    const amountInput = document.getElementById('waimai-amount');
-    
-    const productInfo = productInfoInput.value.trim();
-    const amount = parseFloat(amountInput.value);
-
-    if (!productInfo || isNaN(amount) || amount <= 0) {
-        alert("Enter valid item details and an amount.");
+export async function sendUserTransfer() {
+    const chat = runtime.state.chats[runtime.state.activeChatId];
+    if (!chat) return;
+    const amountInput = document.getElementById('transfer-amount');
+    const noteInput = document.getElementById('transfer-note');
+    const confirm = document.getElementById('transfer-confirm-btn');
+    if (confirm.disabled) return;
+    const cents = transferCents(amountInput.value);
+    if (!Number.isSafeInteger(cents) || cents <= 0) {
+        alert('Enter a positive amount with at most two decimal places.');
         return;
     }
-
-    const chat = runtime.state.chats[runtime.state.activeChatId];
-    const now = Date.now();
-    const myNickname = chat.isGroup ? (chat.settings.myNickname || '我') : '我';
-
-    
-    const visibleMessage = {
-        role: 'user',
-        senderName: myNickname, 
-        type: 'waimai_order',
-        productInfo: productInfo,
-        amount: amount,
-        timestamp: now
+    const timestamp = Math.max(Date.now(), (chat.history.at(-1)?.timestamp || 0) + 1);
+    const note = noteInput.value.trim();
+    const id = crypto.randomUUID();
+    const msg = {
+        role: 'user', type: 'transfer', amount: cents / 100, note, timestamp,
+        senderName: chat.settings.myNickname || 'You', receiverName: chat.name,
+        ...(chat.isGroup ? {} : { bankTransferId: id, status: 'accepted' })
     };
-    chat.history.push(visibleMessage);
-
-    
-    const hiddenMessage = {
-        role: 'system',
-        content: `[系统提示：用户(${myNickname})为你点了一份外卖作为【礼物】。外卖内容是“${productInfo}”，价值${amount}元。这不是一个代付请求，而是用户已经为你支付了。请你对此表示感谢。]`,
-        timestamp: now + 1,
-        isHidden: true
-    };
-    chat.history.push(hiddenMessage);
-
-    
-    await runtime.db.chats.put(chat);
-    appendMessage(visibleMessage, chat);
-    renderChatList();
-
-    
-    productInfoInput.value = '';
-    amountInput.value = '';
-    document.getElementById('waimai-request-modal').classList.remove('visible');
-
-    
-    
+    confirm.disabled = true;
+    try {
+        await mutateConversation(chat, async () => {
+            if (chat.isGroup) await runtime.db.chats.update(chat.id, { history: [...chat.history, msg] });
+            else await postTransfer(runtime.db, { id, from: 'user', to: chat.id, cents, note, timestamp }, chat, msg);
+            chat.history.push(msg);
+        });
+        if (runtime.state.activeChatId === chat.id) appendMessage(msg, chat);
+        void renderChatList();
+        document.getElementById('transfer-modal').classList.remove('visible');
+        amountInput.value = '';
+        noteInput.value = '';
+    } catch (error) {
+        if (!(error instanceof TransferError)) console.error('Could not save transfer', error);
+        alert(error instanceof Error ? error.message : 'Could not save transfer.');
+    } finally {
+        confirm.disabled = false;
+    }
 }
 
 export async function sendLocationShare() {

@@ -38,14 +38,14 @@ function validateTables(tables: unknown): asserts tables is Tables {
   }
 }
 
-async function readJson(request: IncomingMessage): Promise<unknown> {
+async function readJson(request: IncomingMessage, sizeLimit = maxBytes): Promise<unknown> {
   const chunks = []
   let size = 0
   for await (const chunk of request.iterator({ destroyOnReturn: false })) {
     size += chunk.length
-    if (size > maxBytes) {
+    if (size > sizeLimit) {
       request.resume()
-      throw new HttpError(413, 'The data update exceeds 256 MiB.')
+      throw new HttpError(413, 'The request is too large.')
     }
     chunks.push(chunk)
   }
@@ -154,11 +154,13 @@ export function openLocalStore(directory: string) {
 
   return {
     snapshot: () => read,
-    async backup() {
+    async backup(selected?: TableName[]) {
       await queue
       const data = await read
       const archive = new JSZip()
-      archive.file('eephone.json', JSON.stringify({ ...data, tables: { ...retiredTables, ...data.tables } }))
+      const tables = selected ? Object.fromEntries(selected.map(name =>
+        [name, data.tables[name] ?? { nextId: 1, rows: [] }])) : { ...retiredTables, ...data.tables }
+      archive.file('eephone.json', JSON.stringify({ ...data, ...(selected ? { partial: true } : {}), tables }))
       return archive.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
     },
     save(body: unknown) {
@@ -174,16 +176,33 @@ export function createStorageHandler(directory: string, host = localAddress().ho
   const allowedHosts = new Set([host, 'localhost', loopbackAddress])
   return async function storage(request: IncomingMessage, response: ServerResponse, next: () => void) {
     const path = request.url?.split('?')[0]
-    if (path !== '/api/storage' && path !== '/api/backup' && path !== '/api/backup.zip') {
+    if (path !== '/api/activity-log' && path !== '/api/storage' && path !== '/api/backup' && path !== '/api/backup.zip') {
       next()
       return
     }
 
     try {
       assertLocalRequest(request, allowedHosts)
+      if (path === '/api/activity-log') {
+        if (request.method !== 'POST') throw new HttpError(405, 'Method not allowed.')
+        if (request.headers['content-type']?.split(';')[0] !== 'application/json') throw new HttpError(415, 'Expected JSON.')
+        const event = await readJson(request, 1024)
+        if (!isObject(event) || !['completion', 'bank.transfer', 'backup.restore'].includes(String(event.action)) ||
+          !['ok', 'failed'].includes(String(event.result))) throw new HttpError(400, 'Invalid activity event.')
+        const duration = typeof event.milliseconds === 'number' && Number.isFinite(event.milliseconds)
+          ? ' · ' + Math.max(0, Math.round(event.milliseconds)) + 'ms' : ''
+        if (event.result === 'ok') console.info('[EPhone]', event.action, 'ok' + duration)
+        else console.warn('[EPhone]', event.action, 'failed' + duration)
+        response.writeHead(204).end()
+        return
+      }
       if (request.method === 'GET') {
         if (path === '/api/backup.zip') {
-          const archive = await store.backup()
+          const query = new URL(request.url ?? '/', 'http://localhost').searchParams.get('tables')
+          const selected = query?.split(',')
+          if (selected?.some(name => !Object.hasOwn(schema, name)) || query === '') throw new HttpError(400, 'Invalid backup selection.')
+          const archive = await store.backup(selected as TableName[] | undefined)
+          console.info('[EPhone] backup.export ok · ' + (selected ? selected.length + ' tables' : 'full'))
           const day = new Date().toISOString().slice(0, 10)
           response.writeHead(200, {
             'Content-Type': 'application/zip',

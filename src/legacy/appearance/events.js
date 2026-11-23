@@ -1,3 +1,4 @@
+import { previewMessageSound } from '../home/status.js'
 import { handlePropelAction, handleRegenerateCallResponse } from '../chat/ai.js'
 import { showCustomAlert } from '../dialogs/dialogs.js'
 import { saveGlobalPlaylist, updatePlayerUI, updatePlaylistUI } from '../music/player.js'
@@ -82,18 +83,15 @@ document.getElementById('regenerate-call-btn').addEventListener('click', handleR
 
 document.getElementById('propel-btn').addEventListener('click', handlePropelAction);
 
-document.getElementById('test-sound-btn').addEventListener('click', () => {
-    const player = document.getElementById('notification-sound-player');
-    const url = document.getElementById('notification-sound-url-input').value.trim() || runtime.DEFAULT_NOTIFICATION_SOUND;
-    player.src = url;
-    player.play().catch(e => alert("Playback failed. Check the URL and audio format."));
-});
-
+for (const kind of ['sent', 'received']) {
+    document.getElementById('test-sound-' + kind).addEventListener('click', () => {
+        const url = document.getElementById('notification-sound-url-input').value.trim();
+        void previewMessageSound(kind, url).catch(() => alert('Playback failed. Check the URL and audio format.'));
+    });
+}
 document.getElementById('reset-sound-btn').addEventListener('click', () => {
     document.getElementById('notification-sound-url-input').value = '';
-    alert("Default notification sound selected. Save Appearance Settings to apply it.");
 });
-
 
 document.getElementById('add-song-search-btn').addEventListener('click', addSongFromSearch);
 

@@ -1,12 +1,41 @@
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { enterSelectionMode } from '../../legacy/chat/messages.js'
+import { closeStickerPicker } from '../../legacy/stickers/stickers.js'
+import { ChatTodoDialog } from './ChatTodoDialog'
 import { ChatSessions } from './ChatSessions'
 import { useNavigate } from 'react-router-dom'
 import { screenPaths, showScreen } from '../../app/routes'
 import { runtime } from '../../legacy/runtime/state.js'
 import { BackButton, FilePicker, Screen, ScreenHeader } from '../../components/phone'
-import { IconButton } from '../../components/icons'
+import { Icon, IconButton } from '../../components/icons'
+import type { IconName } from '../../components/icons'
+
+const chatTools = [
+  ['transfer-btn', 'bank', 'Transfer'],
+  ['open-shopping-btn', 'gift', 'Gift'],
+  ['propel-btn', 'spark', 'Plot'],
+  ['send-poll-btn', 'checklist', 'Vote'],
+  ['share-location-btn', 'pin', 'Location'],
+  ['send-photo-btn', 'camera', 'Photo description'],
+  ['upload-image-btn', 'image', 'Upload image'],
+  ['voice-message-btn', 'mic', 'Voice message'],
+  ['send-waimai-request-btn', 'bag', 'Request payment'],
+  ['video-call-btn', 'video', 'Video call'],
+  ['group-video-call-btn', 'users', 'Group call'],
+  ['share-link-btn', 'link', 'Share link'],
+  ['gomoku-btn', 'game', 'Gomoku'],
+  ['pat-btn', 'heart', 'Nudge'],
+  ['show-announcement-board-btn', 'bell', 'Announcements'],
+  ['read-together-btn', 'book', 'Read together'],
+] as const satisfies readonly (readonly [string, IconName, string])[]
 
 export function ChatInterfaceScreen() {
   const navigate = useNavigate()
+  const { key } = useLocation()
+  const [toolsOpen, setToolsOpen] = useState(false)
+  const [todoOpen, setTodoOpen] = useState(false)
+  useEffect(() => { setToolsOpen(false); setTodoOpen(false); closeStickerPicker() }, [key])
   return (
     <Screen id="chat-interface-screen">
       <div id="gomoku-overlay">
@@ -118,7 +147,6 @@ export function ChatInterfaceScreen() {
             {" "}
             <span id="selection-screenshot-btn" className="action-btn">Long Screenshot</span>
             {" "}
-            <span id="selection-favorite-btn" className="action-btn">Save to Favorites</span>
             {" "}
             <span id="selection-share-btn" className="action-btn">Share</span>
             {" "}
@@ -131,6 +159,12 @@ export function ChatInterfaceScreen() {
       <div id="chat-messages" onClick={event => {
         const target = event.target
         if (!(target instanceof Element)) return
+        const order = target.closest<HTMLButtonElement>('[data-market-order]')?.dataset.marketOrder
+        if (order && !event.currentTarget.closest('.selection-mode') && runtime.state.activeChatId) {
+          void navigate({ pathname: screenPaths['market-screen'], search: new URLSearchParams({ order }).toString() },
+            { state: { from: 'chat', chatId: runtime.state.activeChatId } })
+          return
+        }
         const card = target.closest<HTMLElement>('[data-kind="share_link"]')
         const chatId = runtime.state.activeChatId
         if (!card?.dataset.timestamp || !chatId) return
@@ -151,167 +185,61 @@ export function ChatInterfaceScreen() {
           {" "}
           <span id="cancel-reply-btn">{"×"}</span>
         </div>
-        <div id="chat-input-actions-top">
-          {" "}
-          <button id="open-sticker-panel-btn" className="chat-action-icon-btn action-button" title="Stickers" type="button" aria-label="Stickers">+</button>
-          {" "}
-          <button id="send-photo-btn" className="chat-action-icon-btn action-button" title="Send Photo" type="button" aria-label="Send Photo">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-          </button>
-          {" "}
-          <button id="upload-image-btn" className="chat-action-icon-btn action-button" title="Upload Image" type="button" aria-label="Upload Image">
-            {" "}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21 3.5H3C2.44772 3.5 2 3.94772 2 4.5V19.5C2 20.0523 2.44772 20.5 3 20.5H21C21.5523 20.5 22 20.0523 22 19.5V4.5C22 3.94772 21.5523 3.5 21 3.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M16.5 13.5C17.6046 13.5 18.5 12.6046 18.5 11.5C18.5 10.3954 17.6046 9.5 16.5 9.5C15.3954 9.5 14.5 10.3954 14.5 11.5C14.5 12.6046 15.3954 13.5 16.5 13.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M22 14.5L18 10.5L10.3333 18.5M12.5 16L9 12.5L2 19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {" "}
-          </button>
-          {" "}
-          <button id="transfer-btn" className="chat-action-icon-btn action-button" title="Transfer" type="button" aria-label="Transfer">{"￥"}</button>
-          {" "}
-          <button id="voice-message-btn" className="chat-action-icon-btn action-button" title="Send Voice Message" type="button" aria-label="Send Voice Message">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-              <path d="M12 19v4" />
-              <path d="M8 23h8" />
-            </svg>
-          </button>
-          {" "}
-          <button id="send-waimai-request-btn" className="chat-action-icon-btn action-button" title="Request Food Delivery" type="button" aria-label="Request Food Delivery">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg>
-          </button>
-          {" "}
-          <button id="video-call-btn" className="chat-action-icon-btn action-button" title="Video Call" type="button" aria-label="Video Call">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="23 7 16 12 23 17 23 7" />
-              <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-            </svg>
-          </button>
-          {" "}
-          <button id="group-video-call-btn" className="chat-action-icon-btn action-button" title="Group Video Call" type="button" aria-label="Group Video Call">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </button>
-          {" "}
-          <button id="send-poll-btn" className="chat-action-icon-btn action-button" title="Create Poll" type="button" aria-label="Create Poll">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 6h10" />
-              <path d="M6 6h.01" />
-              <path d="M8 12h10" />
-              <path d="M6 12h.01" />
-              <path d="M8 18h10" />
-              <path d="M6 18h.01" />
-            </svg>
-          </button>
-          {" "}
-          <button id="share-link-btn" className="chat-action-icon-btn action-button" title="Share Link" type="button" aria-label="Share Link">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72" />
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72" />
-            </svg>
-          </button>
-          {" "}
-          <button id="share-location-btn" className="chat-action-icon-btn action-button" title="Share Location" type="button" aria-label="Share Location">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-          </button>
-          {" "}
-          <button id="gomoku-btn" className="chat-action-icon-btn action-button" title="Gomoku" type="button" aria-label="Gomoku">
-            {" "}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <circle cx="12" cy="12" r="4" />
-              <circle cx="12" cy="12" r="7" />
-            </svg>
-            {" "}
-          </button>
-          {" "}
-          <button id="open-shopping-btn" className="chat-action-icon-btn action-button" title="Shopping" type="button" aria-label="Shopping">
-            {" "}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="9" cy="21" r="1" />
-              <circle cx="20" cy="21" r="1" />
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-            </svg>
-            {" "}
-          </button>
-          {" "}
-          <button id="pat-btn" className="chat-action-icon-btn action-button" title="Nudge" style={{ display: "none" }} type="button" aria-label="Nudge">
-            {" "}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M16 5.02c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M14.5 11.02c0 .83-.67 1.5-1.5 1.5v0c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5v0c.83 0 1.5.67 1.5 1.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M5.5 14.52l-1.92-1.92c-.34-.34-.34-.89 0-1.23l3.58-3.58c.34-.34.89-.34 1.23 0l1.92 1.92c.34.34.34.89 0 1.23l-3.58 3.58c-.34.34-.89.34-1.23 0Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {" "}
-          </button>
-          {" "}
-          <button id="propel-btn" className="chat-action-icon-btn action-button" title="Advance the Story" style={{ display: "flex" }} type="button" aria-label="Advance the Story">
-            {" "}
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 19 22 12 13 5 13 19" />
-              <polygon points="2 19 11 12 2 5 2 19" />
-            </svg>
-            {" "}
-          </button>
-          {" "}
-          <button id="show-announcement-board-btn" className="chat-action-icon-btn action-button" title="Group Announcements" style={{ display: "none" }} type="button" aria-label="Group Announcements">
-            {" "}
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M21.782 6.132a1 1 0 0 0-1.053-.08l-4.729 2.489a1 1 0 0 0-.5.88v4.158a1 1 0 0 0 .5.88l4.729 2.489a1 1 0 0 0 1.053-.08a1 1 0 0 0 .499-.921V7.052a1 1 0 0 0-.499-.92zm-6 3.207L11 7.05v9.9l4.782-2.281V9.339zM10 6H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6V6z" />
-            </svg>
-            {" "}
-          </button>
-          <button id="read-together-btn" className="chat-action-icon-btn action-button" title="Read Together" type="button" aria-label="Read Together">
-            {" "}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-            </svg>
-          </button>
-          {" "}
+        <div className="chat-composer-shortcuts">
+          <IconButton icon="smile" id="open-sticker-panel-btn" label="Stickers"
+            aria-controls="sticker-panel" aria-expanded="false" onClick={() => setToolsOpen(false)} />
         </div>
         <div id="chat-input-main-row">
-          <ChatSessions />
-          <textarea id="chat-input" rows={1} placeholder={"Type a message…"} />
+          <IconButton icon="plus" id="chat-plus-btn" label="Chat tools" aria-controls="chat-input-actions-top"
+            aria-expanded={toolsOpen} onClick={() => {
+              document.getElementById("chat-tool-notice")!.textContent = ""
+              setToolsOpen(open => !open)
+            }} />
+          <ChatSessions onOpen={() => setToolsOpen(false)} />
+          <textarea id="chat-input" rows={1} onFocus={() => setToolsOpen(false)} placeholder={"Type a message…"} />
           <div id="input-actions-wrapper">
             {" "}
             <button id="wait-reply-btn" title="Generate Reply" type="button" aria-label="Generate Reply">
-              <img src="https://i.postimg.cc/q72zq80N/ECE92-BBC-BE57-48-E9-BB2-C-345-B6019-C4-B2.png" alt="Generate Reply" />
+              <Icon name="spark" />
             </button>
             {" "}
-            <button id="send-btn" className="action-button" type="button">Send</button>
+            <IconButton id="send-btn" className="action-button" icon="send" label="Send message" />
             {" "}
           </div>
         </div>
+        <p id="chat-tool-notice" role="status" />
+        <div id="chat-input-actions-top" hidden={!toolsOpen} onClick={event => {
+          if (event.target instanceof Element && event.target.closest("button")) setToolsOpen(false)
+        }}>
+          {chatTools.map(([id, icon, label]) => <button key={id} id={id} className="chat-action-icon-btn action-button chat-plus-tool" type="button">
+            <Icon name={icon} /><span>{label}</span>
+          </button>)}
+          <button type="button" id="chat-market-tool" className="chat-action-icon-btn chat-plus-tool" onClick={() =>
+            showScreen('market-screen', { from: 'chat', chatId: runtime.state.activeChatId ?? undefined, food: true })}>
+            <Icon name="bag" /><span>Order delivery</span>
+          </button>
+          <button type="button" id="chat-screenshot-tool" className="chat-action-icon-btn chat-plus-tool" onClick={() => {
+            const last = [...document.querySelectorAll<HTMLElement>('#chat-messages .message-bubble[data-timestamp]')].at(-1)
+            if (last?.dataset.timestamp) enterSelectionMode(Number(last.dataset.timestamp))
+            else document.getElementById('chat-tool-notice')!.textContent = 'Send a message before taking a screenshot.'
+          }}><Icon name="camera" /><span>Screenshot</span></button>
+          <button type="button" id="chat-todo-tool" className="chat-action-icon-btn chat-plus-tool" onClick={() => setTodoOpen(true)}>
+            <Icon name="list" /><span>To-do list</span>
+          </button>
+        </div>
       </div>
+      {todoOpen && <ChatTodoDialog close={() => setTodoOpen(false)} />}
       <div id="chat-lock-overlay">
         <div id="chat-lock-content" />
       </div>
-      <div id="sticker-panel">
+      <div id="sticker-panel" role="region" aria-label="Sticker picker">
         <div id="sticker-panel-header">
           <IconButton icon="close" id="close-sticker-panel-btn" label="Close sticker picker" />
           <span className="title">Stickers</span>
           <div className="sticker-picker-tools">
             <IconButton icon="upload" id="upload-sticker-btn" label="Quick upload sticker" />
             <IconButton icon="folder" label="Manage sticker library" onClick={() => {
-              document.getElementById('sticker-panel')?.classList.remove('visible')
+              closeStickerPicker()
               showScreen('sticker-library-screen', { stickerChatId: runtime.state.activeChatId ?? undefined })
             }} />
           </div>

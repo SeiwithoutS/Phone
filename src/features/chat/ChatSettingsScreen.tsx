@@ -1,4 +1,9 @@
+import { IconButton } from '../../components/icons'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { BackButton, FilePicker, Screen, ScreenHeader } from '../../components/phone'
+import { Icon } from '../../components/icons'
+import type { IconName } from '../../components/icons'
 import { showScreen } from '../../app/routes'
 import { useNavigate } from 'react-router-dom'
 import { runtime } from '../../legacy/runtime/state.js'
@@ -22,23 +27,52 @@ const chatThemes = [
   ['green_black', 'Green / Black', '#e4f6e0', '#212121'],
 ] as const
 
+const settingsTabs = ['Setup', 'Features', 'Appearance'] as const
+
 export function ChatSettingsScreen() {
   const navigate = useNavigate()
+  const { key } = useLocation()
+  const [tab, setTab] = useState<typeof settingsTabs[number]>('Setup')
+  useEffect(() => { setTab('Setup') }, [key])
+  useEffect(() => {
+    const body = document.querySelector('.chat-settings-body')
+    if (body) body.scrollTop = 0
+  }, [tab])
   return (
     <Screen id="chat-settings-screen">
       <ScreenHeader>
-        {" "}
         <BackButton onClick={() => showScreen("chat-interface-screen")} />
-        {" "}
-        <span>Chat Settings</span>
-        {" "}
+        <h1>Chat Settings</h1>
         <button type="button" className="save-btn" id="save-chat-settings-btn">Save</button>
-        {" "}
       </ScreenHeader>
-      <div className="form-container">
+      <div className="chat-settings-identity" id="chat-settings-identity">
+        <img id="ai-avatar-preview" alt="" />
+        <img id="group-avatar-preview" alt="" hidden />
+        <strong id="chat-settings-contact-name" />
+      </div>
+      <div className="chat-tabs" role="group" aria-label="Chat settings sections">
+        {settingsTabs.map(name => <button key={name} type="button"
+          data-settings-tab={name} aria-pressed={name === tab} onClick={() => setTab(name)}>{name}</button>)}
+      </div>
+      <p id="chat-settings-error" className="chat-settings-error" role="alert" />
+      <div className="form-container chat-settings-body">
+        <section hidden={tab !== "Setup"} aria-label="Chat setup">
+        <div className="chat-setting-card chat-identity-fields">
+        <div className="form-group" id="ai-original-name-group">
+          {" "}
+          <label htmlFor="ai-original-name-input">Character name</label>
+          {" "}
+          <input type="text" id="ai-original-name-input" />
+          {" "}
+        </div>
         <div className="form-group" id="chat-name-group">
-          <label htmlFor="chat-name-input">Chat or Group Name</label>
+          <label htmlFor="chat-name-input">Display name</label>
           <input type="text" id="chat-name-input" />
+        </div>
+        <div className="form-group" id="ai-persona-group">
+          <label htmlFor="ai-persona">Character description</label>
+          <textarea id="ai-persona" rows={3} />
+        </div>
         </div>
         <div className="form-group" id="my-nickname-group">
           {" "}
@@ -63,7 +97,86 @@ export function ChatSettingsScreen() {
           <input type="text" id="my-group-nickname-input" />
         </div>
         {" "}
-        <button className="form-button form-button-secondary" id="search-history-btn" style={{ marginTop: "10px" }} type="button">Search Chat History</button>
+        <details className="chat-setting-card chat-sticker-groups">
+          <summary>Sticker groups</summary>
+          <p>Choose which sticker groups this chat can use.</p>
+          <div id="chat-sticker-groups" />
+        </details>
+        <div className="form-group" id="world-book-link-group">
+          {" "}
+          <label>Linked World Info</label>
+          <div className="custom-multiselect">
+            <button type="button" className="select-box" aria-expanded="false" aria-controls="world-book-checkboxes-container">
+              {" "}
+              <span className="selected-options-text">Select entries</span>
+              {" "}
+              <Icon name="next" />
+            </button>
+            <div id="world-book-checkboxes-container" className="checkboxes-container">{" "}</div>
+          </div>
+        </div>
+        <div className="chat-setting-card chat-location-card">
+          <h2>Location and time zone</h2>
+          <div className="form-group" id="chat-location-group">
+            <label htmlFor="chat-character-location">Character location</label>
+            <input id="chat-character-location" maxLength={100} placeholder="City and country" />
+          </div>
+        <div className="form-group" id="time-zone-group">
+          {" "}
+          <label htmlFor="time-zone-select">Time zone</label>
+          {" "}
+          <input type="search" aria-label="Filter time zones" id="time-zone-search-input" placeholder={"Search time zones, e.g. Shanghai or New York…"} />
+          {" "}
+          <select id="time-zone-select" style={{ width: "100%" }} />
+        </div>
+        </div>
+        <div className="form-group" id="my-persona-group">
+          <label htmlFor="my-persona">My Persona</label>
+          <textarea id="my-persona" rows={3} />
+        </div>
+        <div className="form-group" id="group-members-group">
+          <label>Group Member Descriptions</label>
+          <div id="group-members-settings" />
+          {" "}
+          <button id="manage-members-btn" className="form-button form-button-secondary" style={{ marginTop: "15px" }} type="button">Manage Group Members</button>
+        </div>
+        <details className="chat-setting-card chat-history-settings">
+          <summary>Chat history and privacy</summary>
+          <div className="phone-app-actions">
+            <button className="phone-app-button compact" id="search-history-btn" type="button">Search history</button>
+            <IconButton icon="download" id="export-single-chat-btn" label="Export chat" />
+            <IconButton icon="upload" id="import-single-chat-btn" label="Import chat" />
+            <button className="phone-app-button compact danger" id="block-chat-btn" type="button">Block Character</button>
+            <button className="phone-app-button compact danger" id="clear-chat-btn" type="button">Clear history</button>
+          </div>
+          <FilePicker id="import-single-chat-input" accept="application/json" />
+        </details>
+        </section>
+        <section hidden={tab !== "Features"} aria-label="Chat features">
+        <div id="chat-character-features" className="chat-setting-toggles">
+          <ChatSwitch icon="feed" id="chat-social-posts" label="Social interaction" hint="Allow this character to publish posts." />
+          <ChatSwitch icon="bag" id="chat-store-purchases" label="Store interaction" hint="Show simulated purchases in Cphone Shopping." />
+          <ChatSwitch icon="profile" id="chat-live-status" label="Character status" hint="Show their status below the chat name." />
+          <ChatSwitch icon="bell" id="chat-auto-messages" label="Scheduled messages" hint="Let the character message you first after the cooldown below, while EPhone is open. Background activity must be enabled here and in API Connections." />
+        <div className="form-group" id="ai-cooldown-group">
+          {" "}
+          <label htmlFor="ai-action-cooldown-input">
+            {" Cooldown (minutes) "}
+            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Minimum interval between this character’s background actions. "}</p>
+            {" "}
+          </label>
+          {" "}
+          <input type="number" id="ai-action-cooldown-input" min="1" style={{ width: "80px", textAlign: "center" }} defaultValue="10" />
+          {" "}
+        </div>
+          <ChatSwitch icon="list" id="chat-holiday-awareness" label="Holidays and adjusted workdays" hint="Use calendar entries for the character's location." />
+          <details className="settings-disclosure">
+            <summary>Edit local calendar dates</summary>
+            <label htmlFor="chat-holiday-dates">One entry per line with a date, holiday or workday, and a name.</label>
+            <textarea id="chat-holiday-dates" maxLength={8000} rows={4}
+              placeholder="2027-01-01, holiday, New Year" />
+          </details>
+        </div>
         <div className="form-group" id="single-char-background-activity-group">
           <div className="form-group" id="inject-thought-group">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -100,17 +213,6 @@ export function ChatSettingsScreen() {
             {" "}
           </div>
         </div>
-        <div className="form-group" id="ai-cooldown-group">
-          {" "}
-          <label htmlFor="ai-action-cooldown-input">
-            {" Action cooldown (minutes) "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Minimum interval between this character’s background actions. "}</p>
-            {" "}
-          </label>
-          {" "}
-          <input type="number" id="ai-action-cooldown-input" min="1" style={{ width: "80px", textAlign: "center" }} defaultValue="10" />
-          {" "}
-        </div>
         <div className="form-group" id="time-perception-group">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             {" "}
@@ -127,14 +229,6 @@ export function ChatSettingsScreen() {
               {" "}
             </label>
           </div>
-        </div>
-        <div className="form-group" id="time-zone-group" style={{ display: "none" }}>
-          {" "}
-          <label htmlFor="time-zone-select">Time Zone</label>
-          {" "}
-          <input type="search" id="time-zone-search-input" placeholder={"Search time zones, e.g. Shanghai or New York…"} />
-          {" "}
-          <select id="time-zone-select" style={{ width: "100%" }} />
         </div>
         <div className="form-group" id="group-background-activity-group">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -164,70 +258,6 @@ export function ChatSettingsScreen() {
           {" "}
           <input type="number" id="group-action-cooldown-input" min="1" style={{ width: "80px", textAlign: "center" }} defaultValue="10" />
           {" "}
-        </div>
-        <div className="form-group" id="group-avatar-group">
-          {" "}
-          <label>Group Avatar</label>
-          <div className="avatar-upload">
-            {" "}
-            <img id="group-avatar-preview" alt={""} />
-            {" "}
-            <button onClick={() => document.getElementById("group-avatar-input")?.click()} type="button">Upload Group Avatar</button>
-            {" "}
-            <button id="manage-group-avatar-library-btn" type="button">Manage Avatar Library</button>
-            {" "}
-            <input type="file" id="group-avatar-input" accept="image/*" />
-            {" "}
-          </div>
-        </div>
-        <div className="form-group" id="world-book-link-group">
-          {" "}
-          <label>Attach Mini Prompts (multiple allowed)</label>
-          <div className="custom-multiselect">
-            <div className="select-box">
-              {" "}
-              <span className="selected-options-text">Select entries</span>
-              {" "}
-              <span className="arrow-down">{"▼"}</span>
-              {" "}
-            </div>
-            <div id="world-book-checkboxes-container" className="checkboxes-container">{" "}</div>
-          </div>
-        </div>
-        <div className="form-group" id="lyrics-position-group" style={{ display: "none" }}>
-          <hr style={{ opacity: "0.3", margin: "20px 0" }} />
-          {" "}
-          <label>Lyrics Position</label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "8px" }}>
-            <div>
-              {" "}
-              <label htmlFor="lyrics-vertical-pos" style={{ fontSize: "0.9em", color: "var(--text-secondary)" }}>Vertical Position</label>
-              {" "}
-              <select id="lyrics-vertical-pos" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "14px" }}>
-                <option value="top">Top</option>
-                <option value="bottom">Bottom</option>
-              </select>
-              {" "}
-            </div>
-            <div>
-              {" "}
-              <label htmlFor="lyrics-horizontal-pos" style={{ fontSize: "0.9em", color: "var(--text-secondary)" }}>Horizontal Alignment</label>
-              {" "}
-              <select id="lyrics-horizontal-pos" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "14px" }}>
-                <option value="left">Left</option>
-                <option value="center">Center</option>
-                <option value="right">Right</option>
-              </select>
-              {" "}
-            </div>
-          </div>
-          <div style={{ marginTop: "10px" }}>
-            {" "}
-            <label htmlFor="lyrics-offset-input" style={{ fontSize: "0.9em", color: "var(--text-secondary)" }}>Vertical Offset (px)</label>
-            {" "}
-            <input type="number" id="lyrics-offset-input" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} defaultValue="10" />
-            {" "}
-          </div>
         </div>
         <div className="form-group" id="offline-mode-group">
           <hr style={{ opacity: "0.3", margin: "20px 0" }} />
@@ -274,65 +304,6 @@ export function ChatSettingsScreen() {
               {" "}
             </div>
           </div>
-        </div>
-        <details id="qq-character-details" className="settings-disclosure">
-          <summary>Character data</summary>
-          <button type="button" className="phone-app-button compact" onClick={() => {
-            const id = runtime.state.activeChatId
-            if (id) void navigate('/edit/' + encodeURIComponent(id))
-          }}>Open in Edit</button>
-        <div className="form-group" id="ai-original-name-group">
-          {" "}
-          <label htmlFor="ai-original-name-input">Character Name (used by the AI)</label>
-          {" "}
-          <input type="text" id="ai-original-name-input" />
-          {" "}
-        </div>
-        <div className="form-group" id="ai-persona-group">
-          <label htmlFor="ai-persona">Character Description</label>
-          <textarea id="ai-persona" rows={3} />
-        </div>
-        <div className="form-group" id="ai-avatar-group">
-          <label>Character Avatar</label>
-          <div className="avatar-upload">
-            <img id="ai-avatar-preview" alt={""} />
-            <button onClick={() => document.getElementById("ai-avatar-input")?.click()} type="button">Upload Character Avatar</button>
-            <button id="manage-ai-avatar-library-btn" type="button">Manage Avatar Library</button>
-            <button className="change-frame-btn" data-type="ai" type="button">Change Avatar Frame</button>
-            {" "}
-            <input type="file" id="ai-avatar-input" accept="image/*" />
-            {" "}
-          </div>
-        </div>
-        </details>
-        <div className="form-group" id="my-persona-group">
-          <label htmlFor="my-persona">My Persona</label>
-          <textarea id="my-persona" rows={3} />
-        </div>
-        <div className="form-group" id="my-avatar-group">
-          {" "}
-          <label>My Avatar</label>
-          <div className="avatar-upload">
-            {" "}
-            <img id="my-avatar-preview" alt={""} />
-            {" "}
-            <button onClick={() => document.getElementById("my-avatar-input")?.click()} type="button">Upload My Avatar</button>
-            {" "}
-            <button id="manage-my-avatar-library-btn" type="button">Manage Avatar Library</button>
-            {" "}
-            <button className="change-frame-btn" data-type="my" type="button">Change Avatar Frame</button>
-            {" "}
-            <button id="open-persona-library-btn" type="button">Presets</button>
-            {" "}
-            <input type="file" id="my-avatar-input" accept="image/*" />
-            {" "}
-          </div>
-        </div>
-        <div className="form-group" id="group-members-group">
-          <label>Group Member Descriptions</label>
-          <div id="group-members-settings" />
-          {" "}
-          <button id="manage-members-btn" className="form-button form-button-secondary" style={{ marginTop: "15px" }} type="button">Manage Group Members</button>
         </div>
         <div className="form-group" id="group-nai-settings-group" style={{ display: "none" }}>
           <hr style={{ opacity: "0.2", margin: "20px 0" }} />
@@ -396,8 +367,60 @@ export function ChatSettingsScreen() {
           <button id="character-nai-prompts-btn" className="form-button form-button-secondary" style={{ width: "100%", marginTop: "15px" }} type="button">Edit Character Prompts</button>
         </div>
         <button type="button" className="form-button-secondary" onClick={() => showScreen('context-screen', { contextChatId: runtime.state.activeChatId ?? undefined })}>Open Context</button>
-        <details id="qq-appearance-details" className="settings-disclosure">
-          <summary>Chat appearance</summary>
+        </section>
+        <section hidden={tab !== "Appearance"} aria-label="Chat appearance">
+        <details id="qq-character-details" className="settings-disclosure">
+          <summary>Character avatar and card</summary>
+          <button type="button" className="phone-app-button compact" onClick={() => {
+            const id = runtime.state.activeChatId
+            if (id) void navigate('/edit/' + encodeURIComponent(id))
+          }}>Open in Edit</button>
+        <div className="form-group" id="ai-avatar-group">
+          <label>Character Avatar</label>
+          <div className="avatar-upload">
+            <button onClick={() => document.getElementById("ai-avatar-input")?.click()} type="button">Upload Character Avatar</button>
+            <button id="manage-ai-avatar-library-btn" type="button">Manage Avatar Library</button>
+            <button className="change-frame-btn" data-type="ai" type="button">Change Avatar Frame</button>
+            {" "}
+            <input type="file" id="ai-avatar-input" accept="image/*" />
+            {" "}
+          </div>
+        </div>
+        </details>
+        <div className="form-group" id="group-avatar-group">
+          {" "}
+          <label>Group Avatar</label>
+          <div className="avatar-upload">
+            {" "}
+            {" "}
+            <button onClick={() => document.getElementById("group-avatar-input")?.click()} type="button">Upload Group Avatar</button>
+            {" "}
+            <button id="manage-group-avatar-library-btn" type="button">Manage Avatar Library</button>
+            {" "}
+            <input type="file" id="group-avatar-input" accept="image/*" />
+            {" "}
+          </div>
+        </div>
+        <div className="form-group" id="my-avatar-group">
+          {" "}
+          <label>My Avatar</label>
+          <div className="avatar-upload">
+            {" "}
+            <img id="my-avatar-preview" alt={""} />
+            {" "}
+            <button onClick={() => document.getElementById("my-avatar-input")?.click()} type="button">Upload My Avatar</button>
+            {" "}
+            <button id="manage-my-avatar-library-btn" type="button">Manage Avatar Library</button>
+            {" "}
+            <button className="change-frame-btn" data-type="my" type="button">Change Avatar Frame</button>
+            {" "}
+            <button id="open-persona-library-btn" type="button">Presets</button>
+            {" "}
+            <input type="file" id="my-avatar-input" accept="image/*" />
+            {" "}
+          </div>
+        </div>
+
           <fieldset className="qq-theme-picker">
             <legend>Bubble theme</legend>
             <div className="theme-selector qq-theme-options">
@@ -407,7 +430,7 @@ export function ChatSettingsScreen() {
                 <span>{label}</span>
               </label>)}
             </div>
-            <button id="reset-theme-btn" type="button" className="phone-app-button compact">Reset theme</button>
+            <IconButton icon="reset" id="reset-theme-btn" label="Reset theme" />
           </fieldset>
         <div className="form-group">
           {" "}
@@ -427,9 +450,9 @@ export function ChatSettingsScreen() {
             {" "}
             <select id="theme-preset-select" style={{ flexGrow: "1" }} />
             {" "}
-            <button id="save-theme-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Save preset</button>
+            <IconButton icon="check" id="save-theme-preset-btn" label="Save theme preset" />
             {" "}
-            <button id="delete-theme-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)" }} type="button">Delete preset</button>
+            <IconButton icon="trash" id="delete-theme-preset-btn" label="Delete theme preset" />
             {" "}
           </div>
         </div>
@@ -437,7 +460,7 @@ export function ChatSettingsScreen() {
           {" "}
           <label htmlFor="custom-css-input">
             {" Custom Bubble CSS "}
-            <button id="reset-custom-css-btn" type="button" style={{ background: "none", border: "1px solid var(--ui-divider)", color: "var(--ui-muted)", fontSize: "12px", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", marginLeft: "10px" }}>Reset</button>
+            <IconButton icon="reset" id="reset-custom-css-btn" label="Reset chat CSS" />
           </label>
           {" "}
           <textarea id="custom-css-input" rows={5} style={{ width: "100%", marginTop: "8px", fontFamily: "monospace", fontSize: "16px", resize: "vertical" }} placeholder={"/* Add styles for your chat bubbles */ .message-bubble.user .content { border-radius: 15px 4px 15px 15px; }"} />
@@ -463,17 +486,51 @@ export function ChatSettingsScreen() {
           {" "}
           <FilePicker id="bg-input" accept="image/*" />
         </div>
-        </details>
-        <hr style={{ margin: "25px 0", border: "none", borderTop: "1px solid #eee" }} />
-        {" "}
-        <button className="form-button form-button-secondary" id="block-chat-btn" style={{ backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)" }} type="button">Block Character</button>
-        <hr style={{ margin: "25px 0", border: "none", borderTop: "1px solid #eee" }} />
-        <button className="form-button form-button-secondary" id="export-single-chat-btn" style={{ backgroundColor: "var(--ui-positive-soft)", color: "var(--ui-positive)", borderColor: "var(--ui-divider)" }} type="button">Export This Chat</button>
-        <button className="form-button form-button-secondary" id="import-single-chat-btn" style={{ backgroundColor: "var(--ui-raised)", color: "var(--ui-accent)", borderColor: "var(--ui-divider)" }} type="button">Import Chat</button>
-        <FilePicker id="import-single-chat-input" accept="application/json" />
-        {" "}
-        <button className="form-button form-button-secondary" id="clear-chat-btn" type="button">Clear Chat History</button>
+        <div className="form-group" id="lyrics-position-group" style={{ display: "none" }}>
+          <hr style={{ opacity: "0.3", margin: "20px 0" }} />
+          {" "}
+          <label>Lyrics Position</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "8px" }}>
+            <div>
+              {" "}
+              <label htmlFor="lyrics-vertical-pos" style={{ fontSize: "0.9em", color: "var(--text-secondary)" }}>Vertical Position</label>
+              {" "}
+              <select id="lyrics-vertical-pos" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "14px" }}>
+                <option value="top">Top</option>
+                <option value="bottom">Bottom</option>
+              </select>
+              {" "}
+            </div>
+            <div>
+              {" "}
+              <label htmlFor="lyrics-horizontal-pos" style={{ fontSize: "0.9em", color: "var(--text-secondary)" }}>Horizontal Alignment</label>
+              {" "}
+              <select id="lyrics-horizontal-pos" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "14px" }}>
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+              {" "}
+            </div>
+          </div>
+          <div style={{ marginTop: "10px" }}>
+            {" "}
+            <label htmlFor="lyrics-offset-input" style={{ fontSize: "0.9em", color: "var(--text-secondary)" }}>Vertical Offset (px)</label>
+            {" "}
+            <input type="number" id="lyrics-offset-input" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} defaultValue="10" />
+            {" "}
+          </div>
+        </div>
+        </section>
       </div>
     </Screen>
   )
+}
+
+function ChatSwitch({ id, label, hint, icon }: { id: string; label: string; hint: string; icon: IconName }) {
+  return <div className="chat-setting-switch">
+    <span className="chat-setting-icon"><Icon name={icon} /></span>
+    <label htmlFor={id}>{label}<small>{hint}</small></label>
+    <label className="toggle-switch"><input type="checkbox" role="switch" id={id} /><span className="slider" /></label>
+  </div>
 }

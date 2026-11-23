@@ -1,30 +1,36 @@
+import { Icon } from '../../components/icons'
+import { PersonaTab } from '../personas/PersonaTab'
+import type { LocalDatabase } from '../../storage/database'
+import { renderChatList } from '../../legacy/chat/list.js'
 import { BackButton, FilePicker, Screen, ScreenHeader } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 
-export function ChatListScreen() {
+export function ChatListScreen({ database }: { database?: LocalDatabase }) {
   return (
     <Screen id="chat-list-screen">
       <ScreenHeader id="main-chat-list-header">
         {" "}
         <BackButton onClick={() => showScreen("home-screen")} />
         {" "}
-        <span id="chat-list-title">Messages</span>
+        <span id="chat-list-title">Chat</span>
         <div className="header-actions">
           {" "}
-          <span className="action-btn" id="add-group-chat-btn" title="Create Group Chat">
+          <button type="button" className="ui-icon-button" id="add-group-chat-btn" title="Create group" aria-label="Create group">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M17.5 17.5C19.1569 17.5 20.5 16.1569 20.5 14.5C20.5 12.8431 19.1569 11.5 17.5 11.5C15.8431 11.5 14.5 12.8431 14.5 14.5C14.5 16.1569 15.8431 17.5 17.5 17.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M21 21L19 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M8.5 11.5C10.1569 11.5 11.5 10.1569 11.5 8.5C11.5 6.84315 10.1569 5.5 8.5 5.5C6.84315 5.5 5.5 6.84315 5.5 8.5C5.5 10.1569 6.84315 11.5 8.5 11.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M12.5 14.5H4.5C3.39543 14.5 2.5 15.3954 2.5 16.5V18.5H12.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </span>
+          </button>
           {" "}
-          <button type="button" className="phone-button action-btn" aria-label="Create or import character" onClick={() => showScreen("character-edit-screen")}>+</button>
+          <button type="button" className="ui-icon-button" title="Create or import character" aria-label="Create or import character" onClick={() => showScreen("character-edit-screen")}><Icon name="plus" /></button>
           {" "}
         </div>
       </ScreenHeader>
+      <div id="persona-view" className="chat-list-view"><PersonaTab database={database} /></div>
       <div id="messages-view" className="chat-list-view active">
+        <label className="chat-list-search"><Icon name="search" /><input id="chat-list-filter" type="search" placeholder="Search chats" aria-label="Search chats" onChange={() => void renderChatList()} /></label>
         <div id="chat-list">{" "}</div>
       </div>
       <div id="qzone-screen" className="chat-list-view">
@@ -124,33 +130,10 @@ export function ChatListScreen() {
         </ScreenHeader>
         <div id="npc-list" className="list-container" style={{ padding: "0" }}>{" "}</div>
       </div>
-      <div id="chat-list-bottom-nav">
-        <div className="nav-item active" data-view="messages-view">
-          {" "}
-          <span>Messages</span>
-          {" "}
-        </div>
-        <div className="nav-item" data-view="qzone-screen">
-          {" "}
-          <span>Feed</span>
-          {" "}
-        </div>
-        <div className="nav-item" data-view="memories-view">
-          {" "}
-          <span>Memories</span>
-          {" "}
-        </div>
-        <div className="nav-item" data-view="favorites-view">
-          {" "}
-          <span>Save to Favorites</span>
-          {" "}
-        </div>
-        <div className="nav-item" data-view="npc-list-view">
-          {" "}
-          <span>NPC</span>
-          {" "}
-        </div>
-      </div>
+      <nav id="chat-list-bottom-nav" aria-label="Chat app">
+        <button type="button" className="nav-item" data-view="persona-view" aria-pressed="false"><Icon name="profile" /><span>Persona</span></button>
+        <button type="button" className="nav-item active" data-view="messages-view" aria-pressed="true"><Icon name="reply" /><span>Chat</span></button>
+      </nav>
     </Screen>
   )
 }

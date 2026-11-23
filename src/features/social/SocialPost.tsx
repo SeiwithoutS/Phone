@@ -49,8 +49,8 @@ function Photos({ images }: { images: SocialPhoto[] }) {
   </div>
 }
 
-export function PostComposer({ profile, submit, post }: {
-  profile: SocialProfile; post?: Post; submit: (text: string, photos: SocialPhoto[]) => Promise<void>
+export function PostComposer({ profile, submit, post, cancel }: {
+  profile: SocialProfile; post?: Post; cancel?: () => void; submit: (text: string, photos: SocialPhoto[]) => Promise<void>
 }) {
   const [text, setText] = useState(post?.text ?? '')
   const [images, setImages] = useState(post ? postPhotos(post) : [])
@@ -68,7 +68,7 @@ export function PostComposer({ profile, submit, post }: {
     finally { setBusy(false) }
   }}>
     <div className="social-compose-body">
-      <PhoneAvatar source={profile.avatar} name={profile.name} />
+      {!post && <PhoneAvatar source={profile.avatar} name={profile.name} />}
       <textarea aria-label={post ? 'Edit post text' : 'New post'} rows={4} maxLength={maxText}
         placeholder="Share something…" value={text} onChange={event => setText(event.target.value)} />
     </div>
@@ -96,6 +96,7 @@ export function PostComposer({ profile, submit, post }: {
     <div className="social-compose-actions">
       <IconButton icon="image" label="Add photos" disabled={busy || images.length >= maxImages} onClick={() => input.current?.click()} />
       <small>{text.length}/{maxText}</small>
+      {cancel && <IconButton icon="close" label="Cancel edit" disabled={busy} onClick={cancel} />}
       <button type="submit" className="social-primary" disabled={busy || (!text.trim() && !images.length)}>{post ? 'Save' : 'Post'}</button>
     </div>
     {error && <p className="phone-app-error" role="alert">{error}</p>}
@@ -139,6 +140,7 @@ export function FeedPost({ post, profile, authorProfile, openActor, ai, pendingR
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const menu = useRef<HTMLDetailsElement>(null)
+  const article = useRef<HTMLElement>(null)
   const date = new Date(post.time)
   const recentAi = post.comments.findLast(comment => comment.ai)
   const visibleComments = thread ? post.comments : recentAi ? [recentAi] : []
@@ -152,7 +154,12 @@ export function FeedPost({ post, profile, authorProfile, openActor, ai, pendingR
     catch { setError('Could not update this post.') } finally { setBusy(false) }
   }
 
-  return <article className="social-post">
+  function closeEditor() {
+    setEditing(false)
+    requestAnimationFrame(() => menu.current?.querySelector('summary')?.focus())
+  }
+
+  return <article className="social-post" ref={article}>
     {post.repostedAt && <p className="social-meta social-reposted"><Icon name="repost" /> Reposted by you</p>}
     <header className="social-post-heading">
       <PhoneAvatar source={author?.avatar} name={authorName} />
@@ -163,20 +170,30 @@ export function FeedPost({ post, profile, authorProfile, openActor, ai, pendingR
           <time dateTime={date.toISOString()} title={date.toLocaleString()}>{shortDate(post.time)}</time>
           {post.editedAt ? ' · Edited' : ''}</span>
       </div>
-      {!post.authorId && <details className="social-post-menu" ref={menu} onBlur={event => {
+      {!post.authorId && !editing && <details className="social-post-menu" ref={menu} onBlur={event => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) event.currentTarget.open = false
       }}>
         <summary className="ui-icon-button" aria-label="Post options" title="Post options"><Icon name="more" /></summary>
         <div className="social-actions-popover">
-          <button type="button" onClick={() => { if (menu.current) menu.current.open = false; setEditing(true) }}><Icon name="edit" /> Edit post</button>
+          <button type="button" onClick={() => {
+            setEditing(true)
+            requestAnimationFrame(() => article.current?.querySelector<HTMLTextAreaElement>('.social-inline-edit textarea')?.focus())
+          }}><Icon name="edit" /> Edit post</button>
           <button type="button" className="social-danger" onClick={() => { if (menu.current) menu.current.open = false; setDeleting(true) }}>
             <Icon name="trash" /> Delete post
           </button>
         </div>
       </details>}
     </header>
-    {post.text && <p className="social-text">{post.text}</p>}
-    <Photos images={postPhotos(post)} />
+    {editing ? <div className="social-inline-edit">
+      <PostComposer profile={profile} post={post} cancel={closeEditor} submit={async (value, photos) => {
+        await update(() => ({ text: value, image: undefined, images: undefined, photos, editedAt: Date.now() }))
+        closeEditor()
+      }} />
+    </div> : <>
+      {post.text && <p className="social-text">{post.text}</p>}
+      <Photos images={postPhotos(post)} />
+    </>}
     <div className="social-actions" aria-label="Post actions">
       <IconButton icon="reply" label={'Replies (' + post.comments.length + ')'} count={post.comments.length} aria-expanded={thread || undefined}
         onClick={thread ? () => document.getElementById('social-reply-input')?.focus() : openThread} />
@@ -218,12 +235,6 @@ export function FeedPost({ post, profile, authorProfile, openActor, ai, pendingR
         onChange={event => setText(event.target.value)} />
       <IconButton icon="send" label="Send reply" type="submit" disabled={busy || !text.trim()} />
     </form>}
-    {editing && <SocialDialog title="Edit post" close={() => setEditing(false)}>
-      <PostComposer profile={profile} post={post} submit={async (value, photos) => {
-        await update(() => ({ text: value, image: undefined, images: undefined, photos, editedAt: Date.now() }))
-        setEditing(false)
-      }} />
-    </SocialDialog>}
     {deleting && <SocialDialog title="Delete post?" close={() => { if (!busy) setDeleting(false) }}>
       <div className="social-confirm">
         <p>This removes the post and its replies.</p>

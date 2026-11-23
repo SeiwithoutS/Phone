@@ -75,3 +75,25 @@ test('older World Info imports retain entry metadata and explicit disabled state
     { content: 'Two', enabled: false },
   ])
 })
+
+test('selective ZIP includes precisely the requested tables, even when one is empty', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'eephone-partial-'))
+  try {
+    const store = openLocalStore(directory)
+    await store.save({ revision: 0, tables: {
+      bankTransfers: { nextId: 1, rows: [{ id: 'transfer-1', cents: 2500 }] },
+      apiConfig: { nextId: 1, rows: [{ id: 'main', model: 'local-model' }] },
+    } })
+    const archive = await JSZip.loadAsync(await store.backup(['bankTransfers', 'personaPresets']))
+    const source = await archive.file('eephone.json')?.async('string')
+    assert.ok(source)
+    const snapshot = JSON.parse(source)
+    assert.equal(snapshot.partial, true)
+    assert.deepEqual(Object.keys(snapshot.tables), ['bankTransfers', 'personaPresets'])
+    assert.deepEqual(snapshot.tables.bankTransfers.rows, [{ id: 'transfer-1', cents: 2500 }])
+    assert.deepEqual(snapshot.tables.personaPresets, { nextId: 1, rows: [] })
+    assert.ok((await store.snapshot()).tables.apiConfig)
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})

@@ -27,6 +27,7 @@ const mime: Record<string, string> = {
   '.png': 'image/png',
   '.webp': 'image/webp',
   '.woff2': 'font/woff2',
+  '.wav': 'audio/wav',
 }
 
 async function serve(request: IncomingMessage, response: ServerResponse) {

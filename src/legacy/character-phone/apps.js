@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../runtime/files'
 import { switchToCharScreen } from './launcher.js'
 import { renderCharMusicScreen } from './music.js'
 import { renderCharDiaryList, renderCharMemoList, renderCharSimulatedQQ } from './notes.js'
@@ -66,7 +67,7 @@ export function renderCharTaobao() {
             if (!runtime.activeCharacterId) return;
 
             const char = runtime.state.chats[runtime.activeCharacterId];
-            const purchases = char.simulatedTaobaoHistory?.purchases || [];
+            const purchases = [...(char.storePurchases || []), ...(char.simulatedTaobaoHistory?.purchases || [])];
 
             if (purchases.length === 0) {
                 gridEl.innerHTML = "<p style=\"text-align:center; color: var(--text-secondary); padding: 50px 0;\">No orders yet.<br>Use Regenerate to create activity.</p>";
@@ -85,7 +86,7 @@ export function renderCharTaobao() {
                 } else {
                     imageOrTextHtml = `
                         <div class="char-product-description-overlay">
-                            <p class="char-photo-description">${item.reason || '(无购买理由)'}</p>
+                            <p class="char-photo-description">${escapeHtml(String(item.reason || "")) || '(无购买理由)'}</p>
                         </div>
                     `;
                 }
@@ -94,10 +95,10 @@ export function renderCharTaobao() {
                 itemEl.innerHTML = `
                     ${imageOrTextHtml}
                     <div class="product-info">
-                        <div class="product-name">${item.itemName}</div>
+                        <div class="product-name">${escapeHtml(String(item.itemName || ""))}</div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                            <div class="product-price">${(item.price || 0).toFixed(2)}</div>
-                            <div class="char-product-status">${item.status}</div>
+                            <div class="product-price">${(Number(item.price) || 0).toFixed(2)}</div>
+                            <div class="char-product-status">${escapeHtml(String(item.status || ""))}</div>
                         </div>
                     </div>
                 `;

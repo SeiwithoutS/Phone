@@ -1,6 +1,9 @@
 import type { LocalDatabase } from '../storage/database'
 import { AvatarLibraries } from '../features/avatars/AvatarLibraries'
 import { FilePicker } from '../components/phone'
+import { BackupScreen } from '../features/backup/BackupScreen'
+import { BankNotice, BankScreen } from '../features/bank/BankScreen'
+import { MarketScreen } from '../features/shopping/MarketScreen'
 import { StatusBar, NotificationBar, BatteryAlertModal } from '../features/home/StatusBar'
 import { CharacterEditScreen } from '../features/characters/CharacterEditScreen'
 import { LorebookScreen } from '../features/world-book/LorebookScreen'
@@ -51,6 +54,7 @@ export function PhoneContent({ database }: { database?: LocalDatabase }) {
     <>
       <StatusBar />
       <NotificationBar />
+      <BankNotice database={database} />
       <DataClearWizardModal />
       <NpcEditorModal />
       <ClearPostsModal />
@@ -59,20 +63,23 @@ export function PhoneContent({ database }: { database?: LocalDatabase }) {
       <ProductEditorModal />
       <GiftReceiptModal />
       <HomeScreen database={database} />
+      <BackupScreen database={database} />
+      <BankScreen database={database} />
+      <MarketScreen database={database} />
       <CharacterEditScreen ready={Boolean(database)} />
       <LorebookScreen ready={Boolean(database)} />
       <SocialScreen database={database} />
       <StickerLibraryScreen database={database} />
       <ContextScreen database={database} />
       <CharacterSelectionScreen />
-      <CharacterPhoneScreen />
+      <CharacterPhoneScreen database={database} />
       <WorldBookScreen />
       <WorldBookEditorScreen database={database} />
       <PresetScreen />
       <TutorialScreen />
       <PresetEditorScreen />
       <ApiSettingsScreen />
-      <ChatListScreen />
+      <ChatListScreen database={database} />
       <AlbumScreen />
       <AlbumPhotosScreen />
       <ChatInterfaceScreen />

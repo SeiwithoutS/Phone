@@ -61,6 +61,19 @@ export function sessionChanging(chatId: string) {
   return changes.has(chatId)
 }
 
+function conversationBusy(chatId: string) {
+  const call = runtime.videoCallState
+  return changes.has(chatId) || requests.has(chatId) ||
+    (call?.activeChatId === chatId && (call.isActive || call.isAwaitingResponse))
+}
+
+export async function withIdleConversation<T>(chatId: string, run: () => Promise<T>) {
+  if (conversationBusy(chatId)) return
+  changes.add(chatId)
+  try { return await run() }
+  finally { changes.delete(chatId) }
+}
+
 export async function withConversationRequest<T>(chatId: string | null, run: () => T | Promise<T>) {
   if (!chatId || sessionChanging(chatId)) return
   requests.set(chatId, (requests.get(chatId) || 0) + 1)
@@ -74,9 +87,7 @@ export async function withConversationRequest<T>(chatId: string | null, run: () 
 
 export async function mutateConversation<T>(chat: Chat, run: () => Promise<T>) {
   if (getActiveChat() !== chat) throw new Error('Open this chat again and try once more.')
-  const call = runtime.videoCallState
-  if (changes.has(chat.id) || requests.has(chat.id) ||
-      (call?.activeChatId === chat.id && (call.isActive || call.isAwaitingResponse))) {
+  if (conversationBusy(chat.id)) {
     throw new Error('Wait for the current reply or call to finish, then try again.')
   }
   changes.add(chat.id)

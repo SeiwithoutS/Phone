@@ -1,3 +1,6 @@
+import { publishChatPost } from '../../features/social/activity'
+import { recordStorePurchase } from '../../features/chat/chat-features'
+import { postTransfer, transferCents, TransferError } from '../../features/bank/bank'
 import { withConversationRequest } from '../../features/chat/sessions'
 import { requestContextCompletion } from '../../features/api/completion'
 import { getGeminiResponseText, parseAiResponse } from '../api/client.js'
@@ -5,7 +8,7 @@ import { playSilentAudio, stopSilentAudio } from '../calls/audio.js'
 import { showIncomingCallModal } from '../calls/calls.js'
 import { triggerGroupAiAction } from '../chat/ai.js'
 import { triggerAiFriendApplication } from '../chat/attachments.js'
-import { appendMessage, setAvatarActingState } from '../chat/conversation.js'
+import { appendMessage, setAvatarActingState, updateChatHeaderStatus } from '../chat/conversation.js'
 import { getTimeOfDayGreeting } from '../../features/chat/format'
 import { processMentions, syncCharacterAvatarInGroups } from '../chat/groups.js'
 import { renderChatList } from '../chat/list.js'
@@ -50,7 +53,19 @@ export async function runBackgroundSimulationTick() {
                 triggerAiFriendApplication(chat.id);
             }
         }
-        else if (chat.relationship?.status === 'friend' && chat.id !== runtime.state.activeChatId) {
+        else if (chat.relationship?.status === 'friend') {
+            if (chat.settings.scheduledMessages === true) {
+                const lastMessage = chat.history.findLast(message => !message.isHidden && !message.isTemporary);
+                const idleSince = Math.max(chat.lastActionTimestamp || 0, chat.lastScheduledAttemptAt || 0,
+                    lastMessage?.timestamp || chat.status?.lastUpdate || 0);
+                const cooldown = (chat.settings.actionCooldownMinutes || 10) * 60000;
+                if (chat.settings.enableBackgroundActivity !== false && idleSince && Date.now() - idleSince >= cooldown) {
+                    chat.lastScheduledAttemptAt = Date.now();
+                    void triggerInactiveAiAction(chat.id, true).catch(error => console.error('Scheduled chat message failed', error));
+                }
+                return;
+            }
+            if (chat.id === runtime.state.activeChatId) return;
             if (chat.settings.enableBackgroundActivity === false) {
                 console.log(`角色 "${chat.name}" 的独立后台活动开关已关闭，本次跳过。`);
                 return;
@@ -257,15 +272,14 @@ ${postingCooldownInstruction}
     }
 }
 
-export function triggerInactiveAiAction(chatId) {
-    return withConversationRequest(chatId, () => runInactiveAiAction(chatId));
+export function triggerInactiveAiAction(chatId, messageOnly = false) {
+    return withConversationRequest(chatId, () => runInactiveAiAction(chatId, messageOnly));
 }
 
-async function runInactiveAiAction(chatId) {
+async function runInactiveAiAction(chatId, messageOnly) {
             const chat = runtime.state.chats[chatId];
-            if (!chat) return;
-        
-            
+            if (!chat || (messageOnly && !chat.settings.scheduledMessages)) return;
+
             const actionCooldownMinutes = chat.settings.actionCooldownMinutes || 10; 
         
             if (chat.lastActionTimestamp) {
@@ -276,9 +290,8 @@ async function runInactiveAiAction(chatId) {
                     return;
                 }
             }
-            setAvatarActingState(chatId, true);
-        
             if (!runtime.state.apiConfig.proxyUrl || !runtime.state.apiConfig.model) return;
+            setAvatarActingState(chatId, true);
         
             const userNickname = runtime.state.qzoneSettings.nickname;
             const now = new Date();
@@ -291,6 +304,7 @@ async function runInactiveAiAction(chatId) {
 
 let timeOfDayGreeting = ''; 
 let timeContextText = '';
+let longTimeNoSee = false;
 if (chat.settings.enableTimePerception) {
     timeOfDayGreeting = getTimeOfDayGreeting(localizedDate); 
     const lastMessage = chat.history.filter(m => !m.isHidden).slice(-1)[0];
@@ -301,6 +315,7 @@ if (chat.settings.enableTimePerception) {
         const timeDiffHours = (now - lastTime) / (1000 * 60 * 60);
 
         if (timeDiffHours > 12) {
+            longTimeNoSee = true;
             const diffDays = Math.floor(timeDiffHours / 24);
             timeContextText = `你们已经有${diffDays > 0 ? diffDays + '天' : Math.floor(timeDiffHours) + '小时'}没有聊天了。`;
         } else {
@@ -320,6 +335,7 @@ if (chat.settings.enableTimePerception) {
 }
 const stickerContext = getStickerContextForPrompt(chat);
             const systemPrompt = `
+            ${messageOnly ? 'Send one proactive chat message. Return only a JSON array with a single text action.' : 'To send a simulated bank transfer, use {"type":"transfer","amount":12.50,"note":"reason"}.'}
         # 你的任务
         你现在扮演一个名为"${chat.name}"的角色（你的本名是"${chat.originalName}"）。你已经有一段时间没有和用户（${userNickname}）互动了，现在你有机会【主动】做点什么，来表现你的个性和独立生活。这是一个秘密的、后台的独立行动。
 
@@ -329,7 +345,7 @@ const stickerContext = getStickerContextForPrompt(chat);
         **你与用户的关系是最重要的！** 相比于在动态区闲逛，你应该【优先考虑】是否需要主动给用户发消息来维系你们的感情。
 ${chat.settings.enableTimePerception ? `
 # 【情景感知】
-- **时间**: 感知到当前是${currentTime} (${timeOfDayGreeting})}。
+- **时间**: 感知到当前是${currentTime} (${timeOfDayGreeting})。
 - **对话状态**: ${timeContextText}
 ${longTimeNoSee ? `【重要提示】你们已经很久没聊天了！你【必须】将本次行动的重点放在使用 'text' 指令给用户发消息，主动开启一个新的、有趣的话题来重新建立联系。绝对不要只是点赞或评论动态，那会显得你很冷漠！` : ''}` : ''}
         
@@ -386,7 +402,7 @@ ${longTimeNoSee ? `【重要提示】你们已经很久没聊天了！你【必�
 `;
 
     try {
-        const response = await requestContextCompletion(chat, { instructions: systemPrompt, task: 'QQ character background',
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt, task: messageOnly ? 'Scheduled chat message' : 'QQ character background',
             request: [{ role: 'user', content: 'Choose an independent action based on the available context.' }] });
         
                 if (!response.ok) {
@@ -429,7 +445,12 @@ for (const action of responseArray) {
         processedActions.push(action);
     }
 }
+        const viewingChat = runtime.state.activeChatId === chatId && document.getElementById('chat-interface-screen').classList.contains('active');
         for (const action of processedActions) {
+                    if (messageOnly && (!chat.settings.scheduledMessages || action.type !== 'text')) continue;
+                    if (chat.settings.scheduledMessages === false && action.type === 'text' && !messageOnly) continue;
+                    if (chat.settings.allowSocialPosts === false && ['qzone_post', 'repost'].includes(action.type)) continue;
+                    if (chat.settings.showCharacterStatus === false && action.type === 'update_status') continue;
                     chat.lastActionType = action.type;
                     chat.lastActionTimestamp = actionTimestamp;
                     
@@ -492,10 +513,31 @@ for (const action of responseArray) {
                                 aiMessage = { ...baseMessage, type: 'sticker', content: action.url, meaning: '未知表情' };
                             }
                             break;
+                        case 'store_purchase':
+                            recordStorePurchase(chat, action);
+                            break;
+                        case 'transfer': {
+                            const cents = transferCents(action.amount);
+                            if (!Number.isSafeInteger(cents) || cents <= 0) break;
+                            const id = crypto.randomUUID();
+                            const note = typeof action.note === 'string' ? action.note.slice(0, 240) : '';
+                            const message = { ...baseMessage, type: 'transfer', amount: cents / 100, note,
+                                receiverName: 'You', status: 'accepted', bankTransferId: id };
+                            try {
+                                await postTransfer(runtime.db, { id, from: chatId, to: 'user', cents, note, timestamp: message.timestamp },
+                                    chat, message);
+                                aiMessage = message;
+                            } catch (error) {
+                                if (!(error instanceof TransferError)) throw error;
+                            }
+                            break;
+                        }
                         case 'update_status':
-                            chat.status.text = action.status_text;
+                            if (typeof action.status_text !== 'string' || !action.status_text.trim()) break;
+                            chat.status.text = action.status_text.trim().slice(0, 90);
                             chat.status.isBusy = action.is_busy || false;
                             chat.status.lastUpdate = Date.now();
+                            if (viewingChat) updateChatHeaderStatus(chat);
                             break; 
                         case 'qzone_post':
                             const newPost = { 
@@ -511,6 +553,7 @@ for (const action of responseArray) {
                                 visibleGroupIds: null 
                             };
                             await runtime.db.qzonePosts.add(newPost);
+                            await publishChatPost(chatId, newPost);
                             updateUnreadIndicator(runtime.unreadPostsCount + 1);
                             console.log(`后台活动: 角色 "${chat.name}" 发布了动态`);
                             break;
@@ -621,9 +664,11 @@ for (const action of responseArray) {
         
                     if (aiMessage) {
                         chat.history.push(aiMessage);
-                        chat.unreadCount = (chat.unreadCount || 0) + 1;
-                        if (!hasSentNotification) {
-                            let notificationText = aiMessage.type === 'ai_image' ? '[图片]' : (aiMessage.content || '');
+                        const viewing = runtime.state.activeChatId === chatId && document.getElementById('chat-interface-screen').classList.contains('active');
+                        if (viewing) appendMessage(aiMessage, chat);
+                        else chat.unreadCount = (chat.unreadCount || 0) + 1;
+                        if (!viewing && !hasSentNotification && !aiMessage.bankTransferId) {
+                            let notificationText = aiMessage.type === 'transfer' ? 'Bank transfer received' : aiMessage.type === 'ai_image' ? '[图片]' : (aiMessage.content || '');
                             showNotification(chatId, notificationText);
                             hasSentNotification = true;
                         }

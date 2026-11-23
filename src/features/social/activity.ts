@@ -1,3 +1,4 @@
+import { runtime } from '../../legacy/runtime/state.js'
 import { createAiComment, createAiPost, createAiProfile, socialActors } from './social'
 import type { ActorProfile, Post, SocialActor, SocialNotification } from './social'
 import type { LocalDatabase } from '../../storage/database'
@@ -134,6 +135,10 @@ export async function publishActorPost(database: LocalDatabase, actorId: string,
   try {
     const actor = chosenActor(await socialActors(database), actorId)
     if (!actor) throw new Error('Choose an available character or NPC in Social settings.')
+    if (actor.id.startsWith('character:') && runtime.state.chats[actor.id.slice(10)]?.settings.allowSocialPosts === false) {
+      if (schedule) return
+      throw new Error('Enable Social interaction in this character’s chat settings.')
+    }
     const profile = await ensureActorProfile(database, actor)
     const text = await createAiPost(actor, profile)
     return await database.transaction('rw', database.socialPosts, database.socialNotifications, database.deviceSettings, async tx => {
@@ -181,4 +186,29 @@ export function startSocialActivity(database: LocalDatabase) {
     window.clearInterval(timer)
     window.removeEventListener('focus', tick)
   }
+}
+
+export async function publishChatPost(chatId: string, source: {
+  content?: unknown; publicText?: unknown; hiddenContent?: unknown; imageUrl?: unknown; imageUrls?: unknown
+}) {
+  const database = runtime.db
+  const chat = runtime.state.chats[chatId]
+  if (!chat || chat.isGroup || chat.settings.allowSocialPosts === false) return
+  const text = [source.publicText, source.content, source.hiddenContent].find(value => typeof value === 'string' && value.trim())
+  const images = (Array.isArray(source.imageUrls) ? source.imageUrls : [source.imageUrl]).filter(value => typeof value === 'string')
+  if (!text && !images.length) return
+  const actorId = 'character:' + chatId
+  const profile = await database.socialProfiles.get(actorId) as ActorProfile | undefined
+  const author = profile?.name || chat.name
+  const time = Date.now()
+  const post: Post = { id: crypto.randomUUID(), author, authorId: actorId, text: String(text || '').slice(0, 8000),
+    time, images, liked: false, comments: [] }
+  await database.transaction('rw', 'socialPosts', 'socialNotifications', async tx => {
+    await tx.socialPosts.add(post)
+    await tx.socialNotifications.add({
+      id: crypto.randomUUID(), actorId, actorName: author, avatar: profile?.avatar || chat.settings.aiAvatar,
+      postId: post.id, type: 'post', time, preview: post.text.slice(0, 180),
+    })
+  })
+  refreshSocial()
 }

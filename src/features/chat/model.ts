@@ -13,6 +13,10 @@ export type ChatMessage = {
   plainText?: boolean
   meaning?: string
   imageDescription?: string
+  orderId?: string
+  orderTotal?: number
+  giftStyle?: string
+  giftNote?: string
   swipes?: { variants: Array<{ text: string; plainText?: boolean }>; index: number }
 }
 

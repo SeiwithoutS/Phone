@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Icon } from '../../components/icons'
+import { Icon, IconButton } from '../../components/icons'
 import { PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 import { showCustomConfirm } from '../../legacy/dialogs/dialogs.js'
@@ -129,9 +129,7 @@ function StickerLibrary({ database, fromChat }: { database: LocalDatabase; fromC
       {alert}
     </form> : <div className="phone-app-scroll phone-app-stack">
       <div className="phone-app-actions">
-        <button type="button" className="phone-app-button primary" disabled={busy} onClick={() => upload.current?.click()}>
-          <Icon name="upload" /> Import images
-        </button>
+        <IconButton icon="upload" label="Import sticker images" disabled={busy} onClick={() => upload.current?.click()} />
         <button type="button" className="phone-app-button" disabled={busy || !stickers.length} aria-pressed={selecting} onClick={() => {
           setSelecting(!selecting)
           setSelected([])
@@ -160,7 +158,7 @@ function StickerLibrary({ database, fromChat }: { database: LocalDatabase; fromC
           })
         }}>
           <label>One name and URL per line<textarea name="links" required rows={3} placeholder="Happy: https://example.com/happy.gif" /></label>
-          <button type="submit" className="phone-app-button compact" disabled={busy}>Import links</button>
+          <IconButton icon="upload" type="submit" label="Import sticker links" disabled={busy} />
         </form>
       </details>
       <div className="phone-app-two">

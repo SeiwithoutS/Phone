@@ -36,10 +36,12 @@ export function loadMoreChats() {
             runtime.isLoadingMoreChats = true;
 
             
+            const renderVersion = chatListVersion;
             const isInitialLoad = runtime.chatListRenderCount === 0;
 
             
             const renderContent = () => {
+                if (renderVersion !== chatListVersion) return;
                 hideLoader(chatListEl);
 
                 const renderWindow = runtime.state.globalSettings.chatListRenderWindow || 30;
@@ -95,12 +97,14 @@ export function loadMoreChats() {
             }
         }
 
-export async function renderChatList() {
-    const chatListEl = document.getElementById('chat-list');
-    chatListEl.innerHTML = '';
+let chatListVersion = 0;
 
-    
-    const allChats = Object.values(runtime.state.chats).sort((a, b) => {
+export async function renderChatList() {
+    const renderVersion = ++chatListVersion;
+    runtime.isLoadingMoreChats = false;
+    const query = document.getElementById('chat-list-filter')?.value.trim().toLowerCase();
+    const chatListEl = document.getElementById('chat-list');
+    const allChats = Object.values(runtime.state.chats).filter(chat => !query || [chat.name, chat.originalName].some(name => name?.toLowerCase().includes(query))).sort((a, b) => {
         const pinDiff = (b.isPinned || false) - (a.isPinned || false);
         if (pinDiff !== 0) return pinDiff;
         return (b.history.slice(-1)[0]?.timestamp || 0) - (a.history.slice(-1)[0]?.timestamp || 0);
@@ -108,7 +112,12 @@ export async function renderChatList() {
     
     const allGroups = await runtime.db.qzoneGroups.toArray();
 
+    if (renderVersion !== chatListVersion) return;
+    chatListEl.replaceChildren();
     if (allChats.length === 0) {
+        runtime.sortedChatListItems = [];
+        runtime.chatListRenderCount = 0;
+        if (query) { chatListEl.textContent = "No matching chats."; return; }
         chatListEl.innerHTML = "<p style=\"text-align:center; color: #8a8a8a; margin-top: 50px;\">Use the plus or group button to start a chat.</p>";
         return;
     }
@@ -180,30 +189,18 @@ export function createChatListItem(chat) {
     
     try {
         const lastMsgObj = chat.history.filter(msg => !msg.isHidden).slice(-1)[0] || {};
-        let lastMsgDisplay;
 
-        if (!chat.isGroup && chat.relationship?.status === 'pending_user_approval') {
-            lastMsgDisplay = `<span style="color: #ff8c00;">[好友申请] ${chat.relationship.applicationReason || '请求添加你为好友'}</span>`;
-        } else if (!chat.isGroup && chat.relationship?.status === 'blocked_by_ai') {
-            lastMsgDisplay = `<span style="color: #dc3545;">[你已被对方拉黑]</span>`;
-        } else if (chat.isGroup) {
-            if (lastMsgObj.type === 'pat_message') { lastMsgDisplay = `[系统消息] ${lastMsgObj.content}`; }
-            else if (lastMsgObj.type === 'transfer') { lastMsgDisplay = '[转账]'; }
-            else if (lastMsgObj.type === 'ai_image' || lastMsgObj.type === 'user_photo') { lastMsgDisplay = '[照片]'; }
-            else if (lastMsgObj.type === 'voice_message') { lastMsgDisplay = '[语音]'; }
-            else if (typeof lastMsgObj.content === 'string' && runtime.STICKER_REGEX.test(lastMsgObj.content)) { lastMsgDisplay = lastMsgObj.meaning ? `[表情: ${lastMsgObj.meaning}]` : '[表情]'; }
-            else if (Array.isArray(lastMsgObj.content)) { lastMsgDisplay = `[图片]`; }
-            else { lastMsgDisplay = String(lastMsgObj.content || '...').substring(0, 20); }
-
-            if (lastMsgObj.senderName && lastMsgObj.type !== 'pat_message') {
-                const senderDisplayName = getDisplayNameInGroup(chat, lastMsgObj.senderName);
-                lastMsgDisplay = `${senderDisplayName}: ${lastMsgDisplay}`;
-            }
-        } else {
-            const statusText = chat.status?.text || 'Online';
-            lastMsgDisplay = `[${statusText}]`;
-        }
-
+        const status = !chat.isGroup && chat.settings.showCharacterStatus !== false ? chat.status?.text || 'Online' : '';
+        const sender = lastMsgObj.senderName && chat.isGroup ? getDisplayNameInGroup(chat, lastMsgObj.senderName) + ': ' : '';
+        const previews = { transfer: 'Bank transfer', waimai_order: 'Food delivery', gift: 'Gift', poll: 'Poll',
+            voice_message: 'Voice message', user_photo: 'Photo', ai_image: 'Photo', sticker: 'Sticker', location_share: 'Location' };
+        let preview = previews[lastMsgObj.type] || (typeof lastMsgObj.content === 'string' ? lastMsgObj.content : '');
+        if (chat.relationship?.status === 'pending_user_approval') preview = chat.relationship.applicationReason || 'Contact request';
+        if (chat.relationship?.status === 'blocked_by_ai') preview = 'Contact unavailable';
+        const date = Number.isFinite(lastMsgObj.timestamp) ? new Date(lastMsgObj.timestamp) : undefined;
+        const time = date ? (date.toDateString() === new Date().toDateString()
+            ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : date.toLocaleDateString([], { month: 'short', day: 'numeric' })) : '';
         const item = document.createElement('div');
         item.className = 'chat-list-item';
         item.dataset.chatId = chat.id;
@@ -227,12 +224,13 @@ export function createChatListItem(chat) {
             ${avatarGroupHtml}
             <div class="info">
                 <div class="name-line">
-                    <span class="name">${chat.name}</span>
+                    <span class="name">${escapeHtml(String(chat.name))}</span>
                     ${chat.isGroup ? "<span class=\"group-tag\">Group Chats</span>" : ''}
                 </div>
-                <div class="last-msg" style="color: ${chat.isGroup ? 'var(--text-secondary)' : '#b5b5b5'}; font-style: italic;">${lastMsgDisplay}</div>
+                <div class="last-msg">${escapeHtml((sender + preview).trim() || status || "No messages yet")}</div>
             </div>
             <div class="unread-count-wrapper">
+                <time class="chat-list-time">${escapeHtml(time)}</time>
                 <span class="unread-count" style="display: none;">0</span>
             </div>
         `;
@@ -256,10 +254,17 @@ export function createChatListItem(chat) {
             });
         }
         
-        const infoEl = item.querySelector('.info');
-        if (infoEl) {
-            infoEl.addEventListener('click', () => openChat(chat.id));
-        }
+        item.tabIndex = 0;
+        item.setAttribute('role', 'button');
+        item.addEventListener('click', event => {
+            if (!event.target.closest('.avatar-group')) void openChat(chat.id);
+        });
+        item.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                void openChat(chat.id);
+            }
+        });
     
         addLongPressListener(item, async (e) => {
             const action = await showChatListActions(chat);

@@ -1,3 +1,4 @@
+import { bankCurrency } from '../../features/bank/bank'
 import { requestContextCompletion } from '../../features/api/completion'
 import { getGeminiResponseText } from '../api/client.js'
 import { createCallRecordCard } from '../calls/calls.js'
@@ -9,6 +10,7 @@ import { addLongPressListener, showCustomAlert, showCustomConfirm, showCustomPro
 import { renderMemoriesScreen } from '../qzone/feed.js'
 import { showScreen } from '../../app/routes'
 import { runtime } from '../runtime/state.js'
+import { pollVotes, recordVote } from '../../features/chat/chat-features'
 import { sendUserTransfer } from './messages.js'
 
 export function startWaimaiCountdown(element, endTime) {
@@ -122,6 +124,7 @@ export async function handleWaimaiResponse(originalTimestamp, choice) {
         
             
             const originalMessage = chat.history[messageIndex];
+            if (originalMessage.bankTransferId || ['accepted', 'declined'].includes(originalMessage.status)) { hideTransferActionModal(); return; }
             originalMessage.status = choice;
             
             
@@ -418,6 +421,7 @@ export function handlePaymentButtonClick() {
                 openRedPacketModal();
             } else {
                 
+                document.getElementById('transfer-currency-label').textContent = 'Transfer amount (' + bankCurrency(runtime.db) + ')';
                 document.getElementById('transfer-modal').classList.add('visible');
             }
         }
@@ -777,8 +781,8 @@ export async function sendPoll() {
                 .map(input => input.value.trim())
                 .filter(text => text); 
         
-            if (options.length < 2) {
-                alert("Enter at least two valid options.");
+            if (new Set(options).size < 2) {
+                alert("Enter at least two distinct options.");
                 return;
             }
         
@@ -791,7 +795,7 @@ export async function sendPoll() {
                 type: 'poll',
                 timestamp: Date.now(),
                 question: question,
-                options: options,
+                options: [...new Set(options)],
                 votes: {}, 
                 isClosed: false,
             };
@@ -820,44 +824,14 @@ export async function handleUserVote(timestamp, choice) {
             }
         
             
-            const isReclickingSameOption = poll.votes[choice] && poll.votes[choice].includes(myNickname);
-            
-            
-            if (!isReclickingSameOption) {
-                
-                for (const option in poll.votes) {
-                    const voterIndex = poll.votes[option].indexOf(myNickname);
-                    if (voterIndex > -1) {
-                        poll.votes[option].splice(voterIndex, 1);
-                    }
-                }
-                
-                if (!poll.votes[choice]) {
-                    poll.votes[choice] = [];
-                }
-                poll.votes[choice].push(myNickname);
-            }
-            
-            
-            let hiddenMessageContent = null; 
-            
-            
-            if (!isReclickingSameOption) {
-                 hiddenMessageContent = `[系统提示：用户 (${myNickname}) 刚刚投票给了 “${choice}”。]`;
-            }
-        
-            
-            if (hiddenMessageContent) {
-                const hiddenMessage = {
-                    role: 'system',
-                    content: hiddenMessageContent,
-                    timestamp: Date.now(),
-                    isHidden: true,
-                };
-                chat.history.push(hiddenMessage);
-            }
-            
-            
+            if (!poll.options?.includes(choice)) return;
+            const alreadyVoted = pollVotes(poll.votes, choice).includes(myNickname);
+            poll.votes = recordVote(poll.votes, choice, myNickname, alreadyVoted);
+            const hiddenMessageContent = alreadyVoted
+                ? `[${myNickname} withdrew their vote for "${choice}".]`
+                : `[${myNickname} voted for "${choice}".]`;
+
+            chat.history.push({ role: 'system', content: hiddenMessageContent, timestamp: Date.now(), isHidden: true });
             await runtime.db.chats.put(chat);
             renderChatInterface(runtime.state.activeChatId); 
         }
@@ -871,7 +845,7 @@ export async function endPoll(timestamp) {
             if (confirmed) {
                 poll.isClosed = true;
         
-                const resultSummary = poll.options.map(opt => `“${opt}”(${poll.votes[opt]?.length || 0}票)`).join('，');
+                const resultSummary = poll.options.map(opt => `“${opt}”(${pollVotes(poll.votes, opt).length}票)`).join('，');
                 const hiddenMessageContent = `[系统提示：用户手动结束了投票！最终结果为：${resultSummary}。]`;
                 
                 const hiddenMessage = {
@@ -899,7 +873,7 @@ export function showPollResults(timestamp) {
                 resultsHtml += '<p style="color: #8a8a8a;">No votes yet.</p>';
             } else {
                 poll.options.forEach(option => {
-                    const voters = poll.votes[option] || [];
+                    const voters = pollVotes(poll.votes, option);
                     
                     
                     const displayVoters = voters.map(originalName => getDisplayNameInGroup(chat, originalName)).join('、 ');

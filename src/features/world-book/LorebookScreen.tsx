@@ -4,6 +4,9 @@ import { showScreen } from '../../app/routes'
 import { getCharacters } from '../characters/characters'
 import { getLoreBooks, saveLoreBook } from './lore-storage'
 import { makeLoreEntry, readLoreBook } from './lore'
+import { downloadJson, escapeHtml } from '../../runtime/files'
+import { showCustomConfirm } from '../../legacy/dialogs/dialogs.js'
+import { IconButton } from '../../components/icons'
 import type { LoreBook, LoreEntry } from './lore'
 
 export function LorebookScreen({ ready }: { ready: boolean }) {
@@ -39,6 +42,16 @@ function LorebookLibrary() {
       setDraft(undefined)
     } catch { setError('The lorebook could not be saved.') }
     finally { setBusy(false) }
+  }
+
+  function exportBook(book: LoreBook) {
+    downloadJson({ type: 'EPhoneLoreBook', version: 1, name: book.name, scanDepth: book.scanDepth, entries: book.content }, book.name + '-WorldInfo')
+  }
+
+  async function deleteBook(book: LoreBook) {
+    if (await showCustomConfirm('Delete World Info', `Delete “${escapeHtml(book.name)}” and all its entries?`, { confirmButtonClass: 'btn-danger' })) {
+      await commit(book, true)
+    }
   }
 
   const updateEntry = (id: string, values: Partial<LoreEntry>) => setDraft(book => book &&
@@ -110,14 +123,20 @@ function LorebookLibrary() {
       <div className="phone-app-actions">
         <button type="button" className="phone-app-button primary" onClick={() =>
           edit({ id: crypto.randomUUID(), name: '', scanDepth: 5, content: [] })}>New lorebook</button>
-        <button type="button" className="phone-app-button" onClick={() => input.current?.click()}>Import JSON</button>
+        <IconButton icon="upload" label="Import World Info JSON" onClick={() => input.current?.click()} />
       </div>
       {error && <p className="phone-app-error" role="alert">{error}</p>}
       {books.length === 0 && <p className="phone-app-muted">Lorebooks from imported character cards appear here.</p>}
-      {books.map(book => <button type="button" className="phone-app-button phone-app-list-row" key={book.id} onClick={() => edit(book)}>
-        <span><strong>{book.name}</strong><small>{book.content.length} {book.content.length === 1 ? 'entry' : 'entries'}</small></span>
-        {book.sourceCharacterId && <small>{characters.find(chat => chat.id === book.sourceCharacterId)?.name}</small>}
-      </button>)}
+      {books.map(book => <article className="phone-app-card collection-card" key={book.id}>
+        <button type="button" className="collection-open" onClick={() => edit(book)}>
+          <strong>{book.name}</strong><small>{book.content.length} {book.content.length === 1 ? 'entry' : 'entries'}</small>
+          {book.sourceCharacterId && <small>{characters.find(chat => chat.id === book.sourceCharacterId)?.name}</small>}
+        </button>
+        <div className="collection-actions">
+          <IconButton icon="download" label={'Export ' + book.name} onClick={() => exportBook(book)} disabled={busy} />
+          <IconButton icon="trash" label={'Delete ' + book.name} className="collection-delete" onClick={() => void deleteBook(book)} disabled={busy} />
+        </div>
+      </article>)}
     </div>}
   </>
 }

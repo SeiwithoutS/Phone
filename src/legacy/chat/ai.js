@@ -1,3 +1,6 @@
+import { publishChatPost } from '../../features/social/activity'
+import { recordStorePurchase, recordVote } from '../../features/chat/chat-features'
+import { postTransfer, transferCents, TransferError } from '../../features/bank/bank'
 import { maySendImages, photoPromptContent } from '../../features/api/image-input'
 import { requestContextCompletion, streamingReplyText } from '../../features/api/completion'
 import { latestUserTurn } from '../../features/context/context'
@@ -7,7 +10,7 @@ import { preferences } from '../storage/preferences.js'
 import { getGeminiResponseText, parseAiResponse } from '../api/client.js'
 import { stopSilentAudio } from '../calls/audio.js'
 import { showCallMessageActions, showIncomingCallModal, startVideoCall, triggerAiInCallAction } from '../calls/calls.js'
-import { appendMessage, createMessageElement, renderChatInterface, setAvatarActingState } from './conversation.js'
+import { appendMessage, createMessageElement, renderChatInterface, setAvatarActingState, updateChatHeaderStatus } from './conversation.js'
 import { formatTimestampForAI, getTimeOfDayGreeting } from '../../features/chat/format'
 import { getDisplayNameInGroup, processMentions, syncCharacterAvatarInGroups, syncCharacterNameInGroups } from './groups.js'
 import { renderChatList } from './list.js'
@@ -850,7 +853,7 @@ ${chat.settings.enableTimePerception ? `- **当前时间**: ${currentTime} (${ti
         }
             if (msg.type === 'user_photo') return { role: 'user', content: `${prefix}[你发送了一张需要AI识别的图片，图片内容是：'${msg.content}']` };
             if (msg.type === 'voice_message') return { role: 'user', content: `${prefix}[你发送了一条语音消息，内容是：'${msg.content}']` };
-            if (msg.type === 'transfer') return { role: 'user', content: `${prefix}[系统提示：你于时间戳 ${msg.timestamp} 向对方发起了转账: ${msg.amount}元, 备注: ${msg.note}。等待对方处理。]` };
+            if (msg.type === 'transfer') return { role: 'user', content: `${prefix}[系统提示：你于时间戳 ${msg.timestamp} 向对方发起了转账: ${msg.amount}元, 备注: ${msg.note}。${msg.bankTransferId ? "款项已到账。" : "等待对方处理。"}]` };
             if (msg.type === 'waimai_request') return { role: 'user', content: `${prefix}[系统提示：你于时间戳 ${msg.timestamp} 发起了外卖代付请求，商品是“${msg.productInfo}”，金额是 ${msg.amount} 元。]` };
             else if (msg.type === 'gift') {
                 const itemsSummary = msg.items.map(item => `${item.name} x${item.quantity}`).join('、 ');
@@ -1144,7 +1147,7 @@ messagesPayload = historySlice.map(msg => {
     }
         if (msg.type === 'user_photo') return { role: 'user', content: `${prefix}[你发送了一张需要AI识别的图片，图片内容是：'${msg.content}']` };
         if (msg.type === 'voice_message') return { role: 'user', content: `${prefix}[你发送了一条语音消息，内容是：'${msg.content}']` };
-        if (msg.type === 'transfer') return { role: 'user', content: `${prefix}[系统提示：你于时间戳 ${msg.timestamp} 向对方发起了转账: ${msg.amount}元, 备注: ${msg.note}。等待对方处理。]` };
+        if (msg.type === 'transfer') return { role: 'user', content: `${prefix}[系统提示：你于时间戳 ${msg.timestamp} 向对方发起了转账: ${msg.amount}元, 备注: ${msg.note}。${msg.bankTransferId ? "款项已到账。" : "等待对方处理。"}]` };
         if (msg.type === 'waimai_request') return { role: 'user', content: `${prefix}[系统提示：你于时间戳 ${msg.timestamp} 发起了外卖代付请求，商品是“${msg.productInfo}”，金额是 ${msg.amount} 元。]` };
         else if (msg.type === 'gift') {
             const itemsSummary = msg.items.map(item => `${item.name} x${item.quantity}`).join('、 ');
@@ -1317,6 +1320,9 @@ if (maySendImages() && lastUserMessage &&
                 let notificationShown = false;
         
                 for (const msgData of consolidatedMessages) {
+                    const actor = chat.isGroup ? runtime.state.chats[chat.members?.find(member => member.originalName === msgData.name)?.id] : chat;
+                    if (['qzone_post', 'repost'].includes(msgData.type) && actor?.settings.allowSocialPosts === false) continue;
+                    if (msgData.type === 'update_status' && actor?.settings.showCharacterStatus === false) continue;
 if (chat.settings.enableTts !== false && msgData.type === 'text' && typeof msgData.content === 'string' && msgData.content.trim().startsWith('[V]')) {
     msgData.type = 'voice_message'; 
     msgData.content = msgData.content.replace('[V]', '').trim();
@@ -1904,6 +1910,7 @@ case 'gomoku_move': {
     }
     
     await runtime.db.qzonePosts.add(newPost);
+    if (actor) await publishChatPost(actor.id, newPost);
                     updateUnreadIndicator(runtime.unreadPostsCount + 1);
                     if (isViewingThisChat && document.getElementById('qzone-screen').classList.contains('active')) {
                        await renderQzonePosts();
@@ -2034,7 +2041,8 @@ case 'qzone_comment': { // 使用块级作用域
                             }
                             continue; 
                         case 'update_status':
-                            chat.status.text = msgData.status_text;
+                            if (chat.isGroup || typeof msgData.status_text !== 'string' || !msgData.status_text.trim()) continue;
+                            chat.status.text = msgData.status_text.trim().slice(0, 90);
                             chat.status.isBusy = msgData.is_busy || false;
                             chat.status.lastUpdate = Date.now();
                             const statusUpdateMessage = {
@@ -2045,6 +2053,7 @@ case 'qzone_comment': { // 使用块级作用域
                             };
                             chat.history.push(statusUpdateMessage);
                             if (isViewingThisChat) {
+                                updateChatHeaderStatus(chat);
                                 appendMessage(statusUpdateMessage, chat);
                             }
                             renderChatList(); 
@@ -2190,19 +2199,10 @@ case 'gift': {
 }
                         case 'vote':
                             const pollToVote = chat.history.find(m => m.timestamp === msgData.poll_timestamp);
-                            if (pollToVote && !pollToVote.isClosed) {
-                                Object.keys(pollToVote.votes).forEach(option => {
-                                    const voterIndex = pollToVote.votes[option].indexOf(msgData.name);
-                                    if (voterIndex > -1) {
-                                        pollToVote.votes[option].splice(voterIndex, 1);
-                                    }
-                                });
-                                if (!pollToVote.votes[msgData.choice]) {
-                                    pollToVote.votes[msgData.choice] = [];
-                                }
-                                if (!pollToVote.votes[msgData.choice].includes(msgData.name)) {
-                                    pollToVote.votes[msgData.choice].push(msgData.name);
-                                }                        
+                            if (pollToVote?.type === 'poll' && !pollToVote.isClosed && pollToVote.options?.includes(msgData.choice)) {
+                                const voter = chat.isGroup ? msgData.name : chat.originalName;
+                                if (!voter) continue;
+                                pollToVote.votes = recordVote(pollToVote.votes, msgData.choice, voter);
                                 if (isViewingThisChat) {
                                     renderChatInterface(chatId);
                                 }
@@ -2319,7 +2319,7 @@ chat.history.push(aiClaimedMessage);
         
                         case 'accept_transfer': {
                             const originalTransferMsgIndex = chat.history.findIndex(m => m.timestamp === msgData.for_timestamp);
-                            if (originalTransferMsgIndex > -1) {
+                            if (originalTransferMsgIndex > -1 && chat.history[originalTransferMsgIndex].type === 'transfer' && !chat.history[originalTransferMsgIndex].bankTransferId && !['accepted', 'declined'].includes(chat.history[originalTransferMsgIndex].status)) {
                                 const originalMsg = chat.history[originalTransferMsgIndex];
                                 originalMsg.status = 'accepted';
                             }
@@ -2328,7 +2328,7 @@ chat.history.push(aiClaimedMessage);
         
                         case 'decline_transfer': {
                             const originalTransferMsgIndex = chat.history.findIndex(m => m.timestamp === msgData.for_timestamp);
-                            if (originalTransferMsgIndex > -1) {
+                            if (originalTransferMsgIndex > -1 && chat.history[originalTransferMsgIndex].type === 'transfer' && !chat.history[originalTransferMsgIndex].bankTransferId && !['accepted', 'declined'].includes(chat.history[originalTransferMsgIndex].status)) {
                                 const originalMsg = chat.history[originalTransferMsgIndex];
                                 originalMsg.status = 'declined';
                                 const refundMessage = {
@@ -2533,9 +2533,34 @@ chat.history.push(aiClaimedMessage);
                         case 'voice_message':
                             aiMessage = { ...baseMessage, type: 'voice_message', content: msgData.content };
                             break;
-                        case 'transfer':
-                            aiMessage = { ...baseMessage, type: 'transfer', amount: msgData.amount, note: msgData.note, receiverName: msgData.receiver || '我' };
+                        case 'store_purchase':
+                            if (actor && !actor.isGroup) {
+                                recordStorePurchase(actor, msgData);
+                                if (actor !== chat) await runtime.db.chats.update(actor.id, { storePurchases: actor.storePurchases });
+                            }
+                            continue;
+                        case 'transfer': {
+                            const cents = transferCents(msgData.amount);
+                            if (!Number.isSafeInteger(cents) || cents <= 0) continue;
+                            const note = typeof msgData.note === 'string' ? msgData.note.slice(0, 240) : '';
+                            const sender = chat.isGroup ? (chat.members || []).find(member =>
+                                (member.originalName || member.name) === msgData.name) : chat;
+                            const actorId = sender?.id;
+                            const id = crypto.randomUUID();
+                            aiMessage = { ...baseMessage, type: 'transfer', amount: cents / 100, note, receiverName: 'You' };
+                            if (!actorId) break;
+                            aiMessage.bankTransferId = id;
+                            aiMessage.status = 'accepted';
+                            try {
+                                await postTransfer(runtime.db, {
+                                    id, from: actorId, to: 'user', cents, note, timestamp: aiMessage.timestamp
+                                }, chat, aiMessage);
+                            } catch (error) {
+                                if (!(error instanceof TransferError)) throw error;
+                                aiMessage = { ...baseMessage, type: 'text', content: '[Bank transfer failed: ' + error.message + ']' };
+                            }
                             break;
+                        }
                         
                         case 'waimai_request':
                             aiMessage = { 
@@ -2900,7 +2925,7 @@ break;
                        if (!isViewingThisChat) {
                             chat.unreadCount = (chat.unreadCount || 0) + 1;
                         }
-                        if (!isViewingThisChat && !notificationShown) {
+                        if (!isViewingThisChat && !notificationShown && !aiMessage.bankTransferId) {
                             let notificationText;
                             switch (aiMessage.type) {
                                 case 'transfer': notificationText = `[收到一笔转账]`; break;

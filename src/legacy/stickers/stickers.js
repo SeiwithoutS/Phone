@@ -26,7 +26,16 @@ export function openStickerPicker() {
     runtime.activeStickerCategoryId = stickersForPicker(chat).length ? 'assigned' : 'all';
     document.getElementById('sticker-search-input').value = '';
     controls.stickerPanel.classList.add('visible');
+    document.getElementById('open-sticker-panel-btn').setAttribute('aria-expanded', 'true');
+    document.getElementById('close-sticker-panel-btn').focus();
     void renderStickerPanel();
+}
+
+export function closeStickerPicker(restoreFocus = false) {
+    controls.stickerPanel?.classList.remove('visible');
+    const button = document.getElementById('open-sticker-panel-btn');
+    button?.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) button?.focus();
 }
 
 export async function renderStickerPanel(rerenderTabs = true) {

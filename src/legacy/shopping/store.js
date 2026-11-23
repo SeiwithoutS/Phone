@@ -1,3 +1,4 @@
+import { escapeHtml, imageSource } from '../../runtime/files'
 import { requestContextCompletion } from '../../features/api/completion'
 import { getGeminiResponseText } from '../api/client.js'
 import { appendMessage } from '../chat/conversation.js'
@@ -70,9 +71,9 @@ export async function renderShoppingProducts() {
 
         item.innerHTML = `
             ${managementControls}
-            <img src="${product.imageUrl}" class="product-image">
+            <img src="${escapeHtml(imageSource(String(product.imageUrl || "")))}" class="product-image">
             <div class="product-info">
-                <div class="product-name">${product.name}</div>
+                <div class="product-name">${escapeHtml(String(product.name))}</div>
                 <div class="product-footer">
                     <div class="product-price">${product.price.toFixed(2)}</div>
                     <button class="add-to-cart-btn">Add to Cart</button>
@@ -204,9 +205,9 @@ export async function renderCartItems() {
                         
                         itemEl.innerHTML = `
                             <input type="checkbox" class="cart-item-checkbox" data-id="${product.id}" checked>
-                            <img src="${item.variation?.imageUrl || product.imageUrl}" class="cart-item-image">
+                            <img src="${escapeHtml(imageSource(String(item.variation?.imageUrl || product.imageUrl || "")))}" class="cart-item-image">
                             <div class="cart-item-info">
-                                <div class="cart-item-name">${product.name}</div>
+                                <div class="cart-item-name">${escapeHtml(String(product.name))}</div>
                                 ${variationHtml}
                                 <div class="cart-item-footer">
                                     <div class="cart-item-price">¥${(item.variation?.price || product.price).toFixed(2)}</div>
@@ -371,7 +372,7 @@ export function showGiftReceipt(timestamp) {
             const receiptBody = document.getElementById('gift-receipt-body');
             let itemsHtml = '';
             message.items.forEach(item => {
-                itemsHtml += `<tr><td class="item-name">${item.name}</td><td class="item-qty">${item.quantity}</td><td class="item-price">¥${item.price.toFixed(2)}</td><td class="item-subtotal">¥${(item.price * item.quantity).toFixed(2)}</td></tr>`;
+                itemsHtml += `<tr><td class="item-name">${escapeHtml(String(item.name))}</td><td class="item-qty">${item.quantity}</td><td class="item-price">¥${item.price.toFixed(2)}</td><td class="item-subtotal">¥${(item.price * item.quantity).toFixed(2)}</td></tr>`;
             });
             receiptBody.innerHTML = `<div class="receipt-header"><h3>Shopping Center</h3><p>Purchased: ${new Date(message.timestamp).toLocaleString()}</p></div><table class="receipt-items-table"><thead><tr><th class="item-name">Item</th><th class="item-qty">Quantity</th><th class="item-price">Unit Price</th><th class="item-subtotal">Subtotal</th></tr></thead><tbody>${itemsHtml}</tbody></table><div class="receipt-total">Total: ¥${message.total.toFixed(2)}</div><div class="receipt-footer">Thank you for shopping.</div>`;
             document.getElementById('gift-receipt-modal').classList.add('visible');

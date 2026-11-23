@@ -20,6 +20,9 @@
 @import "./social.css";
 @import "./stickers.css";
 @import "./context.css";
+@import "./phone-refresh.css";
+@import "./market.css";
+@import "./appearance-controls.css";
 
 @source "../";
 @source "../../index.html";

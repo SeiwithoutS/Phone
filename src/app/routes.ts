@@ -2,6 +2,9 @@ import { matchRoutes } from 'react-router-dom'
 
 export const screenPaths = {
   "home-screen": "/",
+  "backup-screen": "/backup",
+  "bank-screen": "/bank",
+  "market-screen": "/market",
   "chat-list-screen": "/chats",
   "chat-interface-screen": "/chats/:chatId",
   "contact-picker-screen": "/chats/contacts",
@@ -62,7 +65,8 @@ export function resolveScreen(pathname: string) {
   return { id, chatId: match.params.chatId, requiresContext: Boolean(parent), fallback: parent && screenPaths[parent] }
 }
 
-type ScreenState = { bookId?: string | number; chatListView?: 'npc-list-view'; socialActorId?: string; stickerChatId?: string; contextChatId?: string }
+type ScreenState = { bookId?: string | number; chatListView?: 'npc-list-view'; socialActorId?: string; stickerChatId?: string; contextChatId?: string;
+  chatId?: string; from?: 'chat' | 'bank'; food?: boolean }
 type NavigateScreen = (id: ScreenId, state?: ScreenState) => void
 let navigateScreen: NavigateScreen | undefined
 

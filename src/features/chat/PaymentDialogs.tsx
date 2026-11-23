@@ -142,7 +142,7 @@ export function TransferModal() {
         <div className="transfer-header">Send them a surprise!</div>
         <div className="transfer-input-group">
           {" "}
-          <label htmlFor="transfer-amount">Transfer Amount</label>
+          <label id="transfer-currency-label" htmlFor="transfer-amount">Transfer Amount</label>
           {" "}
           <input type="number" id="transfer-amount" placeholder="0.00" min="0" step="0.01" />
           {" "}
