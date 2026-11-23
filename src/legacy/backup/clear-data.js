@@ -131,12 +131,19 @@ export async function handleConfirmDataClear() {
                                     const allChats = await tx.chats.toArray();
                                     for (const chat of allChats) {
                                         chat.history = chat.history.filter(msg => msg.role !== 'user');
+                                        for (const session of chat.chatSessions || []) {
+                                            session.history = session.history.filter(msg => msg.role !== 'user');
+                                            session.composerDraft = '';
+                                        }
                                         await tx.chats.put(chat);
                                     }
                                 } else {
                                     const chat = await tx.chats.get(charId);
                                     if (chat) {
                                         chat.history = [];
+                                        chat.chatSessions = [];
+                                        delete chat.conversationId;
+                                        delete chat.conversationCreatedAt;
                                         chat.heartfeltVoice = '...';
                                         chat.randomJottings = '...';
                                         if (Array.isArray(chat.nameHistory)) {

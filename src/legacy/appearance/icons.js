@@ -8,6 +8,7 @@ export function applyAppIcons() {
             for (const iconId in runtime.state.globalSettings.appIcons) {
                 const imgElement = document.getElementById(`icon-img-${iconId}`);
                 if (imgElement) {
+                    imgElement.hidden = false;
                     imgElement.src = runtime.state.globalSettings.appIcons[iconId];
                 }
             }
@@ -35,7 +36,7 @@ export async function handleIconChange(iconId, phoneType, itemElement) {
 
                 
                 
-                const isBase64 = currentUrl.startsWith('data:image');
+                const isBase64 = !currentUrl || currentUrl.startsWith('data:image');
 
                 
                 

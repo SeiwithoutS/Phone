@@ -33,7 +33,7 @@ export async function renderWorldBookScreen() {
             runtime.state.worldBooks = books; 
         
             if (books.length === 0) {
-                contentContainer.innerHTML = "<p style=\"text-align:center; color: #8a8a8a; margin-top: 50px;\">Use the plus button to create your first World Info book.</p>";
+                contentContainer.innerHTML = "<p style=\"text-align:center; color: #8a8a8a; margin-top: 50px;\">Use the plus button to create your first Mini Prompts book.</p>";
                 return;
             }
         
@@ -98,7 +98,7 @@ export async function renderWorldBookScreen() {
                 
                 const cardClickHandler = () => openWorldBookEditor(book.id);
                 const cardLongPressHandler = async () => { 
-                    const confirmed = await showCustomConfirm("Delete World Info", `Delete “${book.name}”?`, { confirmButtonClass: 'btn-danger' }); 
+                    const confirmed = await showCustomConfirm("Delete Mini Prompts", `Delete “${book.name}”?`, { confirmButtonClass: 'btn-danger' });
                     if (confirmed) { 
                         await runtime.db.worldBooks.delete(book.id); 
                         runtime.state.worldBooks = runtime.state.worldBooks.filter(wb => wb.id !== book.id); 
@@ -172,7 +172,7 @@ export function createWorldBookGroup(groupName, books) {
                 `;
                 item.addEventListener('click', () => openWorldBookEditor(book.id));
                 addLongPressListener(item, async () => { 
-                    const confirmed = await showCustomConfirm("Delete World Info", `Permanently delete “${book.name}”?`, { confirmButtonClass: 'btn-danger' }); 
+                    const confirmed = await showCustomConfirm("Delete Mini Prompts", `Permanently delete “${book.name}”?`, { confirmButtonClass: 'btn-danger' });
                     if (confirmed) { 
                         await runtime.db.worldBooks.delete(book.id); 
                         runtime.state.worldBooks = runtime.state.worldBooks.filter(wb => wb.id !== book.id); 
@@ -214,7 +214,7 @@ export async function addNewCategory() {
 export async function deleteCategory(categoryId) {
             const confirmed = await showCustomConfirm(
                 "Confirm Delete", 
-                "Delete this category? Its World Info books will become uncategorized.", 
+                "Delete this category? Its Mini Prompts books will become uncategorized.",
                 { confirmButtonClass: 'btn-danger' }
             );
             if (confirmed) {
@@ -241,7 +241,7 @@ export async function openWorldBookDeletionModal() {
     const books = await runtime.db.worldBooks.toArray();
 
     if (books.length === 0) {
-        listEl.innerHTML = "<p style=\"text-align:center; color: var(--text-secondary); padding: 50px 0;\">There are no World Info books to delete.</p>";
+        listEl.innerHTML = "<p style=\"text-align:center; color: var(--text-secondary); padding: 50px 0;\">There are no Mini Prompts books to delete.</p>";
     } else {
         books.forEach(book => {
             const item = document.createElement('div');
@@ -261,7 +261,7 @@ export async function openWorldBookDeletionModal() {
 export async function handleConfirmWorldBookDeletion() {
     const selectedItems = document.querySelectorAll('#delete-world-books-list .clear-posts-item.selected');
     if (selectedItems.length === 0) {
-        alert("Select at least one World Info book.");
+        alert("Select at least one Mini Prompts book.");
         return;
     }
 
@@ -269,7 +269,7 @@ export async function handleConfirmWorldBookDeletion() {
     
     const confirmed = await showCustomConfirm(
         "Confirm Cleanup",
-        `Permanently delete ${selectedItems.length} World Info books and unlink them from all characters?`,
+        `Permanently delete ${selectedItems.length} Mini Prompts books and unlink them from all characters?`,
         { confirmButtonClass: 'btn-danger', confirmText: "Confirm Delete" }
     );
 
@@ -302,7 +302,7 @@ export async function handleConfirmWorldBookDeletion() {
         runtime.state.worldBooks = runtime.state.worldBooks.filter(book => !idsToDelete.includes(book.id));
         
         document.getElementById('delete-world-books-modal').classList.remove('visible');
-        await showCustomAlert("Deleted", `Deleted ${selectedItems.length} World Info books.`);
+        await showCustomAlert("Deleted", `Deleted ${selectedItems.length} Mini Prompts books.`);
 
     } catch (error) {
         console.error("删除世界书失败:", error);
@@ -335,7 +335,7 @@ export async function renderCategoryListInManager() {
         }
 
 export function bindWorldBookEditor() {
-  document.getElementById('add-world-book-btn').addEventListener('click', async () => { const name = await showCustomPrompt("Create World Info", "Enter a name for this World Info book"); if (name && name.trim()) { const newBook = { id: 'wb_' + Date.now(), name: name.trim(), content: [] }; await runtime.db.worldBooks.add(newBook); runtime.state.worldBooks.push(newBook); openWorldBookEditor(newBook.id); } });
+  document.getElementById('add-world-book-btn').addEventListener('click', async () => { const name = await showCustomPrompt("Create Mini Prompts", "Enter a name for this Mini Prompts book"); if (name && name.trim()) { const newBook = { id: 'wb_' + Date.now(), name: name.trim(), content: [] }; await runtime.db.worldBooks.add(newBook); runtime.state.worldBooks.push(newBook); openWorldBookEditor(newBook.id); } });
 
 
 }

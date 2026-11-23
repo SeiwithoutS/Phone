@@ -1,6 +1,25 @@
 import { openMemberManagementScreen } from '../chat/groups.js'
 import { addLongPressListener, showCustomConfirm } from '../dialogs/dialogs.js'
 import { runtime } from '../runtime/state.js'
+import { fileDataUrl } from '../../runtime/files'
+
+export function bindNpcEvents() {
+  const modal = document.getElementById('npc-editor-modal')
+  const avatarInput = document.getElementById('npc-avatar-input')
+  const preview = document.getElementById('npc-avatar-preview')
+  document.getElementById('add-npc-btn').addEventListener('click', () => openNpcEditor())
+  document.getElementById('save-npc-btn').addEventListener('click', saveNpc)
+  document.getElementById('cancel-npc-editor-btn').addEventListener('click', () => modal.classList.remove('visible'))
+  avatarInput.addEventListener('change', async () => {
+    const file = avatarInput.files[0]
+    if (!file) return
+    try {
+      preview.src = await fileDataUrl(file)
+    } catch {
+      alert('Could not read the avatar.')
+    }
+  })
+}
 
 export async function renderNpcListScreen() {
     const listEl = document.getElementById('npc-list');

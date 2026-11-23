@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node build/server/index.js",
+    "start": "node scripts/start.mjs",
     "dev": "vite",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.server.json --noEmit",
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.server.json && vite build",

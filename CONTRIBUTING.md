@@ -40,6 +40,7 @@
 | Component | Dùng khi |
 | --- | --- |
 | `Screen` | Khai báo màn hình với `id` có kiểu `ScreenId`. Router chọn màn hình hoạt động và các màn hình nền dùng `inert`. |
+| `PhoneFeatureHeader` | Thanh tiêu đề có nút quay lại và tiêu đề căn giữa, dùng cho Edit, World Info, Social và lịch sử Chat. Truyền `title`, `onBack` và `backDisabled` khi màn hình đang lưu. |
 | `ScreenHeader`, `BackButton` | Dùng cho thanh tiêu đề và nút quay lại. Truyền `onClick` để chọn màn hình đích. `BackButton` có nhãn truy cập và biểu tượng mặc định. |
 | `Dialog` | Dùng khung hộp thoại, liên kết tiêu đề bằng `aria-labelledby`. Tính năng sở hữu trạng thái mở, đóng và hành động xác nhận. |
 | `FormField` | Ghép `label` với input qua cùng một `id`. Giá trị nhập và lỗi thuộc về form. |
@@ -49,6 +50,9 @@
 Component dùng chung nhận dữ liệu qua props và phát hành động qua callback. Nghiệp vụ như lưu World Info, chọn nhân vật hoặc gọi AI thuộc về feature. Khi hai giao diện có cấu trúc giống nhau, mô hình hóa phần khác biệt bằng props có kiểu. Ví dụ, ba thư viện avatar dùng một `AvatarLibrary` với `kind` cho nhân vật, người dùng hoặc nhóm.
 
 ## State, CSS và dữ liệu
+
+- Các module trong `src/features/` dùng `.ts` hoặc `.tsx`. Mô hình Chat dùng chung nằm ở `chat/model.ts`. Kiểu của các trường được đọc từ runtime cũ nằm cạnh phần khởi tạo trong `src/legacy/runtime/state.d.ts`.
+- Giữ xử lý sự kiện cùng luồng thao tác. `legacy/chat/composer.js` xử lý gửi tin, phím Enter và @mention. `legacy/chat/announcement-events.js` xử lý bảng thông báo nhóm. Form API Connections và tra cứu model cùng nằm ở `legacy/api/settings.js`.
 
 - Dùng state React cho bản nháp. Giữ định danh ổn định khi thêm hoặc xóa hàng. Chỉ cập nhật danh sách và chuyển trang sau khi ghi thành công. Hiển thị lỗi cạnh hành động cần thử lại.
 - Một tương tác có một nơi xử lý. Khi React tiếp quản click hoặc submit, gỡ listener DOM tương ứng trong mã cũ. Giữ những ID, class và radio name mà CSS, dữ liệu đã lưu hoặc các màn hình chưa chuyển đổi đang dùng.

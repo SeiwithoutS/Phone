@@ -1,3 +1,4 @@
+import { withConversationRequest } from '../../features/chat/sessions'
 import { openAiUrl } from '../../features/api/endpoints'
 import { getGeminiResponseText, parseAiResponse, toGeminiRequestData } from '../api/client.js'
 import { playSilentAudio, stopSilentAudio } from '../calls/audio.js'
@@ -324,7 +325,11 @@ ${tasksString}
     }
 }
 
-export async function triggerInactiveAiAction(chatId) {
+export function triggerInactiveAiAction(chatId) {
+    return withConversationRequest(chatId, () => runInactiveAiAction(chatId));
+}
+
+async function runInactiveAiAction(chatId) {
             const chat = runtime.state.chats[chatId];
             if (!chat) return;
         

@@ -3,6 +3,7 @@ dist/
 data/
 SillyTavern/
 .migration/
+.eephone-npm-recovery/
 *.local
 .env
 build/

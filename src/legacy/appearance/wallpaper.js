@@ -67,7 +67,8 @@ export function applyGlobalWallpaper() {
     const wallpaper = runtime.state.globalSettings.wallpaper;
     if (wallpaper) {
         
-        homeScreen.style.backgroundImage = `url(${wallpaper})`;
+        homeScreen.style.backgroundImage = /^(linear|radial|conic)-gradient\(/i.test(wallpaper)
+            ? wallpaper : `url(${JSON.stringify(wallpaper)})`;
     } else {
         
         homeScreen.style.backgroundImage = 'linear-gradient(135deg, #89f7fe, #66a6ff)';
@@ -75,6 +76,9 @@ export function applyGlobalWallpaper() {
 }
 
 export function bindWallpaperUpload() {
+  document.getElementById('reset-global-css-btn').addEventListener('click', () => {
+    document.getElementById('global-css-input').value = ''
+  })
   document.getElementById('wallpaper-upload-input').addEventListener('change', async (event) => { const file = event.target.files[0]; if(file) { const dataUrl = await new Promise((res, rej) => { const reader = new FileReader(); reader.onload = () => res(reader.result); reader.onerror = () => rej(reader.error); reader.readAsDataURL(file); }); runtime.newWallpaperBase64 = dataUrl; renderWallpaperScreen(); } });
 
 document.getElementById('save-wallpaper-btn').addEventListener('click', async () => {

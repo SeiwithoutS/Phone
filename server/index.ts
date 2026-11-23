@@ -4,10 +4,10 @@ import { access, stat } from 'node:fs/promises'
 import { extname, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createStorageHandler } from './storage.js'
+import { localAddress, loopbackAddress } from './local-address.js'
 
 const dist = fileURLToPath(new URL('../../dist', import.meta.url))
-const port = Number(process.env.PORT ?? 8000)
-if (!Number.isSafeInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be between 1 and 65535.')
+const { host, port } = localAddress()
 
 try {
   await access(resolve(dist, 'index.html'))
@@ -21,6 +21,8 @@ const mime: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.webp': 'image/webp',
@@ -51,12 +53,17 @@ async function serve(request: IncomingMessage, response: ServerResponse) {
 }
 
 const defaultDirectory = fileURLToPath(new URL('../../data/', import.meta.url))
-const storage = createStorageHandler(process.env.EEPHONE_DATA_DIR || defaultDirectory)
+const storage = createStorageHandler(process.env.EEPHONE_DATA_DIR || defaultDirectory, host)
 const server = createServer((request, response) => {
   void storage(request, response, () => { void serve(request, response) })
 })
 server.on('error', error => {
-  console.error(`Could not start EPhone: ${error.message}`)
+  if ('code' in error && error.code === 'EADDRINUSE') {
+    console.error(`EPhone could not start because port ${port} is already in use. Stop the other server or set PORT to a free port.`)
+  } else console.error(`Could not start EPhone: ${error.message}`)
   process.exitCode = 1
 })
-server.listen(port, '127.0.0.1', () => console.log(`EPhone is running at http://127.0.0.1:${port}`))
+server.listen(port, loopbackAddress, () => {
+  console.log(`EPhone is running at http://${loopbackAddress}:${port}`)
+  if (host !== loopbackAddress) console.log(`Configured hostname: http://${host}:${port}`)
+})

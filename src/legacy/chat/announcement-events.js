@@ -1,25 +1,27 @@
-import { runtime } from '../runtime/state.js'
+import { controls, runtime } from '../runtime/state.js'
 import { showCustomAlert, showCustomConfirm } from '../dialogs/dialogs.js'
 import { renderChatList } from './list.js'
 import { hideMessageActions } from './editor.js'
 import { appendMessage } from './conversation.js'
-import { controls } from '../runtime/state.js'
-import { handleUserPat } from './attachments.js'
+import { handleDeleteAnnouncement, handlePinAnnouncement, showAnnouncementBoard } from './groups.js'
 
 export function bindAnnouncementEvents() {
-  document.getElementById('pat-btn').addEventListener('click', () => {
-            
-            if (runtime.state.activeChatId && !runtime.state.chats[runtime.state.activeChatId].isGroup) {
-                const chat = runtime.state.chats[runtime.state.activeChatId];
-                
-                handleUserPat(chat.id, chat.originalName);
-            }
-        });
-
-controls.activeAnnouncementId = null
+  controls.activeAnnouncementId = null
+  const board = document.getElementById('announcement-board-modal')
+  const actions = document.getElementById('announcement-actions-modal')
+  document.getElementById('publish-to-announcement-btn').addEventListener('click', publishToAnnouncementBoard)
+  document.getElementById('show-announcement-board-btn').addEventListener('click', showAnnouncementBoard)
+  document.getElementById('close-announcement-board-btn').addEventListener('click', () => board.classList.remove('visible'))
+  document.getElementById('announcement-board-content').addEventListener('click', event => {
+    const id = event.target.closest('.announcement-item-actions')?.dataset.annoId
+    if (id) showAnnouncementActions(id)
+  })
+  document.getElementById('announcement-action-pin').addEventListener('click', handlePinAnnouncement)
+  document.getElementById('announcement-action-delete').addEventListener('click', handleDeleteAnnouncement)
+  document.getElementById('announcement-action-cancel').addEventListener('click', () => actions.classList.remove('visible'))
 }
 
-export function showAnnouncementActions(annoId) {
+function showAnnouncementActions(annoId) {
             controls.activeAnnouncementId = annoId;
             const chat = runtime.state.chats[runtime.state.activeChatId];
             const announcement = chat.announcements.find(a => a.id === annoId);
@@ -32,7 +34,7 @@ export function showAnnouncementActions(annoId) {
             document.getElementById('announcement-actions-modal').classList.add('visible');
         }
 
-export async function publishToAnnouncementBoard() {
+async function publishToAnnouncementBoard() {
             if (!runtime.activeMessageTimestamp) return;
         
             const timestampToPublish = runtime.activeMessageTimestamp;

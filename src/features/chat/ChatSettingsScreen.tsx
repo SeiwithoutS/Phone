@@ -1,7 +1,29 @@
 import { BackButton, FilePicker, FormField, Screen, ScreenHeader } from '../../components/phone'
 import { showScreen } from '../../app/routes'
+import { useNavigate } from 'react-router-dom'
+import { runtime } from '../../legacy/runtime/state.js'
+
+const chatThemes = [
+  ['default', 'Default', '#b7e6a7', '#ffffff'],
+  ['pink_blue', 'Pink / Blue', '#fff0f6', '#eff7ff'],
+  ['blue_white', 'Blue / White', '#eff7ff', '#f8f9fa'],
+  ['purple_yellow', 'Purple / Yellow', '#faf7ff', '#fffde4'],
+  ['black_white', 'Black / White', '#343a40', '#f8f9fa'],
+  ['yellow_white', 'Yellow / White', '#ffeb3b', '#f8f9fa'],
+  ['red_black', 'Red / Black', '#c62828', '#212121'],
+  ['blue_yellow', 'Blue / Yellow', '#a0d2eb', '#fef9e7'],
+  ['pink_yellow', 'Pink / Yellow', '#fff0f6', '#fef9e7'],
+  ['pink_purple', 'Pink / Purple', '#fff0f6', '#faf7ff'],
+  ['gray_white', 'Gray / White', '#e9ecef', '#f8f9fa'],
+  ['blue_green', 'Blue / Green', '#eff7ff', '#e4f6e0'],
+  ['pink_white', 'Pink / White', '#fff0f6', '#f8f9fa'],
+  ['pink_black', 'Pink / Black', '#fff0f6', '#212121'],
+  ['pink_green', 'Pink / Green', '#fff0f6', '#e4f6e0'],
+  ['green_black', 'Green / Black', '#e4f6e0', '#212121'],
+] as const
 
 export function ChatSettingsScreen() {
+  const navigate = useNavigate()
   return (
     <Screen id="chat-settings-screen">
       <ScreenHeader>
@@ -10,7 +32,7 @@ export function ChatSettingsScreen() {
         {" "}
         <span>Chat Settings</span>
         {" "}
-        <span className="save-btn" id="save-chat-settings-btn">Save</span>
+        <button type="button" className="save-btn" id="save-chat-settings-btn">Save</button>
         {" "}
       </ScreenHeader>
       <div className="form-container">
@@ -160,7 +182,7 @@ export function ChatSettingsScreen() {
         </div>
         <div className="form-group" id="world-book-link-group">
           {" "}
-          <label>Attach World Info (multiple allowed)</label>
+          <label>Attach Mini Prompts (multiple allowed)</label>
           <div className="custom-multiselect">
             <div className="select-box">
               {" "}
@@ -278,6 +300,12 @@ export function ChatSettingsScreen() {
             </p>
           </div>
         </div>
+        <details id="qq-character-details" className="settings-disclosure">
+          <summary>Character data</summary>
+          <button type="button" className="phone-app-button compact" onClick={() => {
+            const id = runtime.state.activeChatId
+            if (id) void navigate('/edit/' + encodeURIComponent(id))
+          }}>Open in Edit</button>
         <div className="form-group" id="ai-original-name-group">
           {" "}
           <label htmlFor="ai-original-name-input">Character Name (used by the AI)</label>
@@ -301,16 +329,10 @@ export function ChatSettingsScreen() {
             {" "}
           </div>
         </div>
+        </details>
         <div className="form-group" id="my-persona-group">
           <label htmlFor="my-persona">My Persona</label>
           <textarea id="my-persona" rows={3} />
-        </div>
-        <div className="form-group" id="switch-greeting-group" style={{ display: "none" }}>
-          {" "}
-          <label>Switch First Message (clears current chat)</label>
-          {" "}
-          <button id="switch-greeting-btn" className="form-button form-button-secondary" style={{ marginTop: "5px" }} type="button">{"Choose an alternate greeting…"}</button>
-          {" "}
         </div>
         <div className="form-group" id="my-avatar-group">
           {" "}
@@ -444,93 +466,19 @@ export function ChatSettingsScreen() {
           <p style={{ fontSize: "12px", color: "#8a8a8a", marginTop: "8px" }}>{" Suggested range 15–30. Smaller values summarize more often and increase API costs. "}</p>
         </div>
         <hr style={{ opacity: "0.3", margin: "20px 0" }} />
-        <div className="form-group">
-          {" "}
-          <label>
-            {"Chat Bubble Theme "}
-            <button id="reset-theme-btn" type="button">Reset</button>
-          </label>
-          <div className="theme-selector">
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" id="theme-default" defaultValue="default" />
-              {" Default"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="pink_blue" />
-              {" Pink and Blue"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="blue_white" />
-              {" Blue and White"}
-            </label>
-            <label>
-              <input type="radio" name="theme-select" defaultValue="purple_yellow" />
-              {" Purple and Yellow"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="black_white" />
-              {" Black and White"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="yellow_white" />
-              {" Yellow and White"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="red_black" />
-              {" Red and Black"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="blue_yellow" />
-              {" Blue and Yellow"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="pink_yellow" />
-              {" Pink and Yellow"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="pink_purple" />
-              {" Pink and Purple"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="gray_white" />
-              {" Gray and White"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="blue_green" />
-              {" Blue and Green"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="pink_white" />
-              {" Pink and White"}
-            </label>
-            <label>
-              <input type="radio" name="theme-select" defaultValue="pink_black" />
-              {" Pink and Black"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="pink_green" />
-              {" Pink and Green"}
-            </label>
-            {" "}
-            <label>
-              <input type="radio" name="theme-select" defaultValue="green_black" />
-              {" Green and Black"}
-            </label>
-          </div>
-        </div>
+        <details id="qq-appearance-details" className="settings-disclosure">
+          <summary>Chat appearance</summary>
+          <fieldset className="qq-theme-picker">
+            <legend>Bubble theme</legend>
+            <div className="theme-selector qq-theme-options">
+              {chatThemes.map(([id, label, own, other]) => <label key={id}>
+                <input type="radio" name="theme-select" id={id === 'default' ? 'theme-default' : undefined} value={id} defaultChecked={id === 'default'} />
+                <span className="qq-theme-swatch" aria-hidden="true"><i style={{ backgroundColor: own }} /><i style={{ backgroundColor: other }} /></span>
+                <span>{label}</span>
+              </label>)}
+            </div>
+            <button id="reset-theme-btn" type="button" className="phone-app-button compact">Reset theme</button>
+          </fieldset>
         <div className="form-group">
           {" "}
           <label htmlFor="font-size-slider">
@@ -549,9 +497,9 @@ export function ChatSettingsScreen() {
             {" "}
             <select id="theme-preset-select" style={{ flexGrow: "1" }} />
             {" "}
-            <button id="save-theme-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Save</button>
+            <button id="save-theme-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Save preset</button>
             {" "}
-            <button id="delete-theme-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "#ffebee", color: "#d32f2f", borderColor: "#ffcdd2" }} type="button">Delete</button>
+            <button id="delete-theme-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "#ffebee", color: "#d32f2f", borderColor: "#ffcdd2" }} type="button">Delete preset</button>
             {" "}
           </div>
         </div>
@@ -585,6 +533,7 @@ export function ChatSettingsScreen() {
           {" "}
           <FilePicker id="bg-input" accept="image/*" />
         </div>
+        </details>
         <hr style={{ margin: "25px 0", border: "none", borderTop: "1px solid #eee" }} />
         {" "}
         <button className="form-button form-button-secondary" id="block-chat-btn" style={{ backgroundColor: "#ff3b30", color: "white", borderColor: "#ff3b30" }} type="button">Block Character</button>

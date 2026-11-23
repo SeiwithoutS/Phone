@@ -3,6 +3,11 @@ import { controls } from '../runtime/state.js'
 
 export function bindQzoneInteractions() {
   controls.postsList = document.getElementById('qzone-posts-list')
+  controls.postsList.addEventListener('focusout', event => {
+    if (!event.target.matches('.comment-input')) return
+    const popup = event.target.closest('.qzone-post-container')?.querySelector('.at-mention-popup')
+    if (popup) setTimeout(() => { popup.style.display = 'none' }, 200)
+  })
 
 controls.swipeState = { isDragging: false, startX: 0, startY: 0, currentX: 0, activeContainer: null, swipeDirection: null, isClick: true }
 

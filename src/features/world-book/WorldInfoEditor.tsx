@@ -49,7 +49,7 @@ function WorldInfoForm({ database, id }: { database: LocalDatabase; id: Key }) {
         setCategories(choices)
         setEntries(Array.isArray(record.content) ? record.content.map(item => entryDraft(item ?? {})) : [])
       })
-      .catch(() => { if (!cancelled) setError('Could not load this World Info book.') })
+      .catch(() => { if (!cancelled) setError('Could not load this Mini Prompts book.') })
     return () => { cancelled = true; active.current = false }
   }, [database, id])
 
@@ -88,7 +88,7 @@ function WorldInfoForm({ database, id }: { database: LocalDatabase; id: Key }) {
   return <>
     <ScreenHeader>
       <BackButton onClick={() => showScreen('world-book-screen')} />
-      <span id="world-book-editor-title">{String(book?.name ?? 'Edit World Info')}</span>
+      <span id="world-book-editor-title">{String(book?.name ?? 'Edit Mini Prompts')}</span>
       <button form="world-info-form" className="phone-button save-btn" id="save-world-book-btn" type="submit"
         disabled={!book || busy || !name.trim()}>Save</button>
     </ScreenHeader>
@@ -106,7 +106,7 @@ function WorldInfoForm({ database, id }: { database: LocalDatabase; id: Key }) {
       <div id="world-book-entries-container" className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-1">
         {entries.length === 0 && <p>Use Add Entry below to get started.</p>}
         {entries.map(entry => <fieldset key={entry.key} className="message-editor-block">
-          <legend className="sr-only">World Info entry</legend>
+          <legend className="sr-only">Mini Prompts entry</legend>
           <div className="mb-2 flex items-center justify-end gap-3">
             <label><input type="checkbox" className="entry-enabled-switch" checked={entry.enabled}
               onChange={event => edit(entry.key, { enabled: event.target.checked })} /> Enabled</label>

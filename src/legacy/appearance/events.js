@@ -1,6 +1,5 @@
 import { handlePropelAction, handleRegenerateCallResponse, handleRegenerateResponse } from '../chat/ai.js'
 import { showCustomAlert } from '../dialogs/dialogs.js'
-import { handleEditImage, handleEditText } from '../home/widgets.js'
 import { saveGlobalPlaylist, updatePlayerUI, updatePlaylistUI } from '../music/player.js'
 import { addSongFromSearch, getPlayableSongDetails } from '../music/search.js'
 import { runtime } from '../runtime/state.js'
@@ -96,17 +95,6 @@ document.getElementById('reset-sound-btn').addEventListener('click', () => {
     alert("Default notification sound selected. Save Appearance Settings to apply it.");
 });
 
-document.getElementById('home-screen').addEventListener('click', (e) => {
-        const target = e.target;
-        
-        if (target.classList.contains('editable-text')) {
-            handleEditText(target);
-        }
-        
-        if (target.classList.contains('editable-image')) {
-            handleEditImage(target);
-        }
-    });
 
 document.getElementById('add-song-search-btn').addEventListener('click', addSongFromSearch);
 

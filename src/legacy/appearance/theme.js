@@ -5,22 +5,27 @@ import { showScreen } from '../../app/routes'
 import { runtime } from '../runtime/state.js'
 
 export function applyScopedCss(cssString, scopeId, styleTagId) {
-            const styleTag = document.getElementById(styleTagId);
-            if (!styleTag) return;
-            
-            if (!cssString || cssString.trim() === '') {
-                styleTag.innerHTML = '';
-                return;
+    const styleTag = document.getElementById(styleTagId);
+    if (!styleTag) return;
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(cssString || '');
+    function scopeRules(rules) {
+        for (const rule of rules) {
+            if (rule instanceof CSSStyleRule) {
+                const selector = rule.selectorText.replace(/#(?:chat-messages|settings-preview-area)\s*/g, '');
+                rule.selectorText = scopeId + ' :is(' + selector + ')';
+            } else if (rule instanceof CSSMediaRule || rule instanceof CSSSupportsRule) {
+                scopeRules(rule.cssRules);
             }
-            
-            
-            const scopedCss = cssString
-                .replace(/\s*\.message-bubble\.user\s+([^{]+\{)/g, `${scopeId} .message-bubble.user $1`)
-                .replace(/\s*\.message-bubble\.ai\s+([^{]+\{)/g, `${scopeId} .message-bubble.ai $1`)
-                .replace(/\s*\.message-bubble\s+([^{]+\{)/g, `${scopeId} .message-bubble $1`);
-            
-            styleTag.innerHTML = scopedCss;
         }
+    }
+    scopeRules(sheet.cssRules);
+    styleTag.textContent = [...sheet.cssRules].filter(rule =>
+        rule instanceof CSSStyleRule || rule instanceof CSSMediaRule || rule instanceof CSSSupportsRule ||
+        rule instanceof CSSKeyframesRule).map(rule => rule.cssText).join('\n');
+}
+
+let previewVersion = 0;
 
 export async function updateSettingsPreview() {
             if (!runtime.state.activeChatId) return;
@@ -32,34 +37,24 @@ export async function updateSettingsPreview() {
             const selectedTheme = document.querySelector('input[name="theme-select"]:checked')?.value || 'default';
             const fontSize = document.getElementById('font-size-slider').value;
             const customCss = document.getElementById('custom-css-input').value;
-            const background = chat.settings.background; 
+            const background = document.getElementById('bg-preview').getAttribute('src') ||
+                runtime.state.globalSettings.globalChatBackground;
+            const version = ++previewVersion;
         
             
             previewArea.dataset.theme = selectedTheme;
             previewArea.style.setProperty('--chat-font-size', `${fontSize}px`);
             
-            if (background && background.startsWith('data:image')) {
-                previewArea.style.backgroundImage = `url(${background})`;
-                previewArea.style.backgroundColor = 'transparent';
-            } else {
-                previewArea.style.backgroundImage = 'none';
-                previewArea.style.background = background || '#f0f2f5';
-            }
-        
-            
-            previewArea.innerHTML = ''; 
-        
-            
-            const aiMsg = { role: 'ai', content: '对方消息预览', timestamp: 1, senderName: chat.name };
-            const aiBubble = await createMessageElement(aiMsg, chat); 
-            if(aiBubble) previewArea.appendChild(aiBubble);
-        
-            
-            const userMsg = { role: 'user', content: '我的消息预览', timestamp: 2 };
-            const userBubble = await createMessageElement(userMsg, chat); 
-            if(userBubble) previewArea.appendChild(userBubble);
-            
-            
+            previewArea.style.backgroundImage = background ? `url(${JSON.stringify(background)})` : 'none';
+            previewArea.style.backgroundColor = document.getElementById('phone-screen').classList.contains('dark-mode')
+                ? '#000' : '#f0f2f5';
+            const [aiBubble, userBubble] = await Promise.all([
+                createMessageElement({ role: 'ai', content: 'Hi there!', timestamp: 1, senderName: chat.name }, chat),
+                createMessageElement({ role: 'user', content: 'This is your chat preview.', timestamp: 2 }, chat),
+            ]);
+            if (version !== previewVersion) return;
+            previewArea.replaceChildren(...[aiBubble, userBubble].filter(Boolean));
+
             const previewLyricsBar = document.createElement('div');
             previewLyricsBar.style.cssText = `
                 position: absolute; 

@@ -7,7 +7,4 @@ if ! command -v node >/dev/null || ! command -v npm >/dev/null; then
   exit 1
 fi
 
-node -e 'if (+process.versions.node.split(".")[0] < 22) { console.error("EPhone needs Node.js 22 or later."); process.exit(1) }'
-npm ci --include=dev --no-audit --no-fund
-npm run build
-exec node build/server/index.js "$@"
+exec node scripts/start.mjs --build "$@"

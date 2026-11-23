@@ -16,6 +16,7 @@ type StartupStatus = 'loading' | 'ready' | 'error'
 export function App() {
   const [status, setStatus] = useState<StartupStatus>('loading')
   const [database, setDatabase] = useState<LocalDatabase>()
+  const [startupError, setStartupError] = useState('')
   const [storageError, setStorageError] = useState('')
   const navigate = useNavigate()
   const { pathname, state: locationState } = useLocation()
@@ -28,7 +29,7 @@ export function App() {
       ? runtime.state.activeChatId
         ? generatePath(screenPaths[screen], { chatId: encodeURIComponent(runtime.state.activeChatId) })
         : screenPaths['chat-list-screen']
-      : screenPaths[screen]
+      : screen === 'character-edit-screen' ? generatePath(screenPaths[screen]) : screenPaths[screen]
     if (screen === 'chat-interface-screen' && runtime.state.activeChatId) {
       chatPrepared.current = runtime.state.activeChatId
     }
@@ -46,6 +47,7 @@ export function App() {
       })
       .catch((error: unknown) => {
         console.error('EPhone startup failed', error)
+        if (error instanceof Error) setStartupError(error.message)
         setStatus('error')
       })
   }, [])
@@ -82,7 +84,7 @@ export function App() {
 
   return (
     <ScreenContext.Provider value={active}>
-      <div className="app-shell mx-auto grid min-h-dvh w-full place-items-center">
+      <div className="app-shell">
         <main id="phone-screen" aria-label="EPhone" aria-busy={status === 'loading'} inert={status !== 'ready'}>
           <PhoneContent database={database} />
         </main>
@@ -99,7 +101,7 @@ export function App() {
           <div className="startup-card rounded-2xl p-5 text-center">
             {status === 'loading'
               ? <p role="status">Starting EPhone…</p>
-              : <><p role="alert">EPhone could not start. Check that the local server is running and retry.</p><button type="button" onClick={() => window.location.reload()}>Retry</button></>}
+              : <><p role="alert">{startupError || 'EPhone could not start. Check the terminal and retry.'}</p><button type="button" onClick={() => window.location.reload()}>Retry</button></>}
           </div>
         </div>
       )}

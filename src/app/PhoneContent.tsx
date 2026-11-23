@@ -2,6 +2,9 @@ import type { LocalDatabase } from '../storage/database'
 import { AvatarLibraries } from '../features/avatars/AvatarLibraries'
 import { FilePicker } from '../components/phone'
 import { StatusBar, NotificationBar, BatteryAlertModal } from '../features/home/StatusBar'
+import { CharacterEditScreen } from '../features/characters/CharacterEditScreen'
+import { LorebookScreen } from '../features/world-book/LorebookScreen'
+import { SocialScreen } from '../features/social/SocialScreen'
 import { HomeScreen } from '../features/home/HomeScreen'
 import { CharacterSelectionScreen } from '../features/character-phone/CharacterSelectionScreen'
 import { CharacterPhoneScreen } from '../features/character-phone/CharacterPhoneScreen'
@@ -23,16 +26,14 @@ import { ContactPickerScreen, MemberManagementScreen, MemberSettingsModal, Group
 import { StickerCategoryManagerModal, StickerBindingModal } from '../features/stickers/StickerDialogs'
 import { IncomingCallModal, CallTranscriptModal, CallMessageActionsModal } from '../features/calls/CallDialogs'
 import { VideoCallScreen, OutgoingCallScreen, CallHistoryScreen } from '../features/calls/CallScreens'
-import { DoubanScreen, DoubanPostDetailScreen } from '../features/douban/DoubanScreens'
 import { LongTermMemoryScreen } from '../features/memories/LongTermMemoryScreen'
 import { ChatSettingsScreen } from '../features/chat/ChatSettingsScreen'
-import { RenderingRulesScreen, RuleEditorModal } from '../features/rendering/RenderingRulesScreen'
 import { SearchHistoryScreen } from '../features/chat/SearchHistoryScreen'
 import { ShoppingScreen, ProductDetailScreen, CartScreen } from '../features/shopping/ShoppingScreens'
 import { ProductEditorModal, ProductCategoryManagerModal, VariationSelectionModal, ShoppingSettingsModal } from '../features/shopping/ProductDialogs'
 import { GiftReceiptModal, GiftRecipientModal } from '../features/shopping/GiftDialogs'
 import { PersonaLibraryModal, PersonaEditorModal } from '../features/personas/PersonaDialogs'
-import { CustomModalOverlay, UpdateNoticeModal } from '../features/dialogs/SystemDialogs'
+import { CustomModalOverlay } from '../features/dialogs/SystemDialogs'
 import { TransferModal, WaimaiRequestModal, RedPacketModal, RedPacketDetailsModal, TransferActionsModal } from '../features/chat/PaymentDialogs'
 import { CreateCountdownModal, CreatePollModal, AnnouncementBoardModal, AnnouncementActionsModal } from '../features/chat/GroupActivities'
 import { ChatListActionsModal, MessageActionsModal, MessageEditorModal, AiResponseEditorModal } from '../features/chat/MessageDialogs'
@@ -41,7 +42,6 @@ import { WorldBookCategoryManagerModal, DeleteWorldBooksModal } from '../feature
 import { AvatarFrameModal } from '../features/avatars/AvatarFrameModal'
 import { CharacterProfileModal } from '../features/character-phone/CharacterProfileModal'
 import { MusicSearchResultsModal } from '../features/music/MusicSearchResultsModal'
-import { DoubanSettingsModal, DoubanCastModal } from '../features/douban/DoubanDialogs'
 import { ReadingLibraryModal } from '../features/reading/ReadingLibraryModal'
 import { NovelaiSettingsModal, NovelaiTestModal, CharacterNaiPromptsModal } from '../features/novelai/NovelAiDialogs'
 
@@ -56,10 +56,12 @@ export function PhoneContent({ database }: { database?: LocalDatabase }) {
       <FilePicker id="album-photo-input" accept="image/*" multiple />
       <StickerCategoryManagerModal />
       <IncomingCallModal />
-      <RuleEditorModal />
       <ProductEditorModal />
       <GiftReceiptModal />
-      <HomeScreen />
+      <HomeScreen database={database} />
+      <CharacterEditScreen ready={Boolean(database)} />
+      <LorebookScreen ready={Boolean(database)} />
+      <SocialScreen database={database} />
       <CharacterSelectionScreen />
       <CharacterPhoneScreen />
       <WorldBookScreen />
@@ -80,11 +82,8 @@ export function PhoneContent({ database }: { database?: LocalDatabase }) {
       <VideoCallScreen />
       <OutgoingCallScreen />
       <CallHistoryScreen />
-      <DoubanScreen />
-      <DoubanPostDetailScreen />
       <LongTermMemoryScreen />
       <ChatSettingsScreen />
-      <RenderingRulesScreen />
       <SearchHistoryScreen />
       <ShoppingScreen />
       <ProductDetailScreen />
@@ -96,7 +95,6 @@ export function PhoneContent({ database }: { database?: LocalDatabase }) {
 export function PhoneOverlays() {
   return (
     <>
-      <FilePicker id="import-card-input" accept=".json,.png" />
       <FilePicker id="import-world-book-input" accept=".json" />
       <PersonaLibraryModal />
       <PersonaEditorModal />
@@ -139,11 +137,8 @@ export function PhoneOverlays() {
       <GiftRecipientModal />
       <audio id="notification-sound-player" preload="auto" />
       <MusicSearchResultsModal />
-      <DoubanSettingsModal />
       <audio id="char-audio-player" preload="auto" />
-      <DoubanCastModal />
       <FilePicker id="import-preset-input" accept=".json" />
-      <UpdateNoticeModal />
       <DeleteWorldBooksModal />
       <ReadingLibraryModal />
       <ProductCategoryManagerModal />
@@ -154,7 +149,7 @@ export function PhoneOverlays() {
       <NovelaiTestModal />
       <CharacterNaiPromptsModal />
       <audio id="silent-audio-player" loop preload="auto" hidden>
-        <source src="https://phoebeboo.github.io/mewoooo/1-second-of-silence.mp3" type="audio/mpeg" />
+        <source src={import.meta.env.BASE_URL + 'silence.wav'} type="audio/wav" />
       </audio>
       <audio id="tts-audio-player" hidden />
     </>

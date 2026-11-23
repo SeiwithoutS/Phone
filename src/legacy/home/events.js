@@ -7,14 +7,13 @@ import { openCharSimulatedConversation, renderCharAlbum, renderCharAppUsage, ren
 import { renderChatInterface } from '../chat/conversation.js'
 import { clearSearchFilters, handleSearchHistory, openSearchHistoryScreen } from '../chat/search.js'
 import { showCustomAlert } from '../dialogs/dialogs.js'
-import { openDoubanPostDetail, renderDoubanScreen } from '../douban/forum.js'
 import { renderFavoritesScreen } from '../qzone/favorites.js'
 import { renderQzonePosts } from '../qzone/feed.js'
 import { exportWorldBooks, handleWorldBookImport } from '../world-book/transfer.js'
 import { showScreen } from '../../app/routes'
 import { runtime } from '../runtime/state.js'
 
-export function bindHomeWidgets() {
+export function bindPhonePreferences() {
   document.getElementById('import-appearance-btn').addEventListener('click', () => {
     document.getElementById('import-appearance-input').click();
 });
@@ -68,13 +67,6 @@ document.getElementById('enable-ai-drawing-switch').addEventListener('change', a
                         
                         if(document.getElementById('favorites-view').classList.contains('active')) renderFavoritesScreen();
                         break;
-                    case 'douban-screen':
-                        renderDoubanScreen();
-                        break;
-                    case 'douban-post-detail-screen':
-                        openDoubanPostDetail(runtime.activeDoubanPostId);
-                        break;
-                    
                     case 'character-phone-screen':
                         const activeCharScreen = document.querySelector('.char-screen.active');
                         if (activeCharScreen) {

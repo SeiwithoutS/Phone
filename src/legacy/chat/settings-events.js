@@ -30,6 +30,10 @@ document.getElementById('chat-settings-btn').addEventListener('click', async () 
             if (!runtime.state.activeChatId) return;
             const chat = runtime.state.chats[runtime.state.activeChatId];
             const isGroup = chat.isGroup;
+            const characterDetails = document.getElementById('qq-character-details');
+            characterDetails.hidden = Boolean(isGroup);
+            characterDetails.open = false;
+            document.getElementById('qq-appearance-details').open = false;
             const groupNai = document.getElementById('group-nai-settings-group');
             const singleNai = document.getElementById('nai-character-settings-group');
             groupNai.style.display = isGroup ? 'block' : 'none';
@@ -40,12 +44,6 @@ document.getElementById('chat-settings-btn').addEventListener('click', async () 
             });
         
             
-            const switchGreetingGroup = document.getElementById('switch-greeting-group');
-            if (!isGroup && chat.settings.alternateGreetings && chat.settings.alternateGreetings.length > 0) {
-                switchGreetingGroup.style.display = 'block';
-            } else {
-                switchGreetingGroup.style.display = 'none';
-            }
             
             document.getElementById('chat-name-group').style.display = 'block';
             document.getElementById('my-persona-group').style.display = 'block';
@@ -75,6 +73,7 @@ document.getElementById('chat-settings-btn').addEventListener('click', async () 
                 bgPreview.style.display = 'block';
                 removeBgBtn.style.display = 'inline-block';
             } else {
+                bgPreview.removeAttribute('src');
                 bgPreview.style.display = 'none';
                 removeBgBtn.style.display = 'none';
             }
@@ -207,7 +206,9 @@ document.getElementById('enable-tts-switch').checked = chat.settings.enableTts !
             updateWorldBookSelectionDisplay();
 
             const linkMemoryToggle = document.getElementById('link-memory-toggle'); const linkedMemorySelection = document.getElementById('linked-memory-selection'); const linkedChatsContainer = document.getElementById('linked-chats-checkboxes-container'); const linkedMemoryIds = chat.settings.linkedMemoryChatIds || []; linkMemoryToggle.checked = linkedMemoryIds.length > 0; linkedMemorySelection.style.display = linkMemoryToggle.checked ? 'block' : 'none'; linkedChatsContainer.innerHTML = ''; Object.values(runtime.state.chats).forEach(c => { if (c.id === chat.id) return; const isChecked = linkedMemoryIds.includes(c.id); const prefix = c.isGroup ? '[Group]' : '[Direct]'; const label = document.createElement('label'); label.innerHTML = `<input type="checkbox" value="${c.id}" ${isChecked ? 'checked' : ''}> ${prefix} ${c.name}`; linkedChatsContainer.appendChild(label); }); function updateLinkedMemorySelectionDisplay() { const checkedBoxes = linkedChatsContainer.querySelectorAll('input:checked'); const displayText = linkedMemorySelection.querySelector('.selected-options-text'); if (checkedBoxes.length === 0) { displayText.textContent = "Select entries"; } else if (checkedBoxes.length > 2) { displayText.textContent = `${checkedBoxes.length} selected`; } else { displayText.textContent = Array.from(checkedBoxes).map(cb => cb.parentElement.textContent.trim()).join(', '); } } updateLinkedMemorySelectionDisplay(); linkMemoryToggle.addEventListener('change', () => { linkedMemorySelection.style.display = linkMemoryToggle.checked ? 'block' : 'none'; }); const linkedMemorySelectBox = linkedMemorySelection.querySelector('.select-box'); const newLinkedMemorySelectBox = linkedMemorySelectBox.cloneNode(true); linkedMemorySelectBox.parentNode.replaceChild(newLinkedMemorySelectBox, linkedMemorySelectBox); newLinkedMemorySelectBox.addEventListener('click', (e) => { e.stopPropagation(); linkedChatsContainer.classList.toggle('visible'); newLinkedMemorySelectBox.classList.toggle('expanded'); }); linkedChatsContainer.addEventListener('change', updateLinkedMemorySelectionDisplay);
-            const themeRadio = document.querySelector(`input[name="theme-select"][value="${chat.settings.theme || 'default'}"]`); if (themeRadio) themeRadio.checked = true;
+            const themeRadio = [...document.querySelectorAll('input[name="theme-select"]')]
+                .find(input => input.value === chat.settings.theme) ?? document.getElementById('theme-default');
+            themeRadio.checked = true;
             const fontSizeSlider = document.getElementById('font-size-slider'); fontSizeSlider.value = chat.settings.fontSize || 13; document.getElementById('font-size-value').textContent = `${fontSizeSlider.value}px`;
             const customCssInput = document.getElementById('custom-css-input'); customCssInput.value = chat.settings.customCss || '';
             updateSettingsPreview();
@@ -281,7 +282,8 @@ document.getElementById('reset-theme-btn').addEventListener('click', () => { doc
 
 document.getElementById('save-chat-settings-btn').addEventListener('click', async () => {
     if (!runtime.state.activeChatId) return;
-    const chat = runtime.state.chats[runtime.state.activeChatId];
+    const current = runtime.state.chats[runtime.state.activeChatId];
+    const chat = structuredClone(current);
     
     
     const oldOfflineModeState = chat.settings.isOfflineMode || false;
@@ -298,6 +300,7 @@ document.getElementById('save-chat-settings-btn').addEventListener('click', asyn
     chat.settings.theme = selectedThemeRadio ? selectedThemeRadio.value : 'default';
     chat.settings.fontSize = parseInt(document.getElementById('font-size-slider').value);
     chat.settings.customCss = document.getElementById('custom-css-input').value.trim();
+    chat.settings.background = document.getElementById('bg-preview').getAttribute('src') || '';
     chat.settings.myPersona = document.getElementById('my-persona').value;
     chat.settings.myAvatar = document.getElementById('my-avatar-preview').src;
     chat.settings.maxMemory = parseInt(document.getElementById('max-memory').value) || 10;
@@ -381,7 +384,31 @@ chat.settings.enableTts = document.getElementById('enable-tts-switch').checked;
         chat.groupId = selectedGroupId ? parseInt(selectedGroupId) : null;
     }
 
-    await runtime.db.chats.put(chat);
+    const button = document.getElementById('save-chat-settings-btn');
+    button.disabled = true;
+    try {
+        await runtime.db.transaction('rw', runtime.db.chats, async tx => {
+            const stored = await tx.chats.get(chat.id);
+            if (!stored) throw new Error('This chat was deleted.');
+            const changes = { name: chat.name, settings: chat.settings };
+            if (!chat.isGroup) {
+                Object.assign(changes, { originalName: chat.originalName, nameHistory: chat.nameHistory, groupId: chat.groupId });
+                if (oldOfflineModeState && !chat.settings.isOfflineMode) changes.history = [...(stored.history ?? []), chat.history.at(-1)];
+            }
+            await tx.chats.update(chat.id, changes);
+            Object.assign(chat, changes);
+        });
+        current.name = chat.name;
+        current.settings = chat.settings;
+        if (!chat.isGroup) {
+            Object.assign(current, { originalName: chat.originalName, nameHistory: chat.nameHistory, groupId: chat.groupId });
+            if (oldOfflineModeState && !chat.settings.isOfflineMode) current.history = chat.history;
+        }
+    } catch {
+        return;
+    } finally {
+        button.disabled = false;
+    }
     if (!chat.isGroup) {
         await syncCharacterNameInGroups(chat);
         await syncCharacterAvatarInGroups(chat);
@@ -419,11 +446,23 @@ controls.setupFileUpload('group-avatar-input', (base64) => document.getElementBy
 
 controls.setupFileUpload('member-avatar-input', (base64) => document.getElementById('member-avatar-preview').src = base64);
 
-controls.setupFileUpload('bg-input', (base64) => { if(runtime.state.activeChatId) { runtime.state.chats[runtime.state.activeChatId].settings.background = base64; const bgPreview = document.getElementById('bg-preview'); bgPreview.src = base64; bgPreview.style.display = 'block'; document.getElementById('remove-bg-btn').style.display = 'inline-block'; } });
+controls.setupFileUpload('bg-input', base64 => {
+    const preview = document.getElementById('bg-preview');
+    preview.src = base64;
+    preview.style.display = 'block';
+    document.getElementById('remove-bg-btn').style.display = 'inline-block';
+    void updateSettingsPreview();
+});
 
 controls.setupFileUpload('preset-avatar-input', (base64) => document.getElementById('preset-avatar-preview').src = base64);
 
-document.getElementById('remove-bg-btn').addEventListener('click', () => { if (runtime.state.activeChatId) { runtime.state.chats[runtime.state.activeChatId].settings.background = ''; const bgPreview = document.getElementById('bg-preview'); bgPreview.src = ''; bgPreview.style.display = 'none'; document.getElementById('remove-bg-btn').style.display = 'none'; } });
+document.getElementById('remove-bg-btn').addEventListener('click', () => {
+    const preview = document.getElementById('bg-preview');
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+    document.getElementById('remove-bg-btn').style.display = 'none';
+    void updateSettingsPreview();
+});
 
 controls.stickerPanel = document.getElementById('sticker-panel')
 

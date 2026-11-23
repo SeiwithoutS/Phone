@@ -1,3 +1,5 @@
+import { escapeHtml } from '../../runtime/files'
+import { characterAvatar } from '../../features/characters/gallery'
 import { sharedCardHtml } from '../../features/chat/shared-cards'
 import { applyScopedCss } from '../appearance/theme.js'
 import { updateBackButtonUnreadCount } from '../backup/backup.js'
@@ -15,7 +17,6 @@ import { hideLoader, showLoader } from '../dialogs/dialogs.js'
 import { playNotificationSound } from '../home/status.js'
 import { applyLyricsBarPosition } from '../music/player.js'
 import { parseMarkdown } from '../rendering/markup.js'
-import { applyRenderingRules } from '../rendering/rules.js'
 import { showScreen } from '../../app/routes'
 import { runtime } from '../runtime/state.js'
 
@@ -347,7 +348,7 @@ export async function createMessageElement(msg, chat) {
             timestampEl.className = 'timestamp';
             timestampEl.textContent = formatTimestamp(msg.timestamp);
         
-            let avatarSrc, avatarFrameSrc = '';
+            let avatarSrc, avatarFrameSrc = '', rotatingCharacter;
             if (isUser) {
                 avatarSrc = chat.settings.myAvatar || (chat.isGroup ? runtime.defaultMyGroupAvatar : runtime.defaultAvatar);
                 avatarFrameSrc = chat.settings.myAvatarFrame || '';
@@ -356,23 +357,28 @@ export async function createMessageElement(msg, chat) {
                     const member = chat.members.find(m => m.originalName === msg.senderName);
                     if (member) {
                         const characterProfile = runtime.state.chats[member.id];
-                        avatarSrc = member.avatar || (characterProfile ? characterProfile.settings.aiAvatar : runtime.defaultGroupMemberAvatar);
+                        rotatingCharacter = characterProfile?.settings.avatarGallery?.mode !== 'off' && characterProfile?.settings.avatarGallery
+                            ? characterProfile : undefined;
+                        avatarSrc = rotatingCharacter ? characterAvatar(rotatingCharacter) :
+                            member.avatar || (characterProfile ? characterProfile.settings.aiAvatar : runtime.defaultGroupMemberAvatar);
                         avatarFrameSrc = member.avatarFrame || (characterProfile ? characterProfile.settings.aiAvatarFrame : '');
                     } else {
                         avatarSrc = runtime.defaultGroupMemberAvatar;
                         avatarFrameSrc = '';
                     }
                 } else {
-                    avatarSrc = chat.settings.aiAvatar || runtime.defaultAvatar;
+                    rotatingCharacter = chat;
+                    avatarSrc = characterAvatar(chat);
                     avatarFrameSrc = chat.settings.aiAvatarFrame || '';
                 }
             }
         
+            const avatarTag = rotatingCharacter ? ` data-qq-character-avatar="${escapeHtml(String(rotatingCharacter.id))}"` : '';
             let avatarHtml;
             if (avatarFrameSrc) {
-                avatarHtml = `<div class="avatar-with-frame"><img src="${avatarSrc}" class="avatar-img"><img src="${avatarFrameSrc}" class="avatar-frame"></div>`;
+                avatarHtml = `<div class="avatar-with-frame"><img src="${escapeHtml(String(avatarSrc || runtime.defaultAvatar))}" class="avatar-img"${avatarTag}><img src="${escapeHtml(String(avatarFrameSrc))}" class="avatar-frame"></div>`;
             } else {
-                avatarHtml = `<img src="${avatarSrc}" class="avatar">`;
+                avatarHtml = `<img src="${escapeHtml(String(avatarSrc || runtime.defaultAvatar))}" class="avatar"${avatarTag}>`;
             }
             const hasFrameClass = avatarFrameSrc ? 'has-frame' : '';
             const avatarGroupHtml = `<div class="avatar-group ${hasFrameClass}">${avatarHtml}</div>`;
@@ -381,7 +387,7 @@ export async function createMessageElement(msg, chat) {
             let quoteHtml = '';
             if (msg.quote) {
                 const quotedSenderDisplayName = getDisplayNameInGroup(chat, msg.quote.senderName);
-                const fullQuotedContent = String(msg.quote.content || '');
+                const fullQuotedContent = escapeHtml(String(msg.quote.content || '')).replace(/\n/g, '<br>');
                 quoteHtml = `
                     <div class="quoted-message" data-original-timestamp="${msg.quote.timestamp}" style="cursor: pointer;">
                         <div class="quoted-sender">Replying to ${quotedSenderDisplayName}:</div>
@@ -396,7 +402,9 @@ export async function createMessageElement(msg, chat) {
         
             let rawContent = msg.content; 
 
-            if (typeof rawContent === 'string' && rawContent.trim().startsWith('<') && rawContent.trim().endsWith('>')) {
+            if (msg.isOpening) {
+                contentHtml = parseMarkdown(escapeHtml(String(rawContent))).replace(/\n/g, '<br>');
+            } else if (typeof rawContent === 'string' && rawContent.trim().startsWith('<') && rawContent.trim().endsWith('>')) {
                 contentHtml = rawContent;
                 bubble.classList.add('is-raw-html'); 
             } else if (msg.type === 'offline_text' || msg.type === 'share_link' || msg.type === 'share_card' || msg.type === 'location_share' || msg.type === 'ai_image' || msg.type === 'user_photo' || msg.type === 'voice_message' || msg.type === 'transfer' || msg.type === 'waimai_request'|| msg.type === 'waimai_order'  || msg.type === 'red_packet' || msg.type === 'poll' || msg.type === 'gift' || msg.type === 'realimag' || msg.type === 'naiimag') {
@@ -588,27 +596,14 @@ export async function createMessageElement(msg, chat) {
                     contentHtml = `<div class="gift-card"><div class="gift-header"><svg class="gift-header-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18a4 4 0 0 0-7.64 0H8a4 4 0 0 0-4 4v2h20V10a4 4 0 0 0-4-4zM8 4a2 2 0 1 1-2 2a2 2 0 0 1 2-2zm12 0a2 2 0 1 1-2 2a2 2 0 0 1 2-2zM4 14v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6H4z"></path></svg><span class="gift-header-text">${headerText}</span></div><div class="gift-items-preview">${previewHtml}</div><div class="gift-footer">${msg.items.length} items${moreItemsText} · View</div></div>`;
                 }
             } else {
-                const processedContent = String(rawContent); 
-                let processedByRule = await applyRenderingRules(processedContent, chat.id);
-                if (processedByRule !== processedContent) {
-                    contentHtml = processedByRule;
-                    bubble.classList.add('is-card-like');
+                const content = String(rawContent);
+                if (Array.isArray(msg.content) && msg.content[0]?.type === 'image_url') {
+                    contentHtml = `<img src="${msg.content[0].image_url.url}" class="chat-image">`;
+                } else if (runtime.STICKER_REGEX.test(content)) {
+                    bubble.classList.add('is-sticker', 'is-card-like');
+                    contentHtml = `<img src="${content}" alt="${msg.meaning || 'Sticker'}" class="sticker-image">`;
                 } else {
-                    
-                    
-                    if (Array.isArray(msg.content) && msg.content[0]?.type === 'image_url') {
-                        
-                        const imageUrl = msg.content[0].image_url.url;
-                        contentHtml = `<img src="${imageUrl}" class="chat-image">`;
-                    }
-                    
-                    else if (runtime.STICKER_REGEX.test(processedByRule)) { 
-                        bubble.classList.add('is-sticker', 'is-card-like');
-                        contentHtml = `<img src="${processedByRule}" alt="${msg.meaning || 'Sticker'}" class="sticker-image">`;
-                    } else {
-                        let plainText = processMentions(processedByRule, chat);
-                        contentHtml = parseMarkdown(plainText).replace(/\n/g, '<br>');
-                    }
+                    contentHtml = parseMarkdown(processMentions(content, chat)).replace(/\n/g, '<br>');
                 }
             }
         
@@ -691,7 +686,7 @@ if (lastMessage && (msg.timestamp - lastMessage.timestamp > 600000)) {
 export async function openChat(chatId) {
             runtime.state.activeChatId = chatId;
             const chat = runtime.state.chats[chatId];
-            if (!chat) return; 
+            if (!chat) return;
         
             if (chat.unreadCount > 0) {
                 chat.unreadCount = 0;

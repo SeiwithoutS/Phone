@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import JSZip from 'jszip'
 import { openLocalStore } from '../server/storage.js'
 import { normalizeWorldInfo } from '../src/features/world-book/model.js'
 import { decodePortable, encodePortable } from '../src/storage/portable.js'
@@ -36,6 +37,33 @@ test('portable media retains bytes, MIME type, and dates through JSON', async ()
   assert.equal(data[0].type, 'image/png')
   assert.deepEqual([...new Uint8Array(await data[0].arrayBuffer())], [0, 128, 255])
   assert.deepEqual(data[1], date)
+})
+
+test('ZIP captures pending writes and can replace the local data file', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'eephone-export-'))
+  const restored = await mkdtemp(join(tmpdir(), 'eephone-restore-'))
+  try {
+    const retired = { nextId: 2, rows: [{ id: 1, text: 'Old data' }] }
+    await writeFile(join(directory, 'eephone.json'), JSON.stringify({
+      version: 1, revision: 4, tables: { doubanPosts: retired },
+    }))
+    const store = openLocalStore(directory)
+    const settings = { nextId: 1, rows: [{ id: 'social-profile', value: { name: 'Local profile' } }] }
+    const saved = store.save({ revision: 4, tables: { deviceSettings: settings } })
+    const zipped = store.backup()
+    await saved
+    const archive = await JSZip.loadAsync(await zipped)
+    const snapshot = await archive.file('eephone.json')?.async('string')
+    assert.ok(snapshot)
+    assert.deepEqual(JSON.parse(snapshot).tables.doubanPosts, retired)
+    await writeFile(join(restored, 'eephone.json'), snapshot)
+    const reopened = await openLocalStore(restored).snapshot()
+    assert.equal(reopened.revision, 5)
+    assert.deepEqual(reopened.tables.deviceSettings, settings)
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+    await rm(restored, { recursive: true, force: true })
+  }
 })
 
 test('older World Info imports retain entry metadata and explicit disabled state', () => {

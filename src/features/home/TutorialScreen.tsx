@@ -21,7 +21,7 @@ export function TutorialScreen() {
             <li>Open API Connections and enter your provider's base URL, model, and API key.</li>
             <li>Open QQ to create a character or import a SillyTavern character card.</li>
             <li>Open a chat, send a message, and choose Generate Reply.</li>
-            <li>Use World Info to add context and the character's Chat Settings to attach it.</li>
+            <li>Use World Info to link keyword-triggered lore to a character. Attach Mini Prompts in QQ’s Chat Settings.</li>
           </ol>
           <p>Use Export Data in API Connections to download a backup.</p>
         </article>
