@@ -11,6 +11,8 @@ export const screenPaths = {
   "character-edit-screen": "/edit/:characterId?",
   "lorebook-screen": "/world-info",
   "social-screen": "/social",
+  "sticker-library-screen": "/stickers",
+  "context-screen": "/context",
   "world-book-screen": "/world-books",
   "world-book-editor-screen": "/world-books/editor",
   "character-selection-screen": "/characters",
@@ -60,7 +62,7 @@ export function resolveScreen(pathname: string) {
   return { id, chatId: match.params.chatId, requiresContext: Boolean(parent), fallback: parent && screenPaths[parent] }
 }
 
-type ScreenState = { bookId?: string | number }
+type ScreenState = { bookId?: string | number; chatListView?: 'npc-list-view'; socialActorId?: string; stickerChatId?: string; contextChatId?: string }
 type NavigateScreen = (id: ScreenId, state?: ScreenState) => void
 let navigateScreen: NavigateScreen | undefined
 

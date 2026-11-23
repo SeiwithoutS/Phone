@@ -8,6 +8,12 @@ export type ChatMessage = {
   senderName?: string
   isHidden?: boolean
   isOpening?: boolean
+  type?: string
+  isTemporary?: boolean
+  plainText?: boolean
+  meaning?: string
+  imageDescription?: string
+  swipes?: { variants: Array<{ text: string; plainText?: boolean }>; index: number }
 }
 
 export type ChatSession = {
@@ -17,6 +23,8 @@ export type ChatSession = {
   longTermMemory: unknown[]
   lastMemorySummaryTimestamp: number
   composerDraft?: string
+  branchFrom?: { sessionId: string; timestamp: number }
+  announcements?: Array<{ messageTimestamp: number }>
 }
 
 type ChatSettings = Record<string, unknown> & {
@@ -27,13 +35,21 @@ type ChatSettings = Record<string, unknown> & {
   alternateGreetings?: string[]
   avatarGallery?: AvatarGallery
   aiAvatarLibrary?: { url: string }[]
+  stickerCategoryIds?: Array<string | number>
 }
 
-type ChatContact = StoredRow & {
+export type ChatContact = StoredRow & {
   id: string
   name: string
   settings: ChatSettings
   history: ChatMessage[]
+  conversationId?: string
+  conversationCreatedAt?: number
+  chatSessions?: ChatSession[]
+  longTermMemory?: unknown[]
+  lastMemorySummaryTimestamp?: number
+  branchFrom?: ChatSession['branchFrom']
+  announcements?: ChatSession['announcements']
 }
 
 export type DirectChat = ChatContact & {
@@ -44,11 +60,6 @@ export type DirectChat = ChatContact & {
     alternateGreetings: string[]
     extras?: Record<string, string>
   }
-  conversationId?: string
-  conversationCreatedAt?: number
-  chatSessions?: ChatSession[]
-  longTermMemory?: unknown[]
-  lastMemorySummaryTimestamp?: number
 }
 
 export type GroupChat = ChatContact & {
@@ -58,5 +69,6 @@ export type GroupChat = ChatContact & {
     avatar?: string
     originalName?: string
     groupNickname?: string
+    persona?: string
   }>
 }

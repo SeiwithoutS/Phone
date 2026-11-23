@@ -7,7 +7,26 @@ import { renderChatList } from './list.js'
 import { showCustomPrompt } from '../dialogs/dialogs.js'
 import { runtime } from '../runtime/state.js'
 
-export async function sendSticker(sticker) { if (!runtime.state.activeChatId) return; const chat = runtime.state.chats[runtime.state.activeChatId]; const msg = { role: 'user', content: sticker.url, meaning: sticker.name, timestamp: Date.now() }; chat.history.push(msg); await runtime.db.chats.put(chat); appendMessage(msg, chat); renderChatList(); document.getElementById('sticker-panel').classList.remove('visible'); }
+export async function sendSticker(sticker) {
+    const chat = runtime.state.chats[runtime.state.activeChatId];
+    if (!chat) return;
+    const session = chat.conversationId;
+    const message = { role: 'user', type: 'sticker', content: sticker.url, meaning: sticker.name, timestamp: Date.now() };
+    const history = await runtime.db.transaction('rw', runtime.db.chats, async tx => {
+        const current = await tx.chats.get(chat.id);
+        if (!current || current.conversationId !== session) return;
+        const updated = [...(current.history ?? []), message];
+        await tx.chats.update(chat.id, { history: updated });
+        return updated;
+    });
+    if (!history || chat.conversationId !== session) return;
+    chat.history = history;
+    if (runtime.state.activeChatId === chat.id) {
+        appendMessage(message, chat);
+        document.getElementById('sticker-panel').classList.remove('visible');
+    }
+    renderChatList();
+}
 
 export async function sendUserTransfer() { if (!runtime.state.activeChatId) return; const amountInput = document.getElementById('transfer-amount'); const noteInput = document.getElementById('transfer-note'); const amount = parseFloat(amountInput.value); const note = noteInput.value.trim(); if (isNaN(amount) || amount < 0) { alert("Enter an amount greater than zero."); return; } const chat = runtime.state.chats[runtime.state.activeChatId]; const senderName = chat.isGroup ? (chat.settings.myNickname || '我') : '我'; const receiverName = chat.isGroup ? '群聊' : chat.name; const msg = { role: 'user', type: 'transfer', amount: amount, note: note, senderName, receiverName, timestamp: Date.now() }; chat.history.push(msg); await runtime.db.chats.put(chat); appendMessage(msg, chat); renderChatList(); document.getElementById('transfer-modal').classList.remove('visible'); amountInput.value = ''; noteInput.value = ''; }
 

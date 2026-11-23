@@ -4,7 +4,6 @@ import { showScreen } from '../../app/routes'
 import { cancelReplyMode } from '../chat/attachments.js'
 import { startReplyToMessage } from '../chat/messages.js'
 import { handleConfirmRepost, hideRepostModal } from '../qzone/feed.js'
-import { renderStickerPanel } from '../stickers/stickers.js'
 
 export function switchWorldBookCategory(categoryId) {
             
@@ -33,7 +32,10 @@ export async function renderWorldBookScreen() {
             runtime.state.worldBooks = books; 
         
             if (books.length === 0) {
-                contentContainer.innerHTML = "<p style=\"text-align:center; color: #8a8a8a; margin-top: 50px;\">Use the plus button to create your first Mini Prompts book.</p>";
+                const empty = document.createElement('p');
+                empty.className = 'mini-prompts-empty';
+                empty.textContent = 'Use the plus button to create your first Mini Prompts book.';
+                contentContainer.appendChild(empty);
                 return;
             }
         
@@ -80,7 +82,7 @@ export async function renderWorldBookScreen() {
         
             
             books.forEach(book => {
-                let contentPreview = '暂无内容...';
+                let contentPreview = 'No entries yet';
                 if (Array.isArray(book.content) && book.content.length > 0) {
                     const firstEntry = book.content[0];
                     contentPreview = firstEntry.comment || firstEntry.content || '';
@@ -431,8 +433,4 @@ document.getElementById('delete-world-books-modal').addEventListener('click', (e
     }
 });
 
-document.getElementById('sticker-search-input').addEventListener('input', () => {
-    
-    renderStickerPanel(false); 
-});
 }

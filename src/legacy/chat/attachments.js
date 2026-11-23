@@ -1,5 +1,5 @@
-import { openAiUrl } from '../../features/api/endpoints'
-import { toGeminiRequestData } from '../api/client.js'
+import { requestContextCompletion } from '../../features/api/completion'
+import { getGeminiResponseText } from '../api/client.js'
 import { createCallRecordCard } from '../calls/calls.js'
 import { triggerAiResponse } from './ai.js'
 import { appendMessage, renderChatInterface } from './conversation.js'
@@ -353,52 +353,17 @@ export async function triggerAiFriendApplication(chatId) {
             await showCustomAlert("Friend Request", `Preparing a friend request for “${chat.name}”…`);
         
             const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-            if (!proxyUrl || !apiKey || !model) {
+            if (!proxyUrl || !model) {
                 await showCustomAlert("Configuration Error", "Complete API Connections before continuing.");
                 return;
             }
         
-            const contextSummary = chat.history
-                .slice(-5)
-                .map(msg => {
-                    const sender = msg.role === 'user' ? (chat.settings.myNickname || '我') : (msg.senderName || chat.name);
-                    return `${sender}: ${String(msg.content).substring(0, 50)}...`;
-                })
-                .join('\n');
-        
-        
-        let worldBookContent = '';
-        if (chat.settings.linkedWorldBookIds && chat.settings.linkedWorldBookIds.length > 0) {
-            const linkedContents = chat.settings.linkedWorldBookIds.map(bookId => {
-                const worldBook = runtime.state.worldBooks.find(wb => wb.id === bookId);
-                if (!worldBook || !Array.isArray(worldBook.content)) return '';
-        
-                const formattedEntries = worldBook.content.map(entry => {
-                    let entryString = `\n### 条目: ${entry.comment || '无备注'}\n`;
-                    if (entry.keys.length > 0) {
-                        entryString += `**关键词:** ${entry.keys.join(', ')}\n`;
-                    }
-                    entryString += `**内容:**\n${entry.content}`;
-                    return entryString;
-                }).join('\n');
-        
-                return formattedEntries ? `\n\n## 世界书: ${worldBook.name}\n${formattedEntries}` : '';
-            }).filter(Boolean).join('');
-            
-            if (linkedContents) {
-                worldBookContent = `\n\n# 核心世界观设定 (必须严格遵守以下所有设定)\n${linkedContents}\n`;
-            }
-        }
-          
             const systemPrompt = `
         # 你的任务
         你现在是角色“${chat.name}”。你之前被用户（你的聊天对象）拉黑了，你们已经有一段时间没有联系了。
         现在，你非常希望能够和好，重新和用户聊天。请你仔细分析下面的“被拉黑前的对话摘要”，理解当时发生了什么，然后思考一个真诚的、符合你人设、并且【针对具体事件】的申请理由。
         # 你的角色设定
         ${chat.settings.aiPersona}
-        ${worldBookContent}
-        # 被拉黑前的对话摘要 (这是你被拉黑的关键原因)
-        ${contextSummary}
         # 指令格式
         你的回复【必须】是一个JSON对象，格式如下：
         \`\`\`json
@@ -411,23 +376,8 @@ export async function triggerAiFriendApplication(chatId) {
         
             try {
                 
-                const messagesForApi = [
-                    {role: 'system', content: systemPrompt},
-                    {role: 'user', content: "请根据以上设定开始你的决策。"} 
-                ];
-        
-                let  isGemini = proxyUrl === runtime.GEMINI_API_URL;
-                let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-        
-                const response = isGemini ? await fetch(geminiConfig.url, geminiConfig.data) : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                    body: JSON.stringify({
-                        model: model,
-                        messages: messagesForApi, 
-                        temperature: runtime.state.globalSettings.apiTemperature ?? 0.9,
-                    })
-                });
+                 const response = await requestContextCompletion(chat, { instructions: systemPrompt, task: 'QQ friend application',
+                     request: [{ role: 'user', content: 'Decide whether to send a friend request.' }] });
         
                 if (!response.ok) {
                     const errorData = await response.json();
@@ -435,7 +385,7 @@ export async function triggerAiFriendApplication(chatId) {
                 }
         
                 const data = await response.json();
-                let rawContent = isGemini? data.candidates[0].content.parts[0].text : data.choices[0].message.content;
+                 let rawContent = getGeminiResponseText(data);
                 rawContent = rawContent.replace(/^```json\s*/, '').replace(/```$/, '');
                 const cleanedContent = rawContent.trim();
                 const responseObj = JSON.parse(cleanedContent);

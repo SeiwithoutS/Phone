@@ -2,6 +2,8 @@ export const schema = {
   chats: { autoIncrement: false },
   homeWidgets: { autoIncrement: false },
   socialPosts: { autoIncrement: false },
+  socialProfiles: { autoIncrement: false },
+  socialNotifications: { autoIncrement: false },
   apiConfig: { autoIncrement: false },
   globalSettings: { autoIncrement: false },
   userStickers: { autoIncrement: false },

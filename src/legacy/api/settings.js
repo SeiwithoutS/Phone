@@ -1,5 +1,8 @@
 import { startBackgroundSimulation, stopBackgroundSimulation } from '../npc/simulation.js'
 import { openAiUrl } from '../../features/api/endpoints'
+import { contextConfig } from '../../features/context/context'
+import { contextKey, normalizeContext } from '../../features/context/budget'
+import { geminiModelsUrl, generationSettings, sendCompletion, usesGemini } from '../../features/api/completion'
 import { preferences } from '../storage/preferences.js'
 import { displayTotalImageSize } from '../backup/media.js'
 import { showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
@@ -27,9 +30,7 @@ export async function loadApiPresetsDropdown() {
                     preset.proxyUrl === currentConfig.proxyUrl &&
                     preset.apiKey === currentConfig.apiKey &&
                     preset.model === currentConfig.model &&
-                    preset.secondaryProxyUrl === currentConfig.secondaryProxyUrl &&
-                    preset.secondaryApiKey === currentConfig.secondaryApiKey &&
-                    preset.secondaryModel === currentConfig.secondaryModel &&
+                    usesGemini(preset.proxyUrl, preset.provider) === usesGemini(currentConfig.proxyUrl, currentConfig.provider) &&
                     
                     (preset.minimaxGroupId || '') === (currentConfig.minimaxGroupId || '') &&
                     (preset.minimaxApiKey || '') === (currentConfig.minimaxApiKey || '') &&
@@ -63,12 +64,10 @@ export async function handlePresetSelectionChange() {
                 
                 runtime.state.apiConfig = {
                     id: 'main',
-                    proxyUrl: preset.proxyUrl,
+                    proxyUrl: usesGemini(preset.proxyUrl, preset.provider) ? geminiModelsUrl : preset.proxyUrl,
                     apiKey: preset.apiKey,
                     model: preset.model,
-                    secondaryProxyUrl: preset.secondaryProxyUrl,
-                    secondaryApiKey: preset.secondaryApiKey,
-                    secondaryModel: preset.secondaryModel,
+                    provider: usesGemini(preset.proxyUrl, preset.provider) ? "gemini" : "openai",
                     
                     minimaxGroupId: preset.minimaxGroupId,
                     minimaxApiKey: preset.minimaxApiKey,
@@ -91,12 +90,10 @@ export async function saveApiPreset() {
             
             const presetData = {
                 name: name.trim(),
-                proxyUrl: document.getElementById('proxy-url').value.trim(),
+                proxyUrl: text('api-provider') === 'gemini' ? geminiModelsUrl : text('proxy-url'),
                 apiKey: document.getElementById('api-key').value.trim(),
-                model: document.getElementById('model-select').value.trim(),
-                secondaryProxyUrl: document.getElementById('secondary-proxy-url').value.trim(),
-                secondaryApiKey: document.getElementById('secondary-api-key').value.trim(),
-                secondaryModel: document.getElementById('secondary-model-select').value.trim(),
+                model: text('model-select'),
+                provider: text('api-provider'),
      
                 minimaxGroupId: document.getElementById('minimax-group-id').value.trim(),
                 minimaxApiKey: document.getElementById('minimax-api-key').value.trim(),
@@ -139,16 +136,17 @@ export async function deleteApiPreset() {
 
 export function renderApiSettings() { 
             
-            document.getElementById('proxy-url').value = runtime.state.apiConfig.proxyUrl || ''; 
+            field('proxy-url').value = runtime.state.apiConfig.proxyUrl || '';
+            field('api-provider').value = usesGemini(runtime.state.apiConfig.proxyUrl, runtime.state.apiConfig.provider) ? 'gemini' : 'openai';
+            renderGenerationSettings();
+            showConnectionStatus('');
             document.getElementById('api-key').value = runtime.state.apiConfig.apiKey || ''; 
-            document.getElementById('secondary-proxy-url').value = runtime.state.apiConfig.secondaryProxyUrl || '';
-            document.getElementById('secondary-api-key').value = runtime.state.apiConfig.secondaryApiKey || '';
             document.getElementById('model-select').value = runtime.state.apiConfig.model ?? '';
-            document.getElementById('secondary-model-select').value = runtime.state.apiConfig.secondaryModel ?? '';
             document.getElementById('background-activity-switch').checked = runtime.state.globalSettings.enableBackgroundActivity || false;
             document.getElementById('background-interval-input').value = runtime.state.globalSettings.backgroundActivityInterval || 60;
             document.getElementById('block-cooldown-input').value = runtime.state.globalSettings.blockCooldownHours || 1;
             document.getElementById('enable-ai-drawing-switch').checked = runtime.state.globalSettings.enableAiDrawing; 
+            document.getElementById('send-images-to-ai-switch').checked = runtime.state.globalSettings.sendImagesToAi === true;
             document.getElementById('chat-render-window-input').value = runtime.state.globalSettings.chatRenderWindow || 50;   
             document.getElementById('chat-list-render-window-input').value = runtime.state.globalSettings.chatListRenderWindow || 30;
             const tempSlider = document.getElementById('api-temperature-slider');
@@ -174,15 +172,16 @@ document.getElementById('minimax-model-select').value = runtime.state.apiConfig.
         }
 
 async function fetchModels(urlInputId, keyInputId, modelId) {
-  const base = document.getElementById(urlInputId).value.trim();
+  const isGemini = text('api-provider') === 'gemini';
+  const base = isGemini ? geminiModelsUrl : text(urlInputId);
   const key = document.getElementById(keyInputId).value.trim();
-  if (!base || !key) return alert('Enter the Base URL and API key first.');
+  if (!base || (isGemini && !key)) return showConnectionStatus('Enter the Base URL and API key first.');
+  showConnectionStatus('Connecting…');
 
   try {
-    const isGemini = base.replace(/\/+$/, '') === runtime.GEMINI_API_URL;
-    const apiKey = getRandomValue(key);
-    const endpoint = isGemini ? runtime.GEMINI_API_URL : openAiUrl(base, 'models');
-    const headers = isGemini ? { 'x-goog-api-key': apiKey } : { Authorization: `Bearer ${apiKey}` };
+    const apiKey = key ? getRandomValue(key) : '';
+    const endpoint = isGemini ? geminiModelsUrl : openAiUrl(base, 'models');
+    const headers = isGemini ? { 'x-goog-api-key': apiKey } : apiKey ? { Authorization: 'Bearer ' + apiKey } : {};
     const response = await fetch(endpoint, { headers });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
@@ -198,41 +197,73 @@ async function fetchModels(urlInputId, keyInputId, modelId) {
       return option;
     }));
     if (!field.value) field.value = models[0] ?? '';
-    if (!models.length) alert('No models were returned. You can enter a model ID manually.');
-    else field.focus();
+    showConnectionStatus(models.length ? 'Connected. ' + models.length + ' models available.' : 'Connected. Enter a model ID manually.');
+    if (models.length) field.focus();
   } catch (error) {
-    alert(`Failed to fetch models: ${error.message}`);
+    showConnectionStatus('Failed to fetch models: ' + error.message);
   }
 }
 
 const field = id => document.getElementById(id)
 const text = id => field(id).value.trim()
 
+function showConnectionStatus(message) { field('api-connection-status').textContent = message; }
+function numberField(id, min, max, fallback) {
+  const value = Number(text(id));
+  return text(id) && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
+}
+function updateProviderFields() {
+  field('proxy-url').disabled = text('api-provider') === 'gemini';
+}
+function renderGenerationSettings() {
+  const settings = generationSettings();
+  const budget = contextConfig();
+  field('api-context-size').value = budget.size;
+  field('api-max-response').value = budget.response;
+  field('api-top-p').value = settings.topP;
+  field('api-frequency-penalty').value = settings.frequencyPenalty;
+  field('api-presence-penalty').value = settings.presencePenalty;
+  field('api-swipes').value = settings.swipes;
+  field('api-streaming').checked = settings.streaming;
+  updateProviderFields();
+}
+async function testApiConnection() {
+  const button = field('test-api-connection-btn');
+  button.disabled = true;
+  showConnectionStatus('Testing model…');
+  try {
+    const provider = text('api-provider');
+    const response = await sendCompletion([{ role: 'user', content: 'Reply with OK.' }], { connection: {
+      provider, proxyUrl: provider === 'gemini' ? geminiModelsUrl : text('proxy-url'), apiKey: text('api-key'), model: text('model-select'),
+    }, outputTokens: 16, signal: AbortSignal.timeout(15000) });
+    if (!response.ok) throw Error('HTTP ' + response.status);
+    const result = await response.json();
+    if (!result.choices?.length && !result.candidates?.length) throw Error('The model returned no completion.');
+    showConnectionStatus('Connection successful.');
+  } catch (error) { showConnectionStatus('Connection test failed: ' + error.message); }
+  finally { button.disabled = false; }
+}
 export function bindApiSettingsEvents() {
   const save = field('save-api-settings-btn')
   save.addEventListener('click', async () => {
-    const proxyUrl = text('proxy-url').replace(/\/+$/, '')
-    const secondaryProxyUrl = text('secondary-proxy-url').replace(/\/+$/, '')
+    const provider = text('api-provider');
+    const proxyUrl = provider === 'gemini' ? geminiModelsUrl : text('proxy-url').replace(/\/+$/, '');
     try {
-      for (const url of [proxyUrl, secondaryProxyUrl]) {
-        if (url && url !== runtime.GEMINI_API_URL) openAiUrl(url, 'models')
-      }
+      if (proxyUrl && provider !== 'gemini') openAiUrl(proxyUrl, 'models');
     } catch {
       alert('Enter a valid HTTP or HTTPS base URL.')
       return
     }
 
     const apiConfig = {
-      ...runtime.state.apiConfig,
+      id: 'main',
+      provider,
       proxyUrl,
       apiKey: text('api-key'),
       model: text('model-select'),
       minimaxGroupId: text('minimax-group-id'),
       minimaxApiKey: text('minimax-api-key'),
       minimaxModel: text('minimax-model-select'),
-      secondaryProxyUrl,
-      secondaryApiKey: text('secondary-api-key'),
-      secondaryModel: text('secondary-model-select'),
     }
     const globalSettings = {
       ...runtime.state.globalSettings,
@@ -240,9 +271,21 @@ export function bindApiSettingsEvents() {
       backgroundActivityInterval: Math.max(1, Number.parseInt(text('background-interval-input'), 10) || 60),
       blockCooldownHours: Math.max(0, Number.parseFloat(text('block-cooldown-input')) || 1),
       enableAiDrawing: field('enable-ai-drawing-switch').checked,
+      sendImagesToAi: field('send-images-to-ai-switch').checked,
       chatRenderWindow: Math.max(1, Number.parseInt(text('chat-render-window-input'), 10) || 50),
       chatListRenderWindow: Math.max(1, Number.parseInt(text('chat-list-render-window-input'), 10) || 30),
-      apiTemperature: Number.parseFloat(text('api-temperature-slider')),
+      apiTemperature: numberField('api-temperature-slider', 0, 2, 0.8),
+      apiTopP: numberField('api-top-p', 0, 1, 1),
+      apiFrequencyPenalty: numberField('api-frequency-penalty', -2, 2, 0),
+      apiPresencePenalty: numberField('api-presence-penalty', -2, 2, 0),
+      apiSwipes: Math.trunc(numberField('api-swipes', 1, 5, 1)),
+      apiStreaming: field('api-streaming').checked,
+    }
+    const size = Number(text('api-context-size'));
+    const response = Number(text('api-max-response'));
+    if (!Number.isInteger(size) || size < 1024 || size > 2000000 || !Number.isInteger(response) || response < 1 || response > size - 256) {
+      showConnectionStatus('Enter a valid context size and leave at least 256 tokens for the prompt.');
+      return;
     }
     const deviceSettings = [
       { id: 'novelai-enabled', value: String(field('novelai-switch').checked) },
@@ -257,6 +300,7 @@ export function bindApiSettingsEvents() {
         await tx.apiConfig.put(apiConfig)
         await tx.globalSettings.put(globalSettings)
         await tx.deviceSettings.bulkPut(deviceSettings)
+        await tx.deviceSettings.put({ id: contextKey, value: normalizeContext({ ...contextConfig(db), size, response }) })
       })
       Object.assign(runtime.state, { apiConfig, globalSettings })
       stopBackgroundSimulation()
@@ -269,10 +313,9 @@ export function bindApiSettingsEvents() {
     }
   })
 
+  field('api-provider').addEventListener('change', updateProviderFields)
+  field('test-api-connection-btn').addEventListener('click', testApiConnection)
   field('fetch-models-btn').addEventListener('click', () => {
     void fetchModels('proxy-url', 'api-key', 'model-select')
-  })
-  field('fetch-secondary-models-btn').addEventListener('click', () => {
-    void fetchModels('secondary-proxy-url', 'secondary-api-key', 'secondary-model-select')
   })
 }

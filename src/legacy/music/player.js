@@ -72,7 +72,13 @@ export function returnToChat() {
     closeMusicPlayerWithAnimation();
 }
 
-export function updateListenTogetherIcon(chatId, forceReset = false) { const iconImg = document.querySelector('#listen-together-btn img'); if(!iconImg) return; if(forceReset || !runtime.musicState.isActive || runtime.musicState.activeChatId !== chatId) { iconImg.src = 'https://i.postimg.cc/8kYShvrJ/90-UI-2.png'; iconImg.className = ''; return; } iconImg.src = 'https://i.postimg.cc/D0pq6qS2/E30078-DC-8-B99-4-C01-AFDA-74728-DBF7-BEA.png'; iconImg.classList.add('rotating'); if (runtime.musicState.isPlaying) iconImg.classList.remove('paused'); else iconImg.classList.add('paused'); }
+export function updateListenTogetherIcon(chatId, forceReset = false) {
+    const button = document.getElementById('listen-together-btn');
+    if (!button) return;
+    const active = !forceReset && runtime.musicState.isActive && runtime.musicState.activeChatId === chatId;
+    button.setAttribute('aria-pressed', String(active));
+    button.dataset.playing = String(active && runtime.musicState.isPlaying);
+}
 
 export function updatePlayerUI() { 
     updateListenTogetherIcon(runtime.musicState.activeChatId); 

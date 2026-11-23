@@ -1,0 +1,12 @@
+.api-generation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 0 14px; }
+.api-streaming { display: flex; align-items: center; gap: 8px; }
+#api-connection-status:empty { display: none; }
+.context-sources { display: grid; gap: 5px; }
+.context-source { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.context-source label.context-percent { display: flex; align-items: center; }
+#context-screen .context-percent input { width: 5rem; }
+.context-message { padding: 8px 0; border-top: 1px solid var(--feature-border); }
+.context-message pre { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 0; font: inherit; }
+#context-stream-preview { flex: 0 0 auto; max-height: 7rem; overflow-y: auto; margin: 0; padding: 8px 14px;
+  white-space: pre-wrap; color: var(--ui-text); background: var(--ui-surface); border-top: 1px solid var(--ui-divider); }
+#context-stream-preview[hidden] { display: none; }

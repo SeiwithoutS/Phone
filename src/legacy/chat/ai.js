@@ -1,24 +1,23 @@
-import { loreContext } from '../../features/world-book/lore-storage'
+import { maySendImages, photoPromptContent } from '../../features/api/image-input'
+import { requestContextCompletion, streamingReplyText } from '../../features/api/completion'
+import { latestUserTurn } from '../../features/context/context'
 import { characterPrompt } from '../../features/characters/characters'
 import { withConversationRequest } from '../../features/chat/sessions'
-import { openAiUrl } from '../../features/api/endpoints'
 import { preferences } from '../storage/preferences.js'
-import { getGeminiResponseText, parseAiResponse, toGeminiRequestData } from '../api/client.js'
+import { getGeminiResponseText, parseAiResponse } from '../api/client.js'
 import { stopSilentAudio } from '../calls/audio.js'
 import { showCallMessageActions, showIncomingCallModal, startVideoCall, triggerAiInCallAction } from '../calls/calls.js'
 import { appendMessage, createMessageElement, renderChatInterface, setAvatarActingState } from './conversation.js'
-import { formatTimeAgo, formatTimestampForAI, getTimeOfDayGreeting } from '../../features/chat/format'
-import { getDisplayNameByOriginalName, getDisplayNameInGroup, processMentions, syncCharacterAvatarInGroups, syncCharacterNameInGroups } from './groups.js'
+import { formatTimestampForAI, getTimeOfDayGreeting } from '../../features/chat/format'
+import { getDisplayNameInGroup, processMentions, syncCharacterAvatarInGroups, syncCharacterNameInGroups } from './groups.js'
 import { renderChatList } from './list.js'
-import { filterVisiblePostsForAI } from './sharing.js'
 import { addLongPressListener, showCustomAlert } from '../dialogs/dialogs.js'
 import { formatGomokuStateForAI, handleAiGomokuMove } from '../gomoku/gomoku.js'
 import { formatReadingStateForAI, showNotification } from '../home/status.js'
-import { checkAndTriggerAutoSummary, generateSummaryForTimeframe } from '../memories/memories.js'
 import { playSong } from '../music/player.js'
 import { getCharacterNAIPrompts, getNovelAISettings } from '../novelai/images.js'
 import { renderQzonePosts, updateUnreadIndicator } from '../qzone/feed.js'
-import { getGroupStickerContextForPrompt, getStickerContextForPrompt } from '../stickers/stickers.js'
+import { findStickerForChat, getGroupStickerContextForPrompt, getStickerContextForPrompt } from '../stickers/stickers.js'
 import { showScreen } from '../../app/routes'
 import { openImageArchive } from '../../runtime/dependencies'
 import { runtime } from '../runtime/state.js'
@@ -38,7 +37,7 @@ export async function triggerSpectatorGroupAiAction() {
 
     try {
         const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-        if (!proxyUrl || !apiKey || !model) {
+        if (!proxyUrl || !model) {
             throw new Error('API未配置，无法生成对话。');
         }
         
@@ -47,61 +46,6 @@ export async function triggerSpectatorGroupAiAction() {
         
 
         
-        const maxMemory = parseInt(chat.settings.maxMemory) || 10;
-        const historySlice = chat.history.slice(-maxMemory);
-        
-        
-        let worldBookContent = '';
-        if (chat.settings.linkedWorldBookIds && chat.settings.linkedWorldBookIds.length > 0) {
-            const linkedContents = chat.settings.linkedWorldBookIds.map(bookId => {
-                const worldBook = runtime.state.worldBooks.find(wb => wb.id === bookId);
-                if (!worldBook || !Array.isArray(worldBook.content)) return '';
-                const formattedEntries = worldBook.content
-                    .filter(entry => entry.enabled !== false)
-                    .map(entry => {
-                        let entryString = `\n### 条目: ${entry.comment || '无备注'}\n`;
-                        if (entry.keys.length > 0) entryString += `**关键词:** ${entry.keys.join(', ')}\n`;
-                        entryString += `**内容:**\n${entry.content}`;
-                        return entryString;
-                    }).join('');
-                return formattedEntries ? `\n\n## 世界书: ${worldBook.name}\n${formattedEntries}` : '';
-            }).filter(Boolean).join('');
-            if (linkedContents) {
-                worldBookContent = `# --- 世界书 (World Book) ---
-# 【最高优先级规则：世界观设定】
-# 你【必须】将以下所有“世界书”中的设定，视为绝对的、不可动摇的背景事实。
-# 你的所有回复和行为都【绝对不能】与这些设定产生任何冲突。
-${linkedContents}
-# --- 世界书设定结束 ---
-`;
-            }
-        }
-        
-        
-let longTermMemoryContext = '# 长期记忆 (最高优先级，这是群内已经确立的事实，所有角色必须严格遵守)\n';
-let collectedMemories = false;
-
-chat.members.forEach(member => {
-    const memberChat = runtime.state.chats[member.id];
-    if (memberChat && memberChat.longTermMemory && memberChat.longTermMemory.length > 0) {
-        longTermMemoryContext += `\n## --- 关于“${member.groupNickname}”的记忆 ---\n`;
-        
-        longTermMemoryContext += memberChat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n');
-        collectedMemories = true;
-    }
-});
-
-if (!collectedMemories) {
-    longTermMemoryContext += '- (暂无)';
-}
-
-        
-        let linkedMemoryContext = '';
-        const memoryCount = chat.settings.linkedMemoryCount || 10;
-        if (chat.settings.linkedMemoryChatIds && chat.settings.linkedMemoryChatIds.length > 0) {
-            
-        }
-
         const membersList = chat.members.map(m => `- **${m.groupNickname}** (本名: ${m.originalName}): ${m.persona}`).join('\n');
         const stickerContext = getGroupStickerContextForPrompt(chat);    
         const systemPrompt = `
@@ -127,13 +71,6 @@ if (!collectedMemories) {
 # 当前群聊信息
 - **群名称**: ${chat.name}
 
-# 上下文参考 (你必须阅读并遵守)
-${longTermMemoryContext}
-${worldBookContent}${loreContext(chat)}
-${linkedMemoryContext}
-- **这是你们最近的对话历史**:
-${historySlice.map(msg => `${getDisplayNameInGroup(chat, msg.senderName)}: ${msg.content}`).join('\n')}
-
 # 群成员列表及人设 (你扮演的所有角色)
 ${membersList}
 # 可用表情包 (必须严格遵守！)
@@ -144,28 +81,8 @@ ${stickerContext}
 `;
 
         
-        const messagesPayload = historySlice.map(msg => ({
-            role: 'user', 
-            content: `${getDisplayNameInGroup(chat, msg.senderName)}: ${msg.content}`
-        }));
-        
-        let isGemini = proxyUrl.includes('generativelanguage.googleapis.com');
-        let response;
-
-        if (isGemini) {
-            let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesPayload);
-            response = await fetch(geminiConfig.url, geminiConfig.data);
-        } else {
-            response = await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [ {role: 'system', content: systemPrompt}, ...messagesPayload ],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.9,
-                })
-            });
-        }
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt, task: 'QQ group spectator',
+            request: [{ role: 'user', content: 'Continue the group conversation now.' }] });
         
         
         
@@ -203,7 +120,7 @@ ${stickerContext}
                     break;
                 case 'sticker':
                     if (msgData.meaning) {
-                        const sticker = runtime.state.userStickers.find(s => s.name === msgData.meaning);
+                        const sticker = findStickerForChat(chat, msgData.meaning, msgData.name);
                         if (sticker) {
                             aiMessage = { ...baseMessage, type: 'sticker', content: sticker.url, meaning: sticker.name };
                         } else {
@@ -309,7 +226,7 @@ async function triggerAiResponseForConversation() {
             let needsImmediateReaction = false; 
             try {
                 const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-                if (!proxyUrl || !apiKey || !model) {
+                if (!proxyUrl || !model) {
                     alert("Enter a base URL and API key and select a model in API Connections.");
                     if (chat.isGroup) {
                         if (typingIndicator) typingIndicator.style.display = 'none';
@@ -352,16 +269,9 @@ async function triggerAiResponseForConversation() {
         现在，请立即做出决策。`;
                     }
         
-                    const messagesForCallDecision = [{role: 'user', content: callDecisionPrompt}];
-                    
                     try {
-                        let geminiConfig = toGeminiRequestData(model, apiKey, callDecisionPrompt, messagesForCallDecision);
-                        let isGemini = proxyUrl === runtime.GEMINI_API_URL;
-                        const response = isGemini ? await fetch(geminiConfig.url, geminiConfig.data) : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                            body: JSON.stringify({model: model, messages: messagesForCallDecision, temperature: 0.7})
-                        });
+                         const response = await requestContextCompletion(chat, { instructions: callDecisionPrompt, task: 'QQ call decision',
+                             request: [{ role: 'user', content: 'Decide whether to accept this call.' }] }, { temperature: 0.7 });
                         
                         if (!response.ok) throw new Error(`API失败: ${(await response.json()).error.message}`);
                         
@@ -437,15 +347,6 @@ async function triggerAiResponseForConversation() {
                 
                 if (!chat.isGroup && chat.relationship?.status === 'pending_ai_approval') {
                     console.log(`为角色 "${chat.name}" 触发带理由的好友申请决策流程...`);
-                    const contextSummary = chat.history
-                        .filter(m => !m.isHidden)
-                        .slice(-10, -5)
-                        .map(msg => {
-                            const sender = msg.role === 'user' ? '用户' : chat.name;
-                            return `${sender}: ${String(msg.content).substring(0, 50)}...`;
-                        })
-                        .join('\n');
-        
                     
                     const decisionPrompt = `
         # 你的任务
@@ -453,8 +354,6 @@ async function triggerAiResponseForConversation() {
         # 供你决策的上下文信息:
         - **你的角色设定**: ${characterPrompt(chat)}
         - **用户发送的申请理由**: “${chat.relationship.applicationReason}”
-        - **被拉黑前的最后对话摘要**: 
-        ${contextSummary || "（无有效对话记录）"}
         # 你的唯一指令
         根据以上所有信息，你【必须】做出决定，并给出符合你人设的理由。你的回复【必须且只能】是一个JSON对象，格式如下:
         {"decision": "accept", "reason": "（在这里写下你同意的理由，比如：好吧，看在你这么真诚的份上，这次就原谅你啦。）"}
@@ -464,21 +363,8 @@ async function triggerAiResponseForConversation() {
                     
                     try {
                         
-                        const messagesForDecision = [
-                            { role: 'system', content: decisionPrompt },
-                            { role: 'user', content: "请根据以上设定，立即做出你的决定。" }
-                        ];
-                        
-                        let isGemini = proxyUrl === runtime.GEMINI_API_URL;
-                        let geminiConfig = toGeminiRequestData(model, apiKey, decisionPrompt, [{ role: 'user', content: "请根据以上设定，立即做出你的决定。" }]);
-                        
-                        const response = isGemini 
-                            ? await fetch(geminiConfig.url, geminiConfig.data) 
-                            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                                body: JSON.stringify({model: model, messages: messagesForDecision, temperature: runtime.state.globalSettings.apiTemperature ?? 0.8})
-                            });
+                         const response = await requestContextCompletion(chat, { instructions: decisionPrompt, task: 'QQ friend decision',
+                             request: [{ role: 'user', content: 'Review the friend request and return your decision.' }] });
         
                         if (!response.ok) {
                             throw new Error(`API失败: ${(await response.json()).error.message}`);
@@ -555,38 +441,6 @@ ${transcriptText}
        
                 const gomokuContext = formatGomokuStateForAI(runtime.gomokuState[chatId]);
         
-                let worldBookContent = '';
-                if (chat.settings.linkedWorldBookIds && chat.settings.linkedWorldBookIds.length > 0) {
-                    const linkedContents = chat.settings.linkedWorldBookIds.map(bookId => {
-                        const worldBook = runtime.state.worldBooks.find(wb => wb.id === bookId);
-                        if (!worldBook || !Array.isArray(worldBook.content)) return '';
-                
-                        
-                        const formattedEntries = worldBook.content
-                            .filter(entry => entry.enabled !== false) 
-                            .map(entry => {
-                                let entryString = `\n### 条目: ${entry.comment || '无备注'}\n`;
-                                if (entry.keys.length > 0) {
-                                    entryString += `**关键词:** ${entry.keys.join(', ')}\n`;
-                                }
-                                entryString += `**内容:**\n${entry.content}`;
-                                return entryString;
-                            }).join(''); 
-                
-                        return formattedEntries ? `\n\n## 世界书: ${worldBook.name}\n${formattedEntries}` : '';
-                    }).filter(Boolean).join('');
-                    
-                    if (linkedContents) {
-                        worldBookContent = `# --- 世界书 (World Book) ---
-# 【最高优先级规则：世界观设定】
-# 你【必须】将以下所有“世界书”中的设定，视为绝对的、不可动摇的背景事实。
-# 你的所有回复和行为都【绝对不能】与这些设定产生任何冲突。
-${linkedContents}
-# --- 世界书设定结束 ---
-`;
-                    }
-                }
-        
         
                 let musicContext = '';
                 if (runtime.musicState.isActive && runtime.musicState.activeChatId === chatId) {
@@ -620,147 +474,11 @@ ${linkedContents}
                 }
         
         
-                const maxMemory = parseInt(chat.settings.maxMemory) || 10;
-                const historySlice = chat.history.slice(-maxMemory);
-        
-                let sharedContext = '';
-                const lastAiTurnIndex = chat.history.findLastIndex(msg => msg.role === 'assistant');
-                const recentUserMessages = chat.history.slice(lastAiTurnIndex + 1);
-                const shareCardMessage = recentUserMessages.find(msg => msg.type === 'share_card');
-                if (shareCardMessage) {
-                    const payload = shareCardMessage.payload;
-                    const formattedHistory = payload.sharedHistory.map(msg => {
-                        const sender = msg.senderName || (msg.role === 'user' ? (chat.settings.myNickname || '我') : '未知发送者');
-                        let contentText = '';
-                        if (msg.type === 'voice_message') contentText = `[语音消息: ${msg.content}]`;
-                        else if (msg.type === 'ai_image') contentText = `[图片: ${msg.description}]`;
-                        else if (msg.type === 'naiimag') contentText = `[NovelAI图片: ${msg.prompt}]`;
-                        else contentText = String(msg.content);
-                        return `${sender}: ${contentText}`;
-                    }).join('\n');
-                    sharedContext = `
-        # 附加上下文：一段分享的聊天记录
-        - 重要提示：这不是你和当前用户的对话，而是用户从【另一场】与“${payload.sourceChatName}”的对话中分享过来的。
-        - 你的任务：请你阅读并理解下面的对话内容。在接下来的回复中，你可以像真人一样，对这段对话的内容自然地发表你的看法、感受或疑问。
-        ---
-        [分享的聊天记录开始]
-        ${formattedHistory}
-        [分享的聊天记录结束]
-        ---
-        `;
-                }
-                
-                let linkedMemoryContext = '';
-                const memoryCount = chat.settings.linkedMemoryCount || 10;
-
-                if (chat.settings.linkedMemoryChatIds && chat.settings.linkedMemoryChatIds.length > 0) {
-                    
-                    const idsToMount = chat.settings.linkedMemoryChatIds.filter(id => id !== chatId);
-
-                    if (idsToMount.length > 0) {
-                        const linkedChatsWithTimestamps = idsToMount.map(id => {
-                            const linkedChat = runtime.state.chats[id];
-                            if (!linkedChat) return null;
-                            const lastMsg = linkedChat.history.slice(-1);
-                            return {
-                                chat: linkedChat,
-                                latestTimestamp: lastMsg ? lastMsg.timestamp : 0
-                            };
-                        }).filter(Boolean);
-            
-                        linkedChatsWithTimestamps.sort((a, b) => b.latestTimestamp - a.latestTimestamp);
-            
-                        linkedMemoryContext += `\n\n# 参考记忆 (至关重要！你必须【主动】将这些参考记忆中的【关键信息和事件】，自然地融入到当前的对话中，以体现你拥有完整的记忆。不要只是被动等待用户提问！)\n`;
-            
-                        for (const item of linkedChatsWithTimestamps) {
-                            const linkedChat = item.chat;
-                            const prefix = linkedChat.isGroup ? '[群聊]' : '[私聊]';
-                            const timeAgo = item.latestTimestamp > 0 ? ` (最后互动于 ${formatTimeAgo(item.latestTimestamp)})` : '';
-                            linkedMemoryContext += `\n## --- 来自${prefix}“${linkedChat.name}”的参考记忆${timeAgo} ---\n`;
-            
-                            const recentHistory = linkedChat.history.slice(-memoryCount);
-                            const filteredHistory = recentHistory.filter(msg => !String(msg.content).includes('已被用户删除'));
-            
-                            if (filteredHistory.length > 0) {
-                                filteredHistory.forEach(msg => {
-                                    const sender = msg.role === 'user' ? (linkedChat.settings.myNickname || '我') : (msg.senderName || linkedChat.name);
-                                    let contentText = String(msg.content);
-                                    if (msg.type === 'ai_image' || msg.type === 'user_photo') {
-                                        contentText = `[发送了一张图片，描述为：${msg.content}]`;
-                                    } else if (msg.type === 'voice_message') {
-                                        contentText = `[发送了一条语音，内容是：${msg.content}]`;
-                                    }
-                                    const timeAgoForMsg = formatTimeAgo(msg.timestamp);
-                                    linkedMemoryContext += `(${timeAgoForMsg}) ${sender}: ${contentText}\n`;
-                                });
-                            } else {
-                                linkedMemoryContext += "(暂无有效聊天记录)\n";
-                            }
-                        }
-                    }
-                }
-                
-                console.log("本次发送给AI的【挂载记忆】内容如下：\n", linkedMemoryContext);
-        
+                const historySlice = chat.history.filter(message => !message.isTemporary);
+                const activitySources = [callTranscriptContext, musicContext, formatReadingStateForAI(chatId), gomokuContext];
                 if (chat.isGroup) {
        
 
-                let linkedMemoryContext = '';
-                const memoryCount = chat.settings.linkedMemoryCount || 10;
-                if (chat.settings.linkedMemoryChatIds && chat.settings.linkedMemoryChatIds.length > 0) {
-                    const idsToMount = chat.settings.linkedMemoryChatIds.filter(id => id !== chatId);
-                    if (idsToMount.length > 0) {
-                        const linkedChatsWithTimestamps = idsToMount.map(id => {
-                            const linkedChat = runtime.state.chats[id];
-                            if (!linkedChat) return null;
-                            const lastMsg = linkedChat.history.slice(-1);
-                            return { chat: linkedChat, latestTimestamp: lastMsg ? lastMsg.timestamp : 0 };
-                        }).filter(Boolean);
-                        linkedChatsWithTimestamps.sort((a, b) => b.latestTimestamp - a.latestTimestamp);
-                        linkedMemoryContext += `\n\n# 参考记忆 (至关重要！群内角色必须【主动】将这些参考记忆中的【关键信息和事件】，自然地融入到当前的对话中，以体现你们拥有完整的共同记忆。)\n`;
-                        for (const item of linkedChatsWithTimestamps) {
-                            const linkedChat = item.chat;
-                            const prefix = linkedChat.isGroup ? '[群聊]' : '[私聊]';
-                            const timeAgo = item.latestTimestamp > 0 ? ` (最后互动于 ${formatTimeAgo(item.latestTimestamp)})` : '';
-                            linkedMemoryContext += `\n## --- 来自${prefix}“${linkedChat.name}”的参考记忆${timeAgo} ---\n`;
-                            const recentHistory = linkedChat.history.slice(-memoryCount);
-                            const filteredHistory = recentHistory.filter(msg => !String(msg.content).includes('已被用户删除'));
-                            if (filteredHistory.length > 0) {
-                                filteredHistory.forEach(msg => {
-                                    const sender = msg.role === 'user' ? (linkedChat.settings.myNickname || '我') : (msg.senderName || linkedChat.name);
-                                    let contentText = String(msg.content);
-                                    if (msg.type === 'ai_image' || msg.type === 'user_photo') {
-                                        contentText = `[发送了一张图片，描述为：${msg.content}]`;
-                                    } else if (msg.type === 'voice_message') {
-                                        contentText = `[发送了一条语音，内容是：${msg.content}]`;
-                                    }
-                                    linkedMemoryContext += `${sender}: ${contentText}\n`;
-                                });
-                            } else {
-                                linkedMemoryContext += "(暂无有效聊天记录)\n";
-                            }
-                        }
-                    }
-                }
-
-             
-let longTermMemoryContext = '# 长期记忆 (最高优先级，这是群内已经确立的事实，所有角色必须严格遵守)\n';
-let collectedMemories = false;
-
-chat.members.forEach(member => {
-    const memberChat = runtime.state.chats[member.id];
-    if (memberChat && memberChat.longTermMemory && memberChat.longTermMemory.length > 0) {
-        longTermMemoryContext += `\n## --- 关于“${member.groupNickname}”的记忆 ---\n`;
-        
-        longTermMemoryContext += memberChat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n');
-        collectedMemories = true;
-    }
-});
-
-if (!collectedMemories) {
-    longTermMemoryContext += '- (暂无)';
-}
-              
 
 let timeContextText = '';
 let longTimeNoSee = false;
@@ -833,28 +551,8 @@ if (chat.settings.enableTimePerception) {
                     } else {
                         groupAvatarLibraryContext += '- (头像库是空的，无法更换头像)';
                     }
-    const readingContext = formatReadingStateForAI(chatId);
+    activitySources.push(shoppingContext);
 
-const summary3Hours_group = generateSummaryForTimeframe(chat, 3, 'hours');
-const summary6Hours_group = generateSummaryForTimeframe(chat, 6, 'hours');
-const summary9Hours_group = generateSummaryForTimeframe(chat, 9, 'hours');
-const summaryToday_group = generateSummaryForTimeframe(chat, 1, 'days');
-const summary3Days_group = generateSummaryForTimeframe(chat, 3, 'days');
-const summary7Days_group = generateSummaryForTimeframe(chat, 7, 'days');
-
-let multiLayeredSummaryContext_group = '';
-if (summary3Hours_group || summary6Hours_group || summary9Hours_group || summaryToday_group || summary3Days_group || summary7Days_group) {
-    multiLayeredSummaryContext_group += `\n# 智能总结 (基于不同时间维度的群聊回顾)\n`;
-    if (summary3Hours_group) multiLayeredSummaryContext_group += summary3Hours_group;
-    if (summary6Hours_group) multiLayeredSummaryContext_group += summary6Hours_group;
-    if (summary9Hours_group) multiLayeredSummaryContext_group += summary9Hours_group;
-
-    if (summary3Hours_group || summary6Hours_group || summary9Hours_group) multiLayeredSummaryContext_group += '\n';
-
-    if (summaryToday_group) multiLayeredSummaryContext_group += summaryToday_group;
-    if (summary3Days_group) multiLayeredSummaryContext_group += summary3Days_group;
-    if (summary7Days_group) multiLayeredSummaryContext_group += summary7Days_group;
-}
 const stickerContext = getGroupStickerContextForPrompt(chat);
 systemPrompt = `
 # 核心任务：群聊导演
@@ -873,7 +571,6 @@ systemPrompt = `
     -   严禁生成 'name' 字段为 "${myNickname}" (用户) 或 "${chat.name}" (群名) 的消息。
 3.  **禁止出戏**: 绝不能透露你是AI或模型。严禁发展线下剧情。
 ${chat.settings.enableTimePerception ? `4.  **情景感知**: 你的对话【必须】自然地体现出对当前时间 (${currentTime}) 和情景的感知。${longTimeNoSee ? `【重要提示】${timeContextText} 你应该让角色们主动开启新话题来打破沉默。` : ''}` : ''}
-    - **读书**: ${readingContext ? '你们正在一起读书。' + readingContext : '你们没有在读书。'}
 # 导演策略与节奏控制
 1.  **并非人人发言**: 不是每个角色都必须在每一轮都说话。你可以根据当前话题，让1-2个最相关的角色进行深度对话，其他角色可以暂时“潜水”，等待合适的时机再切入。
 2.  **创造“小团体”**: 允许角色之间形成短暂的“两人对话”或“三人讨论”，让群聊更有层次感。
@@ -899,22 +596,12 @@ ${membersWithContacts}
 # 用户的角色
 - **${myNickname}**: ${chat.settings.myPersona}
 
-# 世界观 (所有角色必须严格遵守)
-${worldBookContent}${loreContext(chat)}
-# 长期记忆 (所有角色必须严格遵守)
-${longTermMemoryContext}
-${chat.longTermMemory && chat.longTermMemory.length > 0 ? chat.longTermMemory.map(mem => `- ${mem.content}`).join('\n') : '- (暂无)'}
-${multiLayeredSummaryContext_group}
-${linkedMemoryContext}
-${musicContext}
-${sharedContext}
 ${groupAvatarLibraryContext}
 # 可用表情包 (必须严格遵守！)
 - 当你需要发送表情时，你【必须】从下面的列表中【精确地选择一个】含义（meaning）。
 - 【绝对禁止】使用任何不在列表中的表情含义！
 ${stickerContext}
 ${forbiddenNamesContext}
-${callTranscriptContext}
 # 可用指令列表 (按需组合使用)
 ### 核心聊天
 -   **发文本**: \`{"type": "text", "name": "角色本名", "message": "内容"}\`
@@ -967,6 +654,7 @@ ${preferences.getItem('novelai-enabled') === 'true' ? `-   **NovelAI图片分享
         
                     messagesPayload = historySlice.map(msg => {
                         const sender = msg.role === 'user' ? myNickname : msg.senderName;
+                        const role = msg.role === 'ai' ? 'assistant' : msg.role;
                         let prefix = `${sender}`;
                      
                             
@@ -1040,7 +728,7 @@ ${preferences.getItem('novelai-enabled') === 'true' ? `-   **NovelAI图片分享
                             }
                             
                             content = `[系统提示：${sender} ${recipientSummary}，礼物是：${itemsSummary}]`;
-                            return { role: 'user', content: content };
+                            return { role, content: content };
                         }
         
                         else if (msg.type === 'poll') {
@@ -1048,9 +736,9 @@ ${preferences.getItem('novelai-enabled') === 'true' ? `-   **NovelAI图片分享
                             content = `[系统提示：${msg.senderName} 发起了一个投票 (时间戳: ${msg.timestamp})，问题是：“${msg.question}”，选项有：[${msg.options.join(', ')}]。目前投票的人有：${whoVoted}。你可以使用 'vote' 指令参与投票。]`;
                         }
                         else if (msg.meaning) content = `${sender}: [发送了一个表情，意思是: '${msg.meaning}']`;
-                        else if (Array.isArray(msg.content)) return { role: 'user', content: [...msg.content, { type: 'text', text: prefix }] };
+                        else if (Array.isArray(msg.content)) return { role, content: photoPromptContent(prefix, msg.imageDescription, msg.content) };
                         else content = `${prefix}${msg.content}`;
-                        return { role: 'user', content: content };
+                        return { role, content };
                     }).filter(Boolean);
         
                 } else {
@@ -1073,57 +761,6 @@ ${preferences.getItem('novelai-enabled') === 'true' ? `-   **NovelAI图片分享
 
  
 
-                let linkedMemoryContext = '';
-                const memoryCount = chat.settings.linkedMemoryCount || 10;
-                
-                if (chat.settings.linkedMemoryChatIds && chat.settings.linkedMemoryChatIds.length > 0) {
-                    
-                    const idsToMount = chat.settings.linkedMemoryChatIds.filter(id => id !== chatId);
-
-                    if (idsToMount.length > 0) {
-                        
-                        const linkedChatsWithTimestamps = idsToMount.map(id => {
-                            const linkedChat = runtime.state.chats[id];
-                            if (!linkedChat) return null;
-                            const lastMsg = linkedChat.history.slice(-1)[0];
-                            return {
-                                chat: linkedChat,
-                                latestTimestamp: lastMsg ? lastMsg.timestamp : 0
-                            };
-                        }).filter(Boolean);
-            
-                        linkedChatsWithTimestamps.sort((a, b) => b.latestTimestamp - a.latestTimestamp);
-            
-                        linkedMemoryContext += `\n\n# 参考记忆 (至关重要！你必须【主动】将这些参考记忆中的【关键信息和事件】，自然地融入到当前的对话中，以体现你拥有完整的记忆。不要只是被动等待用户提问！)\n`;
-            
-                        for (const item of linkedChatsWithTimestamps) {
-                            const linkedChat = item.chat;
-                            const prefix = linkedChat.isGroup ? '[群聊]' : '[私聊]';
-                            const timeAgo = item.latestTimestamp > 0 ? ` (最后互动于 ${formatTimeAgo(item.latestTimestamp)})` : '';
-                            linkedMemoryContext += `\n## --- 来自${prefix}“${linkedChat.name}”的参考记忆${timeAgo} ---\n`;
-            
-                            const recentHistory = linkedChat.history.slice(-memoryCount);
-                            const filteredHistory = recentHistory.filter(msg => !String(msg.content).includes('已被用户删除'));
-            
-                            if (filteredHistory.length > 0) {
-                                filteredHistory.forEach(msg => {
-                                    const sender = msg.role === 'user' ? (linkedChat.settings.myNickname || '我') : (msg.senderName || linkedChat.name);
-                                    let contentText = String(msg.content);
-                                    if (msg.type === 'ai_image' || msg.type === 'user_photo') {
-                                        contentText = `[发送了一张图片，描述为：${msg.content}]`;
-                                    } else if (msg.type === 'voice_message') {
-                                        contentText = `[发送了一条语音，内容是：${msg.content}]`;
-                                    }
-                                    const timeAgoForMsg = formatTimeAgo(msg.timestamp);
-                                    linkedMemoryContext += `(${timeAgoForMsg}) ${sender}: ${contentText}\n`;
-                                });
-                            } else {
-                                linkedMemoryContext += "(暂无有效聊天记录)\n";
-                            }
-                        }
-                    }
-                }
-
                     const allProducts = await runtime.db.shoppingProducts.toArray();
                     let shoppingContext = "";
                     if (allProducts.length > 0) {
@@ -1137,33 +774,10 @@ ${preferences.getItem('novelai-enabled') === 'true' ? `-   **NovelAI图片分享
                         const maxLength = chat.settings.offlineMaxLength || 300;
                         const myNickname = chat.settings.myNickname || '我';
                             
-                            let presetContext = '';
-                            if (chat.settings.offlinePresetId) {
-                                
-                                const selectedPreset = runtime.state.presets.find(p => p.id === chat.settings.offlinePresetId);
-                                if (selectedPreset && Array.isArray(selectedPreset.content)) {
-                                    const enabledEntries = selectedPreset.content
-                                        .filter(entry => entry.enabled !== false) 
-                                        .map(entry => `- ${entry.content}`)
-                                        .join('\n');
-                                    if (enabledEntries) {
-                                        
-                                        presetContext = `
-# 【写作风格铁律 (最高优先级)】
-你【必须】严格遵守以下“预设”中的所有规则和风格来描写。它的优先级高于你的基础人设。
----
-${enabledEntries}
----
-`;
-                                    }
-                                }
-                            }
-                       
                                     systemPrompt = `
 # 你的任务
 你现在正处于【线下剧情模式】，你需要扮演角色"${chat.originalName}"，并与用户进行面对面的互动。你的任务是创作一段包含角色动作、神态、心理活动和对话的、连贯的叙事片段。
             
-           你必须严格遵守 ${presetContext}
 # 你的角色设定：
 你必须严格遵守${characterPrompt(chat)}
 
@@ -1172,23 +786,6 @@ ${chat.settings.myPersona}
 
 # 供你参考的信息
 ${chat.settings.enableTimePerception ? `- **当前时间**: ${currentTime} (${timeOfDayGreeting})` : ''}
-你必须严格遵守${worldBookContent}${loreContext(chat)}
-# 长期记忆 (你必须严格遵守的事实)
-${chat.longTermMemory && chat.longTermMemory.length > 0 ? chat.longTermMemory.map(mem => `- ${mem.content}`).join('\n') : '- (暂无)'}
-
-${linkedMemoryContext}
-- **你们最后的对话摘要**: 
-${historySlice.map(msg => {
-    let line = `${msg.role === 'user' ? myNickname : chat.name}: `;
-    if (msg.type === 'offline_text') {
-        line += `「${msg.dialogue || ''}」 ${msg.description || ''}`;
-    } else {
-        line += String(msg.content);
-    }
-    return line;
-}).join('\n')}
-
-
  # 【格式铁律 (最高优先级)】
 1.  **【格式】**: 你的回复【必须】是一个JSON数组，且数组中【永远只能包含一个】元素，格式如下:
     \`[{"type": "offline_text", "content": "在这里写入你创作的、混合了对话和描写的完整段落。"}]\`
@@ -1239,7 +836,7 @@ ${historySlice.map(msg => {
             const prefix = `${myNickname}: `;
             let contentStr = '';
             if (Array.isArray(msg.content) && msg.content[0]?.type === 'image_url') {
-                return { role: 'user', content: [{ type: 'text', text: prefix }, ...msg.content] };
+                return { role: 'user', content: photoPromptContent(prefix, msg.imageDescription, msg.content) };
             }
         
         if (msg.quote) {
@@ -1325,80 +922,6 @@ ${historySlice.map(msg => {
                             });
                         }
                         
-                        const allRecentPosts = await runtime.db.qzonePosts.orderBy('timestamp').reverse().limit(10).toArray();
-                        const visiblePosts = filterVisiblePostsForAI(allRecentPosts, chat);
-            
-                        let postsContext = "";
-                        if (visiblePosts.length > 0) {
-                            postsContext = "\n\n# 最近的动态列表 (供你参考和评论):\n";
-                            const aiOriginalName = chat.originalName;
-                            for (const post of visiblePosts) {
-                let authorName;
-
-                
-                if (post.authorId === 'user') {
-                    authorName = runtime.state.qzoneSettings.nickname;
-                } else if (String(post.authorId).startsWith('npc_')) {
-                    
-                    authorName = post.authorOriginalName || '一位神秘的NPC';
-                } else {
-                    
-                    const authorChat = runtime.state.chats[post.authorId];
-                    authorName = authorChat ? authorChat.name : '一位朋友';
-                }
-                
-                                if (post.authorId === chatId) authorName += " (这是你的帖子)";
-            
-                                let contentSummary;
-                                if (post.type === 'repost') {
-                                    const repostComment = post.repostComment ? `并评论说："${post.repostComment}"` : '';
-                                    let originalAuthorName = '原作者';
-                                    const originalAuthorId = post.originalPost.authorId;
-                                    if (originalAuthorId === 'user') {
-                                        originalAuthorName = runtime.state.qzoneSettings.nickname;
-                                    } else if (runtime.state.chats[originalAuthorId]) {
-                                        originalAuthorName = runtime.state.chats[originalAuthorId].name;
-                                    }
-                                    let originalContentSummary;
-                                    const originalPost = post.originalPost;
-                                    if (originalPost.type === 'text_image') {
-                                        originalContentSummary = `[文字图] ${originalPost.publicText || ''} (图片描述: "${(originalPost.hiddenContent || '').substring(0, 40)}...")`;
-                                    } else if (originalPost.type === 'image_post') {
-                                        originalContentSummary = `[图片] ${originalPost.publicText || ''} (图片描述: "${(originalPost.imageDescription || '').substring(0, 40)}...")`;
-                                    } else { 
-                                        originalContentSummary = `"${(originalPost.content || '').substring(0, 40)}..."`;
-                                    }
-                                    contentSummary = `转发了 @${originalAuthorName} 的动态 ${repostComment}【原动态内容: ${originalContentSummary}】`;
-                                } else if (post.type === 'text_image') {
-                                    contentSummary = `[一张图片，其隐藏文字为："${post.hiddenContent}"] ${post.publicText || ''}`.substring(0, 50) + '...';
-                                } else if (post.type === 'image_post') {
-                                    contentSummary = `[一张图片，描述为："${post.imageDescription}"] ${post.publicText || ''}`.substring(0, 50) + '...';
-                                } else if (post.type === 'naiimag' && post.prompt) {
-                                    const prompts = Array.isArray(post.prompt) ? post.prompt : [post.prompt];
-                                    contentSummary = (post.publicText || '') + ` [包含${prompts.length}张NovelAI图片: ${prompts.join(', ')}]`;
-                                } else {
-                                    
-                                contentSummary = String(post.publicText || post.content || "一条动态").substring(0, 50) + '...';
-                                }
-                                postsContext += `- (ID: ${post.id}) 作者: ${authorName}, 内容: "${contentSummary}"\n`;
-            
-                                if (post.comments && post.comments.length > 0) {
-                                    for (const comment of post.comments) {
-                                        if (typeof comment === 'object' && comment.commenterName) {
-                                            const commenterDisplayName = getDisplayNameByOriginalName(comment.commenterName);
-                                            let commentText = comment.meaning ? `[表情: '${comment.meaning}']` : comment.text;
-                                            
-                                            if (comment.commenterName === aiOriginalName) {
-                                                postsContext += `  - 你评论说: ${commentText}\n`;
-                                            } else {
-                                                postsContext += `  - 评论: ${commenterDisplayName} (本名: ${comment.commenterName}): ${commentText}\n`;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-            
                         const myNickname = chat.settings.myNickname || '我';
                         
 
@@ -1431,27 +954,7 @@ if (chat.settings.enableTimePerception) {
         timeContext = "- **对话状态**: (暂无有效对话历史)";
     }
 }
-    const readingContext = formatReadingStateForAI(chatId);   
-
-
-const summary3Hours = generateSummaryForTimeframe(chat, 3, 'hours');
-const summary6Hours = generateSummaryForTimeframe(chat, 6, 'hours');
-const summary9Hours = generateSummaryForTimeframe(chat, 9, 'hours');
-const summaryToday = generateSummaryForTimeframe(chat, 1, 'days');
-const summary3Days = generateSummaryForTimeframe(chat, 3, 'days');
-const summary7Days = generateSummaryForTimeframe(chat, 7, 'days');
-
-let multiLayeredSummaryContext = '';
-if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3Days || summary7Days) {
-    multiLayeredSummaryContext += `\n# 智能总结 (基于不同时间维度的对话回顾)\n`;
-    if (summary3Hours) multiLayeredSummaryContext += summary3Hours;
-    if (summary6Hours) multiLayeredSummaryContext += summary6Hours;
-    if (summary9Hours) multiLayeredSummaryContext += summary9Hours;
-    if (summary3Hours || summary6Hours || summary9Hours) multiLayeredSummaryContext += '\n';
-    if (summaryToday) multiLayeredSummaryContext += summaryToday;
-    if (summary3Days) multiLayeredSummaryContext += summary3Days;
-    if (summary7Days) multiLayeredSummaryContext += summary7Days;
-}
+    activitySources.push(latestThoughtContext, shoppingContext);
 systemPrompt = `
 # 身份与核心任务
 你正在扮演角色“${chat.originalName}”，与用户（你的聊天对象）进行一场自然的、生活化的在线聊天。你的所有行为和决策都必须严格围绕你的角色设定展开。
@@ -1494,19 +997,12 @@ systemPrompt = `
 -  **元数据铁律 **: 你的对话历史中可能包含 (Timestamp: ...) 标记、[系统提示：...] 文本、或你自己上一轮的JSON格式回复。这些都是【系统元数据】，你【必须】完全忽略它们，【绝对禁止】将它们评论为“火星文”、“乱码”或任何你无法理解的内容。
 # 你的角色设定
 你必须严格遵守${characterPrompt(chat)}
-${latestThoughtContext}
 # 对话者的角色设定
 ${chat.settings.myPersona}
 
 # 当前情景
 ${chat.settings.enableTimePerception ? `- **当前时间**: ${currentTime} (${timeOfDayGreeting})` : ''}
 ${timeContext}
-# 世界观 (必须严格遵守)
-${worldBookContent}${loreContext(chat)}
-${linkedMemoryContext}
-# 长期记忆 (必须严格遵守)
-${chat.longTermMemory && chat.longTermMemory.length > 0 ? chat.longTermMemory.map(mem => `- ${mem.content}`).join('\n') : '- (暂无)'}
-${multiLayeredSummaryContext}
 # 关系与身份档案 (至关重要)
 -   **你的本名**: "${chat.originalName}" (核心身份，用于指令中的'name'字段)
 -   **用户给你的备注**: "${chat.name}" (你可以建议并修改)
@@ -1518,23 +1014,17 @@ ${multiLayeredSummaryContext}
 - 当你需要发送表情时，你【必须】从下面的列表中【精确地选择一个】含义（meaning）。
 - 【绝对禁止】使用任何不在列表中的表情含义！
 ${stickerContext}
-${sharedContext}
-${callTranscriptContext} 
 # 社交圈与动态
 ${contactsList}
-${postsContext}
 
 # 情景感知:
     ${chat.settings.enableTimePerception ? `- **时间**: 你必须感知到当前是 ${currentTime} (${timeOfDayGreeting})，并在对话中自然地体现出来。` : ''}
-    - **音乐**: ${musicContext ? '你们正在一起听歌，' + musicContext : '你们没有在听歌。'}
-    - **读书**: ${readingContext ? '你们正在一起读书。' + readingContext : '你们没有在读书。'}
 
 # 可用资源
 -   **你的头像库**:
     ${chat.settings.aiAvatarLibrary && chat.settings.aiAvatarLibrary.length > 0 ? chat.settings.aiAvatarLibrary.map(avatar => `- ${avatar.name}`).join('\n') : '- (空)'}
 -   **用户的头像库**:
     ${chat.settings.myAvatarLibrary && chat.settings.myAvatarLibrary.length > 0 ? chat.settings.myAvatarLibrary.map(avatar => `- ${avatar.name}`).join('\n') : '- (空)'}
--   **五子棋局势**: ${gomokuContext}
 
 
 
@@ -1605,7 +1095,7 @@ messagesPayload = historySlice.map(msg => {
     if (msg.isHidden && msg.role === 'system') {
         
         
-        return { role: 'user', content: msg.content };
+        return { role: 'system', content: msg.content };
     } 
     
     else if (msg.isHidden) {
@@ -1640,7 +1130,7 @@ messagesPayload = historySlice.map(msg => {
         const prefix = `(Timestamp: ${msg.timestamp}) `;
         let contentStr = '';
         if (Array.isArray(msg.content) && msg.content[0]?.type === 'image_url') {
-            return { role: 'user', content: [{ type: 'text', text: prefix }, ...msg.content] };
+            return { role: 'user', content: photoPromptContent(prefix, msg.imageDescription, msg.content) };
         }
     
     if (msg.quote) {
@@ -1689,23 +1179,12 @@ messagesPayload = historySlice.map(msg => {
   
             
                         if (!chat.isGroup && chat.relationship?.status === 'pending_ai_approval') {
-                            const contextSummaryForApproval = chat.history
-                                .filter(m => !m.isHidden)
-                                .slice(-10)
-                                .map(msg => {
-                                    const sender = msg.role === 'user' ? '用户' : chat.name;
-                                    return `${sender}: ${String(msg.content).substring(0, 50)}...`;
-                                })
-                                .join('\n');
                             const friendRequestInstruction = {
                                 role: 'user',
                                 content: `
         [系统重要指令]
         用户向你发送了好友申请，理由是：“${chat.relationship.applicationReason}”。
         作为参考，这是你们之前的最后一段聊天记录：
-        ---
-        ${contextSummaryForApproval}
-        ---
         请你根据以上所有信息，以及你的人设，使用 friend_request_response 指令，并设置 decision 为 'accept' 或 'reject' 来决定是否通过。
         `
                             };
@@ -1714,25 +1193,19 @@ messagesPayload = historySlice.map(msg => {
                     }
                 }           
             
-                    let  isGemini = proxyUrl === runtime.GEMINI_API_URL;
-                    let geminiConfig = toGeminiRequestData(model,apiKey,systemPrompt, messagesPayload)
-                    
+                    const turnContext = latestUserTurn(messagesPayload);
+                    const streamingPreview = document.getElementById('context-stream-preview');
                     let response;
                     try {
-                         response = isGemini 
-                            ? await fetch(geminiConfig.url, geminiConfig.data) 
-                            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                                body: JSON.stringify({
-                                    model: model,
-                                    messages: [{role: 'system', content: systemPrompt}, ...messagesPayload],
-                                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.8,
-                                    stream: false
-                                })
-                            });
-                    } catch (networkError) {
-                        throw new Error(`网络请求失败: ${networkError.message}`);
+                        response = await requestContextCompletion(chat, { instructions: systemPrompt, ...turnContext,
+                            activity: activitySources, task: 'QQ reply' }, { swipes: !chat.settings.isOfflineMode, onText: text => {
+                                if (!streamingPreview || runtime.state.activeChatId !== chatId) return;
+                                const preview = streamingReplyText(text);
+                                streamingPreview.textContent = preview.slice(-700);
+                                streamingPreview.hidden = !preview;
+                            } });
+                    } finally {
+                        if (streamingPreview) { streamingPreview.hidden = true; streamingPreview.textContent = ''; }
                     }
         
                     if (!response.ok) {
@@ -1803,7 +1276,7 @@ if (chat.settings.isOfflineMode) {
 
 
 const lastUserMessage = chat.history.filter(m => m.role === 'user' && !m.isHidden).pop();
-if (lastUserMessage && 
+if (maySendImages() && lastUserMessage &&
     Array.isArray(lastUserMessage.content) && 
     lastUserMessage.content[0]?.type === 'image_url' &&
     !lastUserMessage.imageProcessed) { 
@@ -3040,7 +2513,7 @@ chat.history.push(aiClaimedMessage);
                             break;
                         case 'sticker':
                             if (msgData.meaning) {
-                                const sticker = runtime.state.userStickers.find(s => s.name === msgData.meaning);
+                                const sticker = findStickerForChat(chat, msgData.meaning, msgData.name);
                                 if (sticker) {
                                     aiMessage = { ...baseMessage, type: 'sticker', content: sticker.url, meaning: sticker.name };
                                 } else {
@@ -3412,6 +2885,17 @@ break;
                     }
         
                     if (aiMessage) {
+                        if (messagesArray.length === 1 && msgData.type === 'text' && typeof aiMessage.content === 'string') {
+                            const first = aiMessage.content;
+                            const texts = (data.eephoneAlternatives ?? []).flatMap(raw => {
+                                const actions = parseAiResponse(raw);
+                                if (actions.length !== 1 || actions[0].type !== 'text' || (chat.isGroup && actions[0].name !== msgData.name)) return [];
+                                const text = String(actions[0].content || actions[0].message || '').trim();
+                                return text && !text.startsWith('[V]') ? [text] : [];
+                            });
+                            const variants = [...new Set([first, ...texts])].map(text => ({ text, plainText: aiMessage.plainText }));
+                            if (variants.length > 1) aiMessage.swipes = { variants, index: 0 };
+                        }
                         chat.history.push(aiMessage);
                        if (!isViewingThisChat) {
                             chat.unreadCount = (chat.unreadCount || 0) + 1;
@@ -3510,10 +2994,6 @@ if (qzoneActionTaken) {
                     }
                 }
                 renderChatList();
-                if (isViewingThisChat) {
-                    checkAndTriggerAutoSummary(chatId);
-                 
-                }
 stopSilentAudio(); 
             }
         }
@@ -3536,7 +3016,7 @@ export async function triggerGroupAiAction(chatId) {
             
             
             const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-            if (!proxyUrl || !apiKey || !model) return;
+            if (!proxyUrl || !model) return;
         
             const myNickname = chat.settings.myNickname || '我';
             const now = new Date();
@@ -3588,192 +3068,8 @@ export async function triggerGroupAiAction(chatId) {
                         timeContextText = "群里还没有任何消息。";
                     }
                 }
-                let recentContextSummary = "你们最近没有有效聊天记录。";
-const maxMemory = chat.settings.maxMemory || 10; 
-const recentHistory = chat.history.filter(m => !m.isHidden).slice(-maxMemory);
-                if (recentHistory.length > 0) {
-                    recentContextSummary = "这是你们最近的对话：\n" + recentHistory.map(msg => {
-                        const sender = msg.role === 'user' ? myNickname : getDisplayNameInGroup(chat, msg.senderName);
-                        const content = String(msg.content || msg.message || '').substring(0, 50);
-                        return `${sender}: ${content}...`;
-                    }).join('\n');
-                }
-        
                 const membersList = chat.members.map(m => `- **${m.groupNickname}** (本名: ${m.originalName}): ${m.persona}`).join('\n');
         
-        let longTermMemoryContext = '# 长期记忆 (最高优先级，这是群内已经确立的事实，所有角色必须严格遵守)\n';
-        let collectedMemories = false;
-        
-        chat.members.forEach(member => {
-            const memberChat = runtime.state.chats[member.id];
-            if (memberChat && memberChat.longTermMemory && memberChat.longTermMemory.length > 0) {
-                longTermMemoryContext += `\n## --- 关于“${member.groupNickname}”的记忆 ---\n`;
-                longTermMemoryContext += memberChat.longTermMemory.map(mem => `- ${mem.content}`).join('\n');
-                collectedMemories = true;
-            }
-        });
-
-        if (!collectedMemories) {
-            longTermMemoryContext += '- (暂无)';
-        }
-          
-        
-        let worldBookContent = '';
-        if (chat.settings.linkedWorldBookIds && chat.settings.linkedWorldBookIds.length > 0) {
-            const linkedContents = chat.settings.linkedWorldBookIds.map(bookId => {
-                const worldBook = runtime.state.worldBooks.find(wb => wb.id === bookId);
-                if (!worldBook || !Array.isArray(worldBook.content)) return '';
-
-                
-                const formattedEntries = worldBook.content
-                    .filter(entry => entry.enabled !== false) 
-                    .map(entry => {
-                        let entryString = `\n### 条目: ${entry.comment || '无备注'}\n`;
-                        if (entry.keys.length > 0) {
-                            entryString += `**关键词:** ${entry.keys.join(', ')}\n`;
-                        }
-                        entryString += `**内容:**\n${entry.content}`;
-                        return entryString;
-                    }).join('');
-
-                return formattedEntries ? `\n\n## 世界书: ${worldBook.name}\n${formattedEntries}` : '';
-            }).filter(Boolean).join('');
-            
-            if (linkedContents) {
-                worldBookContent = `# --- 世界书 (World Book) ---
-# 【最高优先级规则：世界观设定】
-# 你【必须】将以下所有“世界书”中的设定，视为绝对的、不可动摇的背景事实。
-# 你的所有回复和行为都【绝对不能】与这些设定产生任何冲突。
-${linkedContents}
-# --- 世界书设定结束 ---
-`;
-            }
-        }
-          
-        
-                let linkedMemoryContext = '';
-                const memoryCount = chat.settings.linkedMemoryCount || 10;
-                if (chat.settings.linkedMemoryChatIds && chat.settings.linkedMemoryChatIds.length > 0) {
-                    const linkedChatsWithTimestamps = chat.settings.linkedMemoryChatIds.map(id => {
-                        const linkedChat = runtime.state.chats[id];
-                        if (!linkedChat) return null;
-                        const lastMsg = linkedChat.history.slice(-1)[0];
-                        return {
-                            chat: linkedChat,
-                            latestTimestamp: lastMsg ? lastMsg.timestamp : 0
-                        };
-                    }).filter(Boolean); 
-        
-                    linkedChatsWithTimestamps.sort((a, b) => b.latestTimestamp - a.latestTimestamp);
-                    linkedMemoryContext += `\n\n# 参考记忆 (至关重要！群内角色必须【主动】将这些参考记忆中的【关键信息和事件】，自然地融入到当前的对话中，以体现你们拥有完整的共同记忆。)\n`;
-                    for (const item of linkedChatsWithTimestamps) {
-                        const linkedChat = item.chat;
-                        const prefix = linkedChat.isGroup ? '[群聊]' : '[私聊]';
-                        const timeAgo = item.latestTimestamp > 0 ? ` (最后互动于 ${formatTimeAgo(item.latestTimestamp)})` : '';
-                        linkedMemoryContext += `\n## --- 来自${prefix}“${linkedChat.name}”的参考记忆${timeAgo} ---\n`;
-                        const recentHistory = linkedChat.history.slice(-memoryCount);
-                        const filteredHistory = recentHistory.filter(msg => !String(msg.content).includes('已被用户删除'));
-                        if (filteredHistory.length > 0) {
-                            filteredHistory.forEach(msg => {
-                                const sender = msg.role === 'user' ? (linkedChat.settings.myNickname || '我') : (msg.senderName || linkedChat.name);
-                                let contentText = String(msg.content);
-                                if (msg.type === 'ai_image' || msg.type === 'user_photo') {
-                                    contentText = `[发送了一张图片，描述为：${msg.content}]`;
-                                } else if (msg.type === 'voice_message') {
-                                    contentText = `[发送了一条语音，内容是：${msg.content}]`;
-                                }
-                                linkedMemoryContext += `${sender}: ${contentText}\n`;
-                            });
-                        } else {
-                            linkedMemoryContext += "(暂无有效聊天记录)\n";
-                        }
-                    }
-                }
-                const allRecentPosts = await runtime.db.qzonePosts.orderBy('timestamp').reverse().limit(5).toArray();
-                let dynamicContext = "";
-                
-                const visiblePostsForGroup = new Set();
-                for (const member of chat.members) {
-                    const memberChat = runtime.state.chats[member.id];
-                    if (memberChat) {
-                        const visibleForMember = filterVisiblePostsForAI(allRecentPosts, memberChat);
-                        visibleForMember.forEach(post => visiblePostsForGroup.add(post));
-                    }
-                }
-        
-                const groupMemberNames = new Set(chat.members.map(m => m.originalName));
-                const unInteractedPostsForGroup = [...visiblePostsForGroup].filter(post => {
-                    const hasBeenLikedByGroup = post.likes && post.likes.some(likerName => groupMemberNames.has(likerName));
-                    const hasBeenCommentedByGroup = post.comments && post.comments.some(comment => typeof comment === 'object' && groupMemberNames.has(comment.commenterName));
-                    return !hasBeenLikedByGroup && !hasBeenCommentedByGroup;
-                });
-                
-                if (unInteractedPostsForGroup.length > 0) {
-                    let postsContext = "\n\n# 最近的动态列表 (供群内角色参考和评论):\n";
-                    for (const post of unInteractedPostsForGroup) {
-                        let authorName = post.authorId === 'user' ? myNickname : (runtime.state.chats[post.authorId]?.name || '一位朋友');
-                        let contentSummary;
-                        if (post.type === 'repost') {
-                            const repostComment = post.repostComment ? `并评论说：“${post.repostComment}”` : '';
-                            let originalAuthorName = '原作者';
-                            const originalAuthorId = post.originalPost.authorId;
-                            if (originalAuthorId === 'user') {
-                                originalAuthorName = runtime.state.qzoneSettings.nickname;
-                            } else if (runtime.state.chats[originalAuthorId]) {
-                                originalAuthorName = runtime.state.chats[originalAuthorId].name;
-                            }
-                            let originalContentSummary;
-                            const originalPost = post.originalPost;
-                            if (originalPost.type === 'text_image') {
-                                originalContentSummary = `[文字图] ${originalPost.publicText || ''} (图片描述: “${(originalPost.hiddenContent || '').substring(0, 40)}...”)`;
-                            } else if (originalPost.type === 'image_post') {
-                                originalContentSummary = `[图片] ${originalPost.publicText || ''} (图片描述: “${(originalPost.imageDescription || '').substring(0, 40)}...”)`;
-                            } else { 
-                                originalContentSummary = `“${(originalPost.content || '').substring(0, 40)}...”`;
-                            }
-                            contentSummary = `转发了 @${originalAuthorName} 的动态 ${repostComment}【原动态内容: ${originalContentSummary}】`;
-                        } else if (post.type === 'text_image') {
-                            contentSummary = `[一张图片，其隐藏文字为：“${post.hiddenContent}”] ${post.publicText || ''}`.substring(0, 50) + '...';
-                        } else if (post.type === 'image_post') {
-                            contentSummary = `[一张图片，描述为：“${post.imageDescription}”] ${post.publicText || ''}`.substring(0, 50) + '...';
-                        } else {
-                            
-                              contentSummary = String(post.publicText || post.content || "一条动态").substring(0, 50) + '...';
-                        }
-                        postsContext += `- (ID: ${post.id}) 作者: ${authorName}, 内容: "${contentSummary}"\n`;
-                        if (post.comments && post.comments.length > 0) {
-                            for (const comment of post.comments) {
-                                if (typeof comment === 'object' && comment.commenterName) {
-                                    const commenterDisplayName = getDisplayNameByOriginalName(comment.commenterName);
-                                    let commentText = comment.meaning ? `[表情: '${comment.meaning}']` : comment.text;
-                                    postsContext += `  - 评论: ${commenterDisplayName} (本名: ${comment.commenterName}): ${commentText}\n`;
-                                }
-                            }
-                        }
-                    }
-                    dynamicContext = postsContext;
-                }
-   
-const summary3Hours_group = generateSummaryForTimeframe(chat, 3, 'hours');
-const summary6Hours_group = generateSummaryForTimeframe(chat, 6, 'hours');
-const summary9Hours_group = generateSummaryForTimeframe(chat, 9, 'hours');
-const summaryToday_group = generateSummaryForTimeframe(chat, 1, 'days');
-const summary3Days_group = generateSummaryForTimeframe(chat, 3, 'days');
-const summary7Days_group = generateSummaryForTimeframe(chat, 7, 'days');
-
-let multiLayeredSummaryContext_group = '';
-if (summary3Hours_group || summary6Hours_group || summary9Hours_group || summaryToday_group || summary3Days_group || summary7Days_group) {
-    multiLayeredSummaryContext_group += `\n# 智能总结 (基于不同时间维度的群聊回顾)\n`;
-    if (summary3Hours_group) multiLayeredSummaryContext_group += summary3Hours_group;
-    if (summary6Hours_group) multiLayeredSummaryContext_group += summary6Hours_group;
-    if (summary9Hours_group) multiLayeredSummaryContext_group += summary9Hours_group;
-
-    if (summary3Hours_group || summary6Hours_group || summary9Hours_group) multiLayeredSummaryContext_group += '\n';
-
-    if (summaryToday_group) multiLayeredSummaryContext_group += summaryToday_group;
-    if (summary3Days_group) multiLayeredSummaryContext_group += summary3Days_group;
-    if (summary7Days_group) multiLayeredSummaryContext_group += summary7Days_group;
-}  
         const stickerContext = getGroupStickerContextForPrompt(chat);   
                 systemPrompt = `
         # 你的任务
@@ -3785,7 +3081,6 @@ if (summary3Hours_group || summary6Hours_group || summary9Hours_group || summary
 2.  当有多个角色在同一轮发言时，他们的对话【必须】有逻辑上的前后关联。后面的角色应该**回应、反驳、或补充**前面角色的发言。
 3.  模拟真实的聊天节奏。可以是一个角色提出问题，另一个角色立刻回答；或者一个角色开玩笑，另一个角色吐槽。
 4.  你【绝对不能】生成几段毫无关联的独白。这会让对话显得非常机械和不真实。        
-${longTermMemoryContext}
         
         # 核心规则
         你的回复【必须】是一个JSON数组，可以包含一个或多个行动对象。每个对象的 "name" 字段【必须】是角色的【本名】。你【绝对不能】生成 "name" 字段为 "${myNickname}" 的消息。严格遵守每个角色的设定，禁止出戏。
@@ -3803,11 +3098,6 @@ ${longTermMemoryContext}
 
         # 当前群聊信息
         - **群名称**: ${chat.name}
-        ${worldBookContent}${loreContext(chat)}
-        # 长期记忆 (最高优先级，这是群内已经确立的事实，所有角色必须严格遵守)
-        ${chat.longTermMemory && chat.longTermMemory.length > 0 ? chat.longTermMemory.map(mem => `- ${mem.content}`).join('\n') : '- (暂无)'}       
-        ${multiLayeredSummaryContext_group}
-        ${linkedMemoryContext}
         
         # 群成员列表及人设
         ${membersList}
@@ -3816,59 +3106,17 @@ ${longTermMemoryContext}
         # 用户的角色
         - **${myNickname}**: ${chat.settings.myPersona}
         
-        # 最近的对话摘要 (供你参考)
-        ${recentContextSummary}
-        
-        # 最近的动态列表 (供你参考和评论)
-        ${dynamicContext}
-        
         现在，请开始你的导演工作，让群聊再次热闹起来吧！
         `;
             }
-    const recentHistoryForPayload = chat.history.filter(m => !m.isHidden).slice(-10);
-    const messagesPayload = [
-        { role: 'system', content: systemPrompt },
-        
-        ...recentHistoryForPayload.map(msg => {
-            const sender = msg.role === 'user' ? myNickname : getDisplayNameInGroup(chat, msg.senderName);
-            let content = msg.content;
-            
-            if (msg.type === 'ai_image' || msg.type === 'user_photo') {
-                content = `[发送了一张图片，描述为：'${msg.content}']`;
-            } else if (msg.type === 'voice_message') {
-                content = `[发送了一条语音，内容是：'${msg.content}']`;
-            } else if (typeof content !== 'string') {
-                content = '[发送了一条复杂消息，如卡片或转账]';
-            }
-
-            return {
-                role: 'user', 
-                content: `${sender}: ${content}`
-            };
-        })
-    ];
-
             try {
-                const messagesPayload = [{ role: 'user', content: systemPrompt }];
-                let isGemini = proxyUrl === runtime.GEMINI_API_URL;
-                let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesPayload);
-        
-        const response = isGemini ? 
-            await fetch(geminiConfig.url, geminiConfig.data) : 
-            await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    model: model,
-                    messages: messagesPayload, 
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.9,
-                })
-            });
+                const response = await requestContextCompletion(chat, { instructions: systemPrompt, task: 'QQ group activity',
+                    request: [{ role: 'user', content: 'Choose the next action for this group.' }] });
         
                 if (!response.ok) throw new Error((await response.json()).error.message);
         
                 const data = await response.json();
-                const aiResponseContent = isGemini ? data.candidates[0].content.parts[0].text : data.choices[0].message.content;
+                const aiResponseContent = getGeminiResponseText(data);
                 const responseArray = parseAiResponse(aiResponseContent);
         
                 if (!responseArray || responseArray.length === 0) {
@@ -3977,7 +3225,7 @@ for (const action of responseArray) {
                     switch (action.type) {
                         case 'sticker':
                             if (action.meaning) {
-                                const sticker = runtime.state.userStickers.find(s => s.name === action.meaning);
+                                const sticker = findStickerForChat(chat, action.meaning, action.name);
                                 if (sticker) {
                                     aiMessage = { ...baseMessage, type: 'sticker', content: sticker.url, meaning: sticker.name };
                                 } else {
@@ -4092,36 +3340,6 @@ export async function handleSpectatorReroll() {
     triggerSpectatorGroupAiAction();
 }
 
-export async function handleRegenerateResponse() {
-            const chat = runtime.state.chats[runtime.state.activeChatId];
-            if (!chat) return;
-        
-            
-            const lastUserMsgIndex = chat.history.findLastIndex(msg => msg.role === 'user' && !msg.isHidden);
-        
-            if (lastUserMsgIndex === -1) {
-                alert("Send a message before regenerating a reply.");
-                return;
-            }
-        
-            
-            const lastAiMsgIndex = chat.history.findLastIndex(msg => msg.role === 'assistant');
-            if (lastAiMsgIndex < lastUserMsgIndex) {
-                alert("Generate a reply to your last message first.");
-                return;
-            }
-        
-            
-            chat.history.splice(lastUserMsgIndex + 1);
-  
-            
-            await runtime.db.chats.put(chat);
-            await renderChatInterface(runtime.state.activeChatId);
-            
-            
-            await triggerAiResponse();
-        }
-
 export async function handleRegenerateCallResponse() {
             if (!runtime.videoCallState.isActive) return;
         
@@ -4180,12 +3398,10 @@ async function handlePropelActionForConversation() {
     
     try {
         const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-        if (!proxyUrl || !apiKey || !model) {
+        if (!proxyUrl || !model) {
             throw new Error('API未配置');
         }
 
-        const maxMemory = parseInt(chat.settings.maxMemory) || 10;
-        const historySlice = chat.history.slice(-maxMemory);
 
         const now = new Date();
         const chinaTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (3600000 * 8));
@@ -4196,31 +3412,6 @@ async function handlePropelActionForConversation() {
         
                                
                       
-        let worldBookContent = '';
-        if (chat.settings.linkedWorldBookIds && chat.settings.linkedWorldBookIds.length > 0) {
-            const linkedContents = chat.settings.linkedWorldBookIds.map(bookId => {
-                const worldBook = runtime.state.worldBooks.find(wb => wb.id === bookId);
-                if (!worldBook || !Array.isArray(worldBook.content)) return '';
-                const formattedEntries = worldBook.content
-                    .filter(entry => entry.enabled !== false)
-                    .map(entry => {
-                        let entryString = `\n### 条目: ${entry.comment || '无备注'}\n`;
-                        if (entry.keys.length > 0) entryString += `**关键词:** ${entry.keys.join(', ')}\n`;
-                        entryString += `**内容:**\n${entry.content}`;
-                        return entryString;
-                    }).join('');
-                return formattedEntries ? `\n\n## 世界书: ${worldBook.name}\n${formattedEntries}` : '';
-            }).filter(Boolean).join('');
-            if (linkedContents) {
-                worldBookContent = `# --- 世界书 (World Book) ---
-# 【最高优先级规则：世界观设定】
-# 你【必须】将以下所有“世界书”中的设定，视为绝对的、不可动摇的背景事实。
-# 你的所有回复和行为都【绝对不能】与这些设定产生任何冲突。
-${linkedContents}
-# --- 世界书设定结束 ---
-`;
-            }
-        }
         let musicContext = '';
         if (runtime.musicState.isActive && runtime.musicState.activeChatId === chat.id) {
             const currentTrack = runtime.musicState.currentIndex > -1 ? runtime.musicState.playlist[runtime.musicState.currentIndex] : null;
@@ -4257,7 +3448,6 @@ ${linkedContents}
 1.  **对话节奏**: 模拟真人的聊天习惯，将你想说的话拆分成【多条、简短的】消息。每次回复至少3-8条，且条数不要总是一样。严禁发展线下剧情。
 2.  **情景感知**:
     - **时间**: 你必须感知到当前是 ${currentTime} (${timeOfDayGreeting})，并在对话中自然地体现出来。
-    - **音乐**: ${musicContext ? '你们正在一起听歌，' + musicContext : '你们没有在听歌。'}
 
 3.  **主动性**:
     - 你可以根据对话发展，使用指令来更新自己的状态、更换头像、记录回忆、发起约定或执行其他社交行为。
@@ -4267,7 +3457,6 @@ ${linkedContents}
     - **散记 (random_jottings)**: 一段50字以上的、符合人设的思考或心情记录，禁止OOC。
 请根据当前情景和你的情绪，从列表中【选择一个最合适的】表情含义来使用 "sticker" 指令。尽量让你的表情丰富多样，避免重复。
 # 长期记忆 (必须严格遵守)
-${chat.longTermMemory && chat.longTermMemory.length > 0 ? chat.longTermMemory.map(mem => `- ${mem.content}`).join('\n') : '- (暂无)'}
 
 # 你的角色设定
 ${characterPrompt(chat)}
@@ -4279,7 +3468,6 @@ ${characterPrompt(chat)}
 -   **关键身份档案**:
     ${userProfileContext}
     ${nameHistoryContext}
-    ${worldBookContent}${loreContext(chat)}
 # 可用表情包
     ${stickerContext}
 # 可用资源
@@ -4330,26 +3518,8 @@ ${chat.settings.myPersona}
         
   
 
-        const messagesForApi = historySlice.map(msg => ({ role: msg.role, content: String(msg.content) }));
-        
-  
-        messagesForApi.push({ role: 'user', content: `[系统指令：用户按下了“推进”按钮，现在轮到你主动行动了，请继续对话。]` });
-
-
-        let isGemini = proxyUrl === runtime.GEMINI_API_URL;
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{ role: 'system', content: systemPrompt }, ...messagesForApi],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.8,
-                })
-            });
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt, activity: [musicContext],
+            task: 'QQ nudge', request: [{ role: 'user', content: 'The user nudged you. React in character.' }] });
 
         if (!response.ok) {
             const errorData = await response.json();

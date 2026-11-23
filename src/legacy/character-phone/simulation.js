@@ -1,5 +1,5 @@
-import { openAiUrl } from '../../features/api/endpoints'
-import { getGeminiResponseText, parseAiResponse, toGeminiRequestData } from '../api/client.js'
+import { requestContextCompletion } from '../../features/api/completion'
+import { getGeminiResponseText, parseAiResponse } from '../api/client.js'
 import { renderCharTaobao } from './apps.js'
 import { switchToCharScreen } from './launcher.js'
 import { renderCharMusicScreen } from './music.js'
@@ -11,7 +11,6 @@ import { renderChatList } from '../chat/list.js'
 import { showCustomAlert } from '../dialogs/dialogs.js'
 import { hideLoader, showLoader } from '../dialogs/dialogs.js'
 import { showNotification } from '../home/status.js'
-import { generateSummaryForTimeframe } from '../memories/memories.js'
 import { getPlayableSongDetails, searchNeteaseMusic, searchTencentMusic } from '../music/search.js'
 import { getGroupStickerContextForPrompt, getStickerContextForPrompt } from '../stickers/stickers.js'
 import { runtime } from '../runtime/state.js'
@@ -145,37 +144,14 @@ export async function handleGenerateSimulatedQQ() {
     await showCustomAlert("Please wait…", `Generating social activity based on “${chat.name}” and their memories…`);
 
     const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-    if (!proxyUrl || !apiKey || !model) {
+    if (!proxyUrl || !model) {
         alert("Configure your provider in API Connections first.");
         return;
     }
     
-    const allNpcs = await runtime.db.npcs.toArray();
-    const associatedNpcs = allNpcs.filter(npc => 
-        npc.associatedWith && npc.associatedWith.includes(runtime.activeCharacterId)
-    );
-    let npcContext = "# 你的社交圈 (绑定的NPC)\n";
-    if (associatedNpcs.length > 0) {
-        npcContext += "这是你认识的、关系密切的NPC。在生成对话时，你应该【优先】与他们互动。\n";
-        associatedNpcs.forEach(npc => {
-            npcContext += `- **姓名**: ${npc.name}\n  - **人设**: ${npc.persona}\n`;
-        });
-    } else {
-        npcContext += "（你目前没有绑定的NPC伙伴，可以自由创造新的NPC。）\n";
-    }
-
     const userDisplayNameForAI = runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname ? '用户' : runtime.state.qzoneSettings.nickname;
     const userNicknameInThisChat = chat.settings.myNickname || userDisplayNameForAI;
-    const longTermMemoryContext = chat.longTermMemory && chat.longTermMemory.length > 0
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n')
-    : '无';
-const maxMemory = chat.settings.maxMemory || 10;
-    const recentHistoryWithUser =chat.history.slice(-maxMemory).map(msg => `${msg.role === 'user' ? userNicknameInThisChat : chat.name}: ${String(msg.content).substring(0, 30)}...`).join('\n');
-    const worldBookContext = (chat.settings.linkedWorldBookIds || [])
-        .map(bookId => runtime.state.worldBooks.find(wb => wb.id === bookId))
-        .filter(Boolean)
-        .map(book => `\n## 世界书《${book.name}》设定 (你可以将其中角色作为聊天对象):\n${book.content.filter(e=>e.enabled).map(e => `- ${e.content}`).join('\n')}`)
-        .join('');
+
     const characterOriginalName = chat.originalName || chat.name;
     const stickerContext = getGroupStickerContextForPrompt(chat);
     
@@ -230,10 +206,6 @@ const maxMemory = chat.settings.maxMemory || 10;
 
 # 角色与上下文
 - **你的角色设定**: ${chat.settings.aiPersona}
-- **你的长期记忆**: ${longTermMemoryContext}
-- **世界观**: ${worldBookContext}
-- **最近与用户的互动**: ${recentHistoryWithUser}
-${npcContext}
 # 可用表情包 (必须严格遵守！)
 - 当你需要发送表情时，你【必须】从下面的列表中【精确地选择一个】含义（meaning）。
 - 【绝对禁止】使用任何不在列表中的表情含义！
@@ -243,20 +215,8 @@ ${stickerContext}
             
     try {
         const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成模拟聊天记录。" }];
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-        
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.9
-                })
-            });
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt,
+            request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
 
         if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
         
@@ -306,12 +266,10 @@ export async function handleContinueRealConversationFromCPhone() {
 
     try {
         const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-        if (!proxyUrl || !apiKey || !model) {
+        if (!proxyUrl || !model) {
             throw new Error('API未配置，无法生成对话。');
         }
 
-        const maxMemory = parseInt(chat.settings.maxMemory) || 10;
-        const historySlice = chat.history.slice(-maxMemory);
         const myNickname = chat.settings.myNickname || 'Me';
 
         
@@ -322,47 +280,6 @@ export async function handleContinueRealConversationFromCPhone() {
         const userPersona = chat.settings.myPersona || '用户';
 
         
-        const longTermMemoryContext = `# 长期记忆 (必须严格遵守)\n${
-            chat.longTermMemory && chat.longTermMemory.length > 0 
-                ? chat.longTermMemory.map(mem => `- ${mem.content}`).join('\n') 
-                : '- (暂无)'
-        }`;
-
-        
-        let worldBookContext = '';
-        if (chat.settings.linkedWorldBookIds && chat.settings.linkedWorldBookIds.length > 0) {
-            const linkedContents = chat.settings.linkedWorldBookIds.map(bookId => {
-                const worldBook = runtime.state.worldBooks.find(wb => wb.id === bookId);
-                if (!worldBook || !Array.isArray(worldBook.content)) return '';
-                const formattedEntries = worldBook.content
-                    .filter(entry => entry.enabled !== false)
-                    .map(entry => `\n### 条目: ${entry.comment || '无备注'}\n**内容:**\n${entry.content}`)
-                    .join('');
-                return formattedEntries ? `\n\n## 世界书: ${worldBook.name}\n${formattedEntries}` : '';
-            }).filter(Boolean).join('');
-            if (linkedContents) {
-                worldBookContext = `\n\n# 核心世界观设定 (必须严格遵守以下所有设定)\n${linkedContents}\n`;
-            }
-        }
-
-const summary3Hours = generateSummaryForTimeframe(chat, 3, 'hours');
-const summary6Hours = generateSummaryForTimeframe(chat, 6, 'hours');
-const summary9Hours = generateSummaryForTimeframe(chat, 9, 'hours');
-const summaryToday = generateSummaryForTimeframe(chat, 1, 'days');
-const summary3Days = generateSummaryForTimeframe(chat, 3, 'days');
-const summary7Days = generateSummaryForTimeframe(chat, 7, 'days');
-
-let multiLayeredSummaryContext = '';
-if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3Days || summary7Days) {
-    multiLayeredSummaryContext += `\n# 智能总结 (基于不同时间维度的对话回顾)\n`;
-    if (summary3Hours) multiLayeredSummaryContext += summary3Hours;
-    if (summary6Hours) multiLayeredSummaryContext += summary6Hours;
-    if (summary9Hours) multiLayeredSummaryContext += summary9Hours;
-    if (summary3Hours || summary6Hours || summary9Hours) multiLayeredSummaryContext += '\n';
-    if (summaryToday) multiLayeredSummaryContext += summaryToday;
-    if (summary3Days) multiLayeredSummaryContext += summary3Days;
-    if (summary7Days) multiLayeredSummaryContext += summary7Days;
-}
     const stickerContext = getStickerContextForPrompt(chat);        
         const systemPrompt = `
 # 你的核心任务
@@ -386,36 +303,13 @@ ${userPersona}
 # 供你参考的上下文
 - **你的本名**: "${chat.originalName}"
 - **用户的备注**: "${myNickname}"
-${worldBookContext}
-${longTermMemoryContext}
-${multiLayeredSummaryContext} 
 - **你们最后的对话**:
-${historySlice.map(msg => `${msg.role === 'user' ? myNickname : chat.name}: ${String(msg.content)}`).join('\n')}
 
 现在，请继续这场对话。
 `;
-        
- 
-const messagesPayload = historySlice.map(msg => ({
-    role: msg.role,
-    content: `${msg.role === 'user' ? myNickname : chat.name}: ${String(msg.content)}`
-}));
-        
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesPayload);
 
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, ...messagesPayload],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.8,
-                })
-            });
-
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt,
+            request: [{ role: 'user', content: 'Continue this conversation as the character.' }], task: 'QQ reply from Cphone' });
         if (!response.ok) {
             throw new Error(`API 请求失败: ${(await response.json()).error.message}`);
         }
@@ -707,42 +601,15 @@ export async function handleGenerateSimulatedAlbum() {
     await showCustomAlert("Please wait…", `Asking “${chat.name}” to recall their album photos…`);
 
     const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-    if (!proxyUrl || !apiKey || !model) {
+    if (!proxyUrl || !model) {
         alert("Configure your provider in API Connections first.");
         return;
     }
 
     const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
     
-    const longTermMemoryContext = chat.longTermMemory && chat.longTermMemory.length > 0
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n')
-    : '无';
-    const maxMemory = chat.settings.maxMemory || 10;
-const recentHistoryWithUser = chat.history.slice(-maxMemory).map(msg => `${msg.role === 'user' ? userDisplayNameForAI : chat.name}: ${String(msg.content).substring(0, 30)}...`).join('\n');
-    const worldBookContext = (chat.settings.linkedWorldBookIds || [])
-        .map(bookId => runtime.state.worldBooks.find(wb => wb.id === bookId))
-        .filter(Boolean)
-        .map(book => `\n## 世界书《${book.name}》设定:\n${book.content.filter(e=>e.enabled).map(e => `- ${e.content}`).join('\n')}`)
-        .join('');
 
-const summary3Hours = generateSummaryForTimeframe(chat, 3, 'hours');
-const summary6Hours = generateSummaryForTimeframe(chat, 6, 'hours');
-const summary9Hours = generateSummaryForTimeframe(chat, 9, 'hours');
-const summaryToday = generateSummaryForTimeframe(chat, 1, 'days');
-const summary3Days = generateSummaryForTimeframe(chat, 3, 'days');
-const summary7Days = generateSummaryForTimeframe(chat, 7, 'days');
 
-let multiLayeredSummaryContext = '';
-if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3Days || summary7Days) {
-    multiLayeredSummaryContext += `\n# 智能总结 (基于不同时间维度的对话回顾)\n`;
-    if (summary3Hours) multiLayeredSummaryContext += summary3Hours;
-    if (summary6Hours) multiLayeredSummaryContext += summary6Hours;
-    if (summary9Hours) multiLayeredSummaryContext += summary9Hours;
-    if (summary3Hours || summary6Hours || summary9Hours) multiLayeredSummaryContext += '\n';
-    if (summaryToday) multiLayeredSummaryContext += summaryToday;
-    if (summary3Days) multiLayeredSummaryContext += summary3Days;
-    if (summary7Days) multiLayeredSummaryContext += summary7Days;
-}
     
     const systemPrompt = `
 # 你的任务
@@ -770,33 +637,15 @@ if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3D
 
 # 供你参考的上下文
 - **你的角色设定**: ${chat.settings.aiPersona}
-${longTermMemoryContext}
-${worldBookContext}
-${multiLayeredSummaryContext} 
 - **你最近和“${userDisplayNameForAI}”的对话摘要**:
-${recentHistoryWithUser}
 
 现在，请开始生成这组照片的描述和绘画指令。`;
       
 
     try {
         const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的相册内容。" }];
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-        
-        
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.9
-                    
-                })
-            });
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt,
+            request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
           
 
         if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
@@ -837,42 +686,15 @@ export async function handleGenerateBrowserHistory() {
     await showCustomAlert("Please wait…", `Generating browsing activity for “${chat.name}”…`);
 
     const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-    if (!proxyUrl || !apiKey || !model) {
+    if (!proxyUrl || !model) {
         alert("Configure an API connection before generating content.");
         return;
     }
     
     const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
 
-    const longTermMemoryContext = chat.longTermMemory && chat.longTermMemory.length > 0
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n')
-    : '无';
-    const maxMemory = chat.settings.maxMemory || 10;
-const recentHistoryWithUser = chat.history.slice(-maxMemory).map(msg => `${msg.role === 'user' ? userDisplayNameForAI : chat.name}: ${String(msg.content).substring(0, 30)}...`).join('\n');
-    const worldBookContext = (chat.settings.linkedWorldBookIds || [])
-        .map(bookId => runtime.state.worldBooks.find(wb => wb.id === bookId))
-        .filter(Boolean)
-        .map(book => `\n## 世界书《${book.name}》设定:\n${book.content.filter(e => e.enabled).map(e => `- ${e.content}`).join('\n')}`)
-        .join('');
 
-const summary3Hours = generateSummaryForTimeframe(chat, 3, 'hours');
-const summary6Hours = generateSummaryForTimeframe(chat, 6, 'hours');
-const summary9Hours = generateSummaryForTimeframe(chat, 9, 'hours');
-const summaryToday = generateSummaryForTimeframe(chat, 1, 'days');
-const summary3Days = generateSummaryForTimeframe(chat, 3, 'days');
-const summary7Days = generateSummaryForTimeframe(chat, 7, 'days');
 
-let multiLayeredSummaryContext = '';
-if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3Days || summary7Days) {
-    multiLayeredSummaryContext += `\n# 智能总结 (基于不同时间维度的对话回顾)\n`;
-    if (summary3Hours) multiLayeredSummaryContext += summary3Hours;
-    if (summary6Hours) multiLayeredSummaryContext += summary6Hours;
-    if (summary9Hours) multiLayeredSummaryContext += summary9Hours;
-    if (summary3Hours || summary6Hours || summary9Hours) multiLayeredSummaryContext += '\n';
-    if (summaryToday) multiLayeredSummaryContext += summaryToday;
-    if (summary3Days) multiLayeredSummaryContext += summary3Days;
-    if (summary7Days) multiLayeredSummaryContext += summary7Days;
-}
 const userPersona = chat.settings.myPersona || '(未设置)';    
     const systemPrompt = `
 # 你的任务
@@ -903,33 +725,15 @@ const userPersona = chat.settings.myPersona || '(未设置)';
 - **你的角色设定**: ${chat.settings.aiPersona}
 - ** 你的聊天对象（用户）的人设**:${userPersona}
 - **你的长期记忆**:
-${longTermMemoryContext}
-${worldBookContext}
-${multiLayeredSummaryContext} 
 - **你最近和“${userDisplayNameForAI}”的对话摘要**:
-${recentHistoryWithUser}
 
 现在，请开始生成这组【纯文本】的浏览记录。`;
       
 
     try {
         const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的浏览器记录。" }];
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-        
-        
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.9
-                    
-                })
-            });
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt,
+            request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
           
 
         if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
@@ -1044,42 +848,15 @@ export async function handleGenerateTaobaoHistory() {
     await showCustomAlert("Please wait…", `Generating shopping activity for “${chat.name}”…`);
 
     const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-    if (!proxyUrl || !apiKey || !model) {
+    if (!proxyUrl || !model) {
         alert("Configure an API connection before generating content.");
         return;
     }
     
     const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
 
-    const longTermMemoryContext = chat.longTermMemory && chat.longTermMemory.length > 0
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n')
-    : '无';
-    const maxMemory = chat.settings.maxMemory || 10;
-    const recentHistoryWithUser = chat.history.slice(-maxMemory).map(msg => `${msg.role === 'user' ? userDisplayNameForAI : chat.name}: ${String(msg.content).substring(0, 30)}...`).join('\n');
-    const worldBookContext = (chat.settings.linkedWorldBookIds || [])
-        .map(bookId => runtime.state.worldBooks.find(wb => wb.id === bookId))
-        .filter(Boolean)
-        .map(book => `\n## 世界书《${book.name}》设定:\n${book.content.filter(e => e.enabled).map(e => `- ${e.content}`).join('\n')}`)
-        .join('');
 
-const summary3Hours = generateSummaryForTimeframe(chat, 3, 'hours');
-const summary6Hours = generateSummaryForTimeframe(chat, 6, 'hours');
-const summary9Hours = generateSummaryForTimeframe(chat, 9, 'hours');
-const summaryToday = generateSummaryForTimeframe(chat, 1, 'days');
-const summary3Days = generateSummaryForTimeframe(chat, 3, 'days');
-const summary7Days = generateSummaryForTimeframe(chat, 7, 'days');
 
-let multiLayeredSummaryContext = '';
-if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3Days || summary7Days) {
-    multiLayeredSummaryContext += `\n# 智能总结 (基于不同时间维度的对话回顾)\n`;
-    if (summary3Hours) multiLayeredSummaryContext += summary3Hours;
-    if (summary6Hours) multiLayeredSummaryContext += summary6Hours;
-    if (summary9Hours) multiLayeredSummaryContext += summary9Hours;
-    if (summary3Hours || summary6Hours || summary9Hours) multiLayeredSummaryContext += '\n';
-    if (summaryToday) multiLayeredSummaryContext += summaryToday;
-    if (summary3Days) multiLayeredSummaryContext += summary3Days;
-    if (summary7Days) multiLayeredSummaryContext += summary7Days;
-}
     
     const systemPrompt = `
 # 你的任务
@@ -1113,30 +890,14 @@ if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3D
 # 供你参考的上下文
 - **你的角色设定**: ${chat.settings.aiPersona}
 - **你的长期记忆**:
-${longTermMemoryContext}
-${worldBookContext}
-${multiLayeredSummaryContext} 
 - **你最近和“${userDisplayNameForAI}”的对话摘要**:
-${recentHistoryWithUser}
 
 现在，请生成包含总余额和购买记录的JSON对象。`;
 
     try {
         const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的淘宝购买记录和余额。" }];
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-        
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.9
-                })
-            });
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt,
+            request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
 
         if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
         
@@ -1234,42 +995,15 @@ export async function handleGenerateSimulatedMemos() {
     await showCustomAlert("Please wait…", `Asking “${chat.name}” to share their notes…`);
 
     const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-    if (!proxyUrl || !apiKey || !model) {
+    if (!proxyUrl || !model) {
         alert("Configure your provider in API Connections first.");
         return;
     }
 
     const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
 
-    const longTermMemoryContext = chat.longTermMemory && chat.longTermMemory.length > 0
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n')
-    : '无';
-    const maxMemory = chat.settings.maxMemory || 10;
-const recentHistoryWithUser = chat.history.slice(-maxMemory).map(msg => `${msg.role === 'user' ? userDisplayNameForAI : chat.name}: ${String(msg.content).substring(0, 30)}...`).join('\n');
-    const worldBookContext = (chat.settings.linkedWorldBookIds || [])
-        .map(bookId => runtime.state.worldBooks.find(wb => wb.id === bookId))
-        .filter(Boolean)
-        .map(book => `\n## 世界书《${book.name}》设定:\n${book.content.filter(e => e.enabled).map(e => `- ${e.content}`).join('\n')}`)
-        .join('');
 
-const summary3Hours = generateSummaryForTimeframe(chat, 3, 'hours');
-const summary6Hours = generateSummaryForTimeframe(chat, 6, 'hours');
-const summary9Hours = generateSummaryForTimeframe(chat, 9, 'hours');
-const summaryToday = generateSummaryForTimeframe(chat, 1, 'days');
-const summary3Days = generateSummaryForTimeframe(chat, 3, 'days');
-const summary7Days = generateSummaryForTimeframe(chat, 7, 'days');
 
-let multiLayeredSummaryContext = '';
-if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3Days || summary7Days) {
-    multiLayeredSummaryContext += `\n# 智能总结 (基于不同时间维度的对话回顾)\n`;
-    if (summary3Hours) multiLayeredSummaryContext += summary3Hours;
-    if (summary6Hours) multiLayeredSummaryContext += summary6Hours;
-    if (summary9Hours) multiLayeredSummaryContext += summary9Hours;
-    if (summary3Hours || summary6Hours || summary9Hours) multiLayeredSummaryContext += '\n';
-    if (summaryToday) multiLayeredSummaryContext += summaryToday;
-    if (summary3Days) multiLayeredSummaryContext += summary3Days;
-    if (summary7Days) multiLayeredSummaryContext += summary7Days;
-}
 const userPersona = chat.settings.myPersona || '(未设置)';    
     const systemPrompt = `
 # 你的任务
@@ -1295,33 +1029,15 @@ const userPersona = chat.settings.myPersona || '(未设置)';
 - **你的角色设定**: ${chat.settings.aiPersona}
 - ** 你的聊天对象（用户）的人设**:${userPersona}
 - **你的长期记忆**:
-${longTermMemoryContext}
-${worldBookContext}
-${multiLayeredSummaryContext}
 - **你最近和“${userDisplayNameForAI}”的对话摘要**:
-${recentHistoryWithUser}
 
 现在，请开始生成这组备忘录。`;
       
 
     try {
         const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的备忘录内容。" }];
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-        
-      
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.9
-                    // 同样移除 response_format
-                })
-            });
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt,
+            request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
           
 
         if (!response.ok) {
@@ -1374,40 +1090,13 @@ export async function handleGenerateAmapHistory() {
     await showCustomAlert("Please wait…", `Generating location history for “${chat.name}”…`);
 
     const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-    if (!proxyUrl || !apiKey || !model) {
+    if (!proxyUrl || !model) {
         alert("Configure an API connection before generating content.");
         return;
     }
     
     const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
-    const longTermMemoryContext = chat.longTermMemory && chat.longTermMemory.length > 0
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n')
-    : '无';
-    const maxMemory = chat.settings.maxMemory || 10;
-const recentHistoryWithUser = chat.history.slice(-maxMemory).map(msg => `${msg.role === 'user' ? userDisplayNameForAI : chat.name}: ${String(msg.content).substring(0, 30)}...`).join('\n');
-    const worldBookContext = (chat.settings.linkedWorldBookIds || [])
-        .map(bookId => runtime.state.worldBooks.find(wb => wb.id === bookId))
-        .filter(Boolean)
-        .map(book => `\n## 世界书《${book.name}》设定:\n${book.content.filter(e => e.enabled).map(e => `- ${e.content}`).join('\n')}`)
-        .join('');
-const summary3Hours = generateSummaryForTimeframe(chat, 3, 'hours');
-const summary6Hours = generateSummaryForTimeframe(chat, 6, 'hours');
-const summary9Hours = generateSummaryForTimeframe(chat, 9, 'hours');
-const summaryToday = generateSummaryForTimeframe(chat, 1, 'days');
-const summary3Days = generateSummaryForTimeframe(chat, 3, 'days');
-const summary7Days = generateSummaryForTimeframe(chat, 7, 'days');
 
-let multiLayeredSummaryContext = '';
-if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3Days || summary7Days) {
-    multiLayeredSummaryContext += `\n# 智能总结 (基于不同时间维度的对话回顾)\n`;
-    if (summary3Hours) multiLayeredSummaryContext += summary3Hours;
-    if (summary6Hours) multiLayeredSummaryContext += summary6Hours;
-    if (summary9Hours) multiLayeredSummaryContext += summary9Hours;
-    if (summary3Hours || summary6Hours || summary9Hours) multiLayeredSummaryContext += '\n';
-    if (summaryToday) multiLayeredSummaryContext += summaryToday;
-    if (summary3Days) multiLayeredSummaryContext += summary3Days;
-    if (summary7Days) multiLayeredSummaryContext += summary7Days;
-}
 
     const systemPrompt = `
 # 你的任务
@@ -1443,33 +1132,15 @@ if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3D
 # 供你参考的上下文
 - **你的角色设定**: ${chat.settings.aiPersona}
 - **你的长期记忆**:
-${longTermMemoryContext}
-${worldBookContext}
-${multiLayeredSummaryContext}
 - **你最近和“${userDisplayNameForAI}”的对话摘要**:
-${recentHistoryWithUser}
 
 现在，请开始生成这组足迹记录。`;
       
 
     try {
         const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的高德地图足迹。" }];
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-        
-       
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.9
-                    // response_format: { "type": "json_object" } <-- 此行已被删除
-                })
-            });
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt,
+            request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
           
 
         if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
@@ -1556,41 +1227,14 @@ export async function handleGenerateAppUsage() {
     await showCustomAlert("Please wait…", `Generating app activity for “${chat.name}”…`);
 
     const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-    if (!proxyUrl || !apiKey || !model) {
+    if (!proxyUrl || !model) {
         alert("Configure an API connection before generating content.");
         return;
     }
     
     const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
 
-    const longTermMemoryContext = chat.longTermMemory && chat.longTermMemory.length > 0
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n')
-    : '无';
-    const maxMemory = chat.settings.maxMemory || 10;
-const recentHistoryWithUser = chat.history.slice(-maxMemory).map(msg => `${msg.role === 'user' ? userDisplayNameForAI : chat.name}: ${String(msg.content).substring(0, 30)}...`).join('\n');
-    const worldBookContext = (chat.settings.linkedWorldBookIds || [])
-        .map(bookId => runtime.state.worldBooks.find(wb => wb.id === bookId))
-        .filter(Boolean)
-        .map(book => `\n## 世界书《${book.name}》设定:\n${book.content.filter(e => e.enabled).map(e => `- ${e.content}`).join('\n')}`)
-        .join('');
-const summary3Hours = generateSummaryForTimeframe(chat, 3, 'hours');
-const summary6Hours = generateSummaryForTimeframe(chat, 6, 'hours');
-const summary9Hours = generateSummaryForTimeframe(chat, 9, 'hours');
-const summaryToday = generateSummaryForTimeframe(chat, 1, 'days');
-const summary3Days = generateSummaryForTimeframe(chat, 3, 'days');
-const summary7Days = generateSummaryForTimeframe(chat, 7, 'days');
 
-let multiLayeredSummaryContext = '';
-if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3Days || summary7Days) {
-    multiLayeredSummaryContext += `\n# 智能总结 (基于不同时间维度的对话回顾)\n`;
-    if (summary3Hours) multiLayeredSummaryContext += summary3Hours;
-    if (summary6Hours) multiLayeredSummaryContext += summary6Hours;
-    if (summary9Hours) multiLayeredSummaryContext += summary9Hours;
-    if (summary3Hours || summary6Hours || summary9Hours) multiLayeredSummaryContext += '\n';
-    if (summaryToday) multiLayeredSummaryContext += summaryToday;
-    if (summary3Days) multiLayeredSummaryContext += summary3Days;
-    if (summary7Days) multiLayeredSummaryContext += summary7Days;
-}
   
     const systemPrompt = `
 # 你的任务
@@ -1618,33 +1262,15 @@ if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3D
 # 供你参考的上下文
 - **你的角色设定**: ${chat.settings.aiPersona}
 - **你的长期记忆**:
-${longTermMemoryContext}
-${worldBookContext}
-${multiLayeredSummaryContext}
 - **你最近和“${userDisplayNameForAI}”的对话摘要**:
-${recentHistoryWithUser}
 
 现在，请开始生成这组App使用记录。`;
       
 
     try {
         const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的App使用记录。" }];
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-        
-       
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.9
-                    // response_format: { "type": "json_object" } <-- 此行已被删除
-                })
-            });
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt,
+            request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
           
 
         if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
@@ -1674,23 +1300,14 @@ export async function handleGenerateSimulatedMusic() {
     await showCustomAlert("Please wait…", `Asking “${chat.name}” to share their playlist…`);
 
     const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-    if (!proxyUrl || !apiKey || !model) {
+    if (!proxyUrl || !model) {
         alert("Configure your provider in API Connections first.");
         return;
     }
     
     const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
 
-    const longTermMemoryContext = chat.longTermMemory && chat.longTermMemory.length > 0
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n')
-    : '无';
-    const maxMemory = chat.settings.maxMemory || 10;
-const recentHistoryWithUser = chat.history.slice(-maxMemory).map(msg => `${msg.role === 'user' ? userDisplayNameForAI : chat.name}: ${String(msg.content).substring(0, 30)}...`).join('\n');
-    const worldBookContext = (chat.settings.linkedWorldBookIds || [])
-        .map(bookId => runtime.state.worldBooks.find(wb => wb.id === bookId))
-        .filter(Boolean)
-        .map(book => `\n## 世界书《${book.name}》设定:\n${book.content.filter(e => e.enabled).map(e => `- ${e.content}`).join('\n')}`)
-        .join('');
+
 
  
     const systemPrompt = `
@@ -1717,31 +1334,15 @@ const recentHistoryWithUser = chat.history.slice(-maxMemory).map(msg => `${msg.r
 # 供你参考的上下文
 - **你的角色设定**: ${chat.settings.aiPersona}
 - **你的长期记忆**:
-${longTermMemoryContext}
-${worldBookContext}
 - **你最近和“${userDisplayNameForAI}”的对话摘要**:
-${recentHistoryWithUser}
 
 现在，请生成这份歌单。`;
       
 
     try {
         const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的歌单。" }];
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-        
-     
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 1.0,
-                })
-            });
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt,
+            request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
           
 
         if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);

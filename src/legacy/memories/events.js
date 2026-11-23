@@ -5,7 +5,6 @@ import { hideThoughtsHistory, loadMoreThoughts, showThoughtsHistory } from '../c
 import { handleAddManualMemory, handleDeleteMemory, handleEditMemory, handleManualSummary } from './memories.js'
 import { loadMoreQzonePosts } from '../qzone/feed.js'
 import { handlePostClick } from '../qzone/gestures.js'
-import { executeBatchDeleteStickers, toggleStickerManagementMode } from '../stickers/stickers.js'
 import { showScreen } from '../../app/routes'
 import { controls } from '../runtime/state.js'
 import { runtime } from '../runtime/state.js'
@@ -56,9 +55,7 @@ document.getElementById('character-profile-modal').addEventListener('click', (e)
             }
         });
 
-document.getElementById('manage-stickers-btn').addEventListener('click', toggleStickerManagementMode);
 
-document.getElementById('delete-selected-stickers-btn').addEventListener('click', executeBatchDeleteStickers);
 }
 
 export function bindMemoryNavigation() {

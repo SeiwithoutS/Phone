@@ -10,11 +10,11 @@ import { renderChatList } from '../chat/list.js'
 import { updateListenTogetherIcon } from '../music/player.js'
 import { renderWorldBookScreen } from '../world-book/books.js'
 
-export function enterScreen(screenId) {
+export function enterScreen(screenId, chatListView = 'messages-view') {
     const screen = document.getElementById(screenId);
     if (screenId === 'chat-list-screen') {
         void renderChatList();
-        switchToChatListView('messages-view');
+        switchToChatListView(chatListView === 'npc-list-view' ? chatListView : 'messages-view');
     }
     if (screenId === 'api-settings-screen') void renderApiSettings();
     if (screenId === 'wallpaper-screen') void renderWallpaperScreen();

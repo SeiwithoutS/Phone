@@ -1,17 +1,15 @@
 import { withConversationRequest } from '../../features/chat/sessions'
-import { openAiUrl } from '../../features/api/endpoints'
-import { getGeminiResponseText, parseAiResponse, toGeminiRequestData } from '../api/client.js'
+import { requestContextCompletion } from '../../features/api/completion'
+import { getGeminiResponseText, parseAiResponse } from '../api/client.js'
 import { playSilentAudio, stopSilentAudio } from '../calls/audio.js'
 import { showIncomingCallModal } from '../calls/calls.js'
 import { triggerGroupAiAction } from '../chat/ai.js'
 import { triggerAiFriendApplication } from '../chat/attachments.js'
 import { appendMessage, setAvatarActingState } from '../chat/conversation.js'
-import { formatTimeAgo, getTimeOfDayGreeting } from '../../features/chat/format'
-import { getDisplayNameByOriginalName, processMentions, syncCharacterAvatarInGroups } from '../chat/groups.js'
+import { getTimeOfDayGreeting } from '../../features/chat/format'
+import { processMentions, syncCharacterAvatarInGroups } from '../chat/groups.js'
 import { renderChatList } from '../chat/list.js'
-import { filterVisiblePostsForAI } from '../chat/sharing.js'
 import { showNotification } from '../home/status.js'
-import { generateSummaryForTimeframe } from '../memories/memories.js'
 import { renderQzonePosts, updateUnreadIndicator } from '../qzone/feed.js'
 import { getStickerContextForPrompt } from '../stickers/stickers.js'
 import { runtime } from '../runtime/state.js'
@@ -111,25 +109,26 @@ export async function runBackgroundSimulationTick() {
                 let isVisible = false;
 
                 
-                if (post.authorId === 'user' || post.authorId.startsWith('chat_')) {
-                    if (npc.associatedWith.includes(post.authorId)) {
-                        isVisible = true;
-                    }
+                const associations = npc.associatedWith ?? [];
+                if (post.isDeleted) continue;
+                if (post.authorId === 'user' || runtime.state.chats[post.authorId]) {
+                    const groupIds = post.visibleGroupIds;
+                    isVisible = associations.includes(post.authorId) && (!groupIds?.length || associations.some(id => groupIds.includes(runtime.state.chats[id]?.groupId)));
                 }
                 
-                else if (post.authorId.startsWith('npc_')) {
+                else if (String(post.authorId).startsWith('npc_')) {
                     const authorNpcId = parseInt(post.authorId.replace('npc_', ''));
                     const authorNpc = await runtime.db.npcs.get(authorNpcId);
                     if (authorNpc && authorNpc.associatedWith) {
                         
-                        const intersection = npc.associatedWith.filter(id => authorNpc.associatedWith.includes(id));
+                        const intersection = associations.filter(id => authorNpc.associatedWith.includes(id));
                         if (intersection.length > 0) {
                             isVisible = true;
                         }
                     }
                 }
                 
-                if (isVisible || isRepliedTo) {
+                if (isVisible || (isRepliedTo && !post.visibleGroupIds?.length && !post.visibleTo?.length)) {
                     tasks.push(post);
                 }
             }
@@ -187,58 +186,6 @@ export async function runBackgroundSimulationTick() {
 }
 
 export async function generateNpcActions(npc, tasks) {
-    const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-    if (!proxyUrl || !apiKey || !model) {
-        console.error("NPC行动失败：API未配置。");
-        return null;
-    }
-
-    
-    let charactersContext = "# 你的互动对象 (用户和其他角色)\n";
-    const userNickname = runtime.state.qzoneSettings.nickname || '我';
-    const userPersona = runtime.state.chats[Object.keys(runtime.state.chats)[0]]?.settings.myPersona || '(未设置)';
-    charactersContext += `- **${userNickname} (用户)**: ${userPersona}\n`;
-    if (npc.associatedWith && npc.associatedWith.length > 0) {
-        npc.associatedWith.forEach(charId => {
-            const char = runtime.state.chats[charId];
-            if (char && !char.isGroup) {
-                charactersContext += `- **${char.name} (本名: ${char.originalName})**: ${char.settings.aiPersona}\n`;
-            }
-        });
-    }
-
-    const tasksString = (await Promise.all(tasks.map(async post => {
-        let authorDisplayName = '未知作者';
-        if (post.authorId === 'user') {
-            authorDisplayName = runtime.state.qzoneSettings.nickname || '用户';
-        } else if (post.authorId.startsWith('chat_')) {
-            authorDisplayName = getDisplayNameByOriginalName(post.authorOriginalName || post.authorId);
-        } else if (post.authorId.startsWith('npc_')) {
-            const authorNpcId = parseInt(post.authorId.replace('npc_', ''));
-            const authorNpc = await runtime.db.npcs.get(authorNpcId);
-            if (authorNpc) {
-                authorDisplayName = authorNpc.name;
-            }
-        }
-
-        const commentsString = (post.comments || [])
-            .map(c => {
-                 if (typeof c === 'object' && c.commenterName) {
-                    const commenterDisplayName = getDisplayNameByOriginalName(c.commenterName);
-                    return `- **${commenterDisplayName}**: ${c.text}`;
-                }
-                return `- ${c}`;
-            }).join('\n');
-        return `
----
-### 帖子ID: ${post.id}
-- **作者**: ${authorDisplayName}
-- **内容摘要**: ${(post.content || post.publicText || '').substring(0, 150)}...
-- **已有评论**:
-${commentsString || '(暂无评论)'}
----
-`;
-    }))).join('\n');
   
 
     
@@ -285,30 +232,15 @@ ${postingCooldownInstruction}
 - **昵称**: ${npc.name}
 - **人设**: ${npc.persona}
 
-${charactersContext} 
-
-# 待处理的帖子列表 (如果你选择评论)
-${tasksString}
 
 现在，请严格遵守所有规则，选择并执行你的行动。`;
     
 
     try {
-        const messagesForApi = [{ role: 'user', content: "请根据你的设定，开始你的行动。" }];
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-        
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.9
-                })
-            });
+        const response = await requestContextCompletion(undefined, { instructions: systemPrompt,
+            task: 'NPC activity · ' + npc.name, scope: 'npc:' + npc.id, actorId: 'npc:' + npc.id,
+            legacyPostIds: tasks.map(post => post.id), relatedChatIds: npc.associatedWith ?? [],
+            request: [{ role: 'user', content: 'Choose whether to post or comment. Use only visible Qzone post IDs supplied in context.' }] });
             
         if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
         
@@ -346,8 +278,7 @@ async function runInactiveAiAction(chatId) {
             }
             setAvatarActingState(chatId, true);
         
-            const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-            if (!proxyUrl || !apiKey || !model) return;
+            if (!runtime.state.apiConfig.proxyUrl || !runtime.state.apiConfig.model) return;
         
             const userNickname = runtime.state.qzoneSettings.nickname;
             const now = new Date();
@@ -360,33 +291,16 @@ async function runInactiveAiAction(chatId) {
 
 let timeOfDayGreeting = ''; 
 let timeContextText = '';
-let recentContextSummary; 
-let longTimeNoSee = false;
-
-
-    
-    
-    
-
-    
-    const maxMemory = chat.settings.maxMemory || 10; 
-    const recentHistory = chat.history.filter(m => !m.isHidden).slice(-maxMemory);
-        
-            const lastMessage = chat.history.filter(m => !m.isHidden).slice(-1)[0];
-            
 if (chat.settings.enableTimePerception) {
     timeOfDayGreeting = getTimeOfDayGreeting(localizedDate); 
     const lastMessage = chat.history.filter(m => !m.isHidden).slice(-1)[0];
     const now = new Date();
-    let timeContextText = '';
-    let longTimeNoSee = false;
 
     if (lastMessage) {
         const lastTime = new Date(lastMessage.timestamp);
         const timeDiffHours = (now - lastTime) / (1000 * 60 * 60);
 
         if (timeDiffHours > 12) {
-            longTimeNoSee = true;
             const diffDays = Math.floor(timeDiffHours / 24);
             timeContextText = `你们已经有${diffDays > 0 ? diffDays + '天' : Math.floor(timeDiffHours) + '小时'}没有聊天了。`;
         } else {
@@ -400,258 +314,9 @@ if (chat.settings.enableTimePerception) {
             }
         }
     } else {
-        longTimeNoSee = true;
         timeContextText = "这是你们的第一次互动。";
     }
 
-    
-    let historySummary = "你们最近没有有效聊天记录。";
-    if (recentHistory.length > 0) {
-        historySummary = "这是你们最近的对话：\n" + recentHistory.map(msg => {
-            const sender = msg.role === 'user' ? userNickname : chat.name;
-            return `${sender}: ${String(msg.content).substring(0, 50)}...`;
-        }).join('\n');
-    }
-
-    if (longTimeNoSee) {
-         
-         recentContextSummary = `[情景提示] ${timeContextText} 当前时间是 ${currentTime}. 你可以参考这个时间，并根据你的角色设定，【考虑】是否开启一个新话题来问候用户。\n${historySummary}`;
-    } else {
-        recentContextSummary = `${historySummary}`;
-    }
-
-} else {
-    
-    if (recentHistory.length > 0) {
-        recentContextSummary = "这是你们最近的对话：\n" + recentHistory.map(msg => {
-            const sender = msg.role === 'user' ? userNickname : chat.name;
-            return `${sender}: ${String(msg.content).substring(0, 50)}...`;
-        }).join('\n');
-    } else {
-        recentContextSummary = "你们最近没有有效聊天记录。";
-    }
-}
-            
-            const allRecentPosts = await runtime.db.qzonePosts.orderBy('timestamp').reverse().limit(5).toArray();
-            const visiblePosts = filterVisiblePostsForAI(allRecentPosts, chat);
-            
-            const myOwnPosts = visiblePosts.filter(post => post.authorId === chatId);
-            let myPostsContext = "";
-            if (myOwnPosts.length > 0) {
-                myPostsContext = "\n\n# 你的动态历史 (你可以选择删除它们):\n";
-                myOwnPosts.forEach(post => {
-                    let contentSummary = (post.publicText || post.content || "一条动态").substring(0, 40) + '...';
-                    myPostsContext += `- (ID: ${post.id}) 内容: "${contentSummary}"\n`;
-                });
-            }
-        
-            let recentlyPostedSummaries = [];
-            if (visiblePosts.length > 0) {
-                recentlyPostedSummaries = visiblePosts.map(post => {
-                    let contentSummary;
-                    if (post.type === 'text_image') {
-                        contentSummary = `[一张图片，其隐藏文字为：“${post.hiddenContent}”] ${post.publicText || ''}`.substring(0, 50) + '...';
-                    } else if (post.type === 'image_post') {
-                        contentSummary = `[一张图片，描述为：“${post.imageDescription}”] ${post.publicText || ''}`.substring(0, 50) + '...';
-                    } else {
-                        
-                       contentSummary = String(post.publicText || post.content || "一条动态").substring(0, 50) + '...';
-                    }
-                    return `- "${contentSummary}"`;
-                });
-            }
-        
-            let contentTabooPrompt = '';
-            if (recentlyPostedSummaries.length > 0) {
-                contentTabooPrompt = `
-        # 【内容禁忌】
-        为了保持新鲜感，你本次的行动【绝对不能】再发布以下或类似主题的内容：
-        ${recentlyPostedSummaries.join('\n')}
-        `;
-            }
-        
-        
-        let worldBookContent = '';
-        if (chat.settings.linkedWorldBookIds && chat.settings.linkedWorldBookIds.length > 0) {
-            const linkedContents = chat.settings.linkedWorldBookIds.map(bookId => {
-                const worldBook = runtime.state.worldBooks.find(wb => wb.id === bookId);
-                if (!worldBook || !Array.isArray(worldBook.content)) return '';
-
-                
-                const formattedEntries = worldBook.content
-                    .filter(entry => entry.enabled !== false)
-                    .map(entry => {
-                        
-                        let entryString = `\n### 条目: ${entry.comment || '无备注'}\n`;
-                        if (entry.keys.length > 0) {
-                            entryString += `**关键词:** ${entry.keys.join(', ')}\n`;
-                        }
-                        entryString += `**内容:**\n${entry.content}`;
-                        return entryString;
-                    }).join('');
-
-                return formattedEntries ? `\n\n## 世界书: ${worldBook.name}\n${formattedEntries}` : '';
-            }).filter(Boolean).join('');
-            
-            if (linkedContents) {
-                worldBookContent = `# --- 世界书 (World Book) ---
-# 【最高优先级规则：世界观设定】
-# 你【必须】将以下所有“世界书”中的设定，视为绝对的、不可动摇的背景事实。
-# 你的所有回复和行为都【绝对不能】与这些设定产生任何冲突。
-${linkedContents}
-# --- 世界书设定结束 ---
-`;
-            }
-        }
-          
-            
-            let linkedMemoryContext = '';
-            const memoryCount = chat.settings.linkedMemoryCount || 10;
-            if (chat.settings.linkedMemoryChatIds && chat.settings.linkedMemoryChatIds.length > 0) {
-                const linkedChatsWithTimestamps = chat.settings.linkedMemoryChatIds.map(id => {
-                    const linkedChat = runtime.state.chats[id];
-                    if (!linkedChat) return null;
-                    const lastMsg = linkedChat.history.slice(-1)[0];
-                    return {
-                        chat: linkedChat,
-                        latestTimestamp: lastMsg ? lastMsg.timestamp : 0
-                    };
-                }).filter(Boolean); 
-        
-                linkedChatsWithTimestamps.sort((a, b) => b.latestTimestamp - a.latestTimestamp);
-        
-                linkedMemoryContext += `\n\n# 参考记忆 (至关重要！你必须【主动】将这些参考记忆中的【关键信息和事件】，自然地融入到当前的对话中，以体现你拥有完整的记忆。不要只是被动等待用户提问！)\n`;
-        
-                for (const item of linkedChatsWithTimestamps) {
-                    const linkedChat = item.chat;
-                    const prefix = linkedChat.isGroup ? '[群聊]' : '[私聊]';
-                    const timeAgo = item.latestTimestamp > 0 ? ` (最后互动于 ${formatTimeAgo(item.latestTimestamp)})` : '';
-                    linkedMemoryContext += `\n## --- 来自${prefix}“${linkedChat.name}”的参考记忆${timeAgo} ---\n`;
-        
-                    const recentHistory = linkedChat.history.slice(-memoryCount);
-                    const filteredHistory = recentHistory.filter(msg => !String(msg.content).includes('已被用户删除'));
-        
-                    if (filteredHistory.length > 0) {
-                        filteredHistory.forEach(msg => {
-                            const sender = msg.role === 'user' ? (linkedChat.settings.myNickname || '我') : (msg.senderName || linkedChat.name);
-                            let contentText = String(msg.content);
-                            if (msg.type === 'ai_image' || msg.type === 'user_photo') {
-                                contentText = `[发送了一张图片，描述为：${msg.content}]`;
-                            } else if (msg.type === 'voice_message') {
-                                contentText = `[发送了一条语音，内容是：${msg.content}]`;
-                            }
-                            linkedMemoryContext += `${sender}: ${contentText}\n`;
-                        });
-                    } else {
-                        linkedMemoryContext += "(暂无有效聊天记录)\n";
-                    }
-                }
-            }
-        
-            
-            
-            
-            let dynamicContext = "";
-            if (visiblePosts.length > 0) {
-                let postsContext = "\n\n# 最近的动态列表 (供你参考和评论):\n";
-                for (const post of visiblePosts) {
-                let authorName;
-                                   
-                if (post.authorId === 'user') {
-                    authorName = runtime.state.qzoneSettings.nickname;
-                } else if (String(post.authorId).startsWith('npc_')) {
-                    
-                    authorName = post.authorOriginalName || '一位神秘的NPC';
-                } else {
-                    
-                    const authorChat = runtime.state.chats[post.authorId];
-                    authorName = authorChat ? authorChat.name : '一位朋友';
-                }
-                    if (post.authorId === chatId) authorName += " (这是你的帖子)";
-        
-                    let contentSummary;
-                    
-                    if (post.type === 'repost') {
-                        const repostComment = post.repostComment ? `并评论说："${post.repostComment}"` : '';
-                        let originalAuthorName = '原作者';
-                        const originalAuthorId = post.originalPost.authorId;
-                        if (originalAuthorId === 'user') {
-                            originalAuthorName = runtime.state.qzoneSettings.nickname;
-                        } else if (runtime.state.chats[originalAuthorId]) {
-                            originalAuthorName = runtime.state.chats[originalAuthorId].name;
-                        }
-                        let originalContentSummary;
-                        const originalPost = post.originalPost;
-                        if (originalPost.type === 'text_image') {
-                            originalContentSummary = `[文字图] ${originalPost.publicText || ''} (图片描述: "${(originalPost.hiddenContent || '').substring(0, 40)}...")`;
-                        } else if (originalPost.type === 'image_post') {
-                            originalContentSummary = `[图片] ${originalPost.publicText || ''} (图片描述: "${(originalPost.imageDescription || '').substring(0, 40)}...")`;
-                        } else { 
-                            originalContentSummary = `"${(originalPost.content || '').substring(0, 40)}..."`;
-                        }
-                        contentSummary = `转发了 @${originalAuthorName} 的动态 ${repostComment}【原动态内容: ${originalContentSummary}】`;
-                    } else if (post.type === 'text_image') {
-                        contentSummary = `[一张图片，其隐藏文字为："${post.hiddenContent}"] ${post.publicText || ''}`.substring(0, 50) + '...';
-                    } else if (post.type === 'image_post') {
-                        contentSummary = `[一张图片，描述为："${post.imageDescription}"] ${post.publicText || ''}`.substring(0, 50) + '...';
-                    } else if (post.type === 'naiimag' && post.prompt) {
-                        const prompts = Array.isArray(post.prompt) ? post.prompt : [post.prompt];
-                        contentSummary = (post.publicText || '') + ` [包含${prompts.length}张NovelAI图片: ${prompts.join(', ')}]`;
-                    } else {
-                        
-contentSummary = String(post.publicText || post.content || "一条动态").substring(0, 50) + '...';
-                    }
-        
-                    postsContext += `- (ID: ${post.id}) 作者: ${authorName}, 内容: "${contentSummary}"\n`;
-        
-                    
-                    if (post.comments && post.comments.length > 0) {
-                        for (const comment of post.comments) {
-                            if (typeof comment === 'object' && comment.commenterName) {
-                                const commenterDisplayName = getDisplayNameByOriginalName(comment.commenterName);
-                                let commentText = comment.meaning ? `[表情: '${comment.meaning}']` : comment.text;
-                                
-                                
-                                if (comment.commenterName === chat.originalName) {
-                                    
-                                    postsContext += `  - 你评论说: ${commentText}\n`;
-                                } else {
-                                    
-                                    postsContext += `  - 评论: ${commenterDisplayName} (本名: ${comment.commenterName}): ${commentText}\n`;
-                                }
-                            }
-                        }
-                    }
-                     
-                }
-                dynamicContext = postsContext;
-            }
-        
-    
-const longTermMemoryContext = `# 长期记忆 (最高优先级，这是你和用户之间已经确立的事实，必须严格遵守)
-${chat.longTermMemory && chat.longTermMemory.length > 0 
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n') 
-    : '- (暂无)'
-}`;
-        
-
-const summary3Hours = generateSummaryForTimeframe(chat, 3, 'hours');
-const summary6Hours = generateSummaryForTimeframe(chat, 6, 'hours');
-const summary9Hours = generateSummaryForTimeframe(chat, 9, 'hours');
-const summaryToday = generateSummaryForTimeframe(chat, 1, 'days');
-const summary3Days = generateSummaryForTimeframe(chat, 3, 'days');
-const summary7Days = generateSummaryForTimeframe(chat, 7, 'days');
-
-let multiLayeredSummaryContext = '';
-if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3Days || summary7Days) {
-    multiLayeredSummaryContext += `\n# 智能总结 (基于不同时间维度的对话回顾)\n`;
-    if (summary3Hours) multiLayeredSummaryContext += summary3Hours;
-    if (summary6Hours) multiLayeredSummaryContext += summary6Hours;
-    if (summary9Hours) multiLayeredSummaryContext += summary9Hours;
-    if (summary3Hours || summary6Hours || summary9Hours) multiLayeredSummaryContext += '\n';
-    if (summaryToday) multiLayeredSummaryContext += summaryToday;
-    if (summary3Days) multiLayeredSummaryContext += summary3Days;
-    if (summary7Days) multiLayeredSummaryContext += summary7Days;
 }
 const stickerContext = getStickerContextForPrompt(chat);
             const systemPrompt = `
@@ -712,63 +377,17 @@ ${longTimeNoSee ? `【重要提示】你们已经很久没聊天了！你【必�
         -   **更换头像**: '{"type": "change_avatar", "name": "头像名"}' (头像名必须从下面的“可用头像列表”中选择)
         -   **删除动态**: '{"type": "qzone_delete_post", "postId": (要删除的、你自己的动态ID)}'
         -   **更新状态**: '[{"type": "update_status", "status_text": "正在做的事", "is_busy": true}]'
-        ${contentTabooPrompt}
-        ${myPostsContext} 
         # 供你决策的参考信息：
         -   **你的角色设定**: ${chat.settings.aiPersona}
-        ${worldBookContent}
-        ${chat.longTermMemory && chat.longTermMemory.length > 0 
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n') 
-    : '无'
-}
-        ${multiLayeredSummaryContext}   
-        ${linkedMemoryContext}
         ${chat.settings.enableTimePerception ? `-   **当前时间**:${currentTime} (${timeOfDayGreeting})` : ''}
         ${chat.settings.enableTimePerception ? `-   **对话状态**: ${timeContextText}` : ''}
 # 可用表情包
          ${stickerContext}
-        -   **你们最后的对话摘要**: ${recentContextSummary}
-        ${dynamicContext}
 `;
 
-    const messagesPayload = [
-        { role: 'system', content: systemPrompt },
-        // 将原始的、未被摘要的 recentHistory 转换为API能理解的格式
-        ...recentHistory.map(msg => {
-            const sender = msg.role === 'user' ? userNickname : chat.name;
-            let content = msg.content;
-            if (typeof content !== 'string') {
-                content = JSON.stringify(content); // 确保内容是字符串
-            }
-            return {
-                role: msg.role,
-                content: `${sender}: ${content}`
-            };
-        })
-    ];
-          
-          try {
-                const messagesPayload = [
-                    { role: 'user', content: `${systemPrompt}\n\n[系统指令：请根据你在上面读到的规则和以下最新信息，开始你的独立行动。]\n${dynamicContext}` }
-                ];
-        
-                console.log(`正在为后台活动发送API请求 ("${chat.name}")`);
-        
-                let  isGemini = proxyUrl === runtime.GEMINI_API_URL;
-                let geminiConfig = toGeminiRequestData(model,apiKey,systemPrompt, messagesPayload);
-        
-        const response = isGemini ?
-            await fetch(geminiConfig.url, geminiConfig.data) :
-            await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    model: model,
-                    
-                    messages: messagesPayload,
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.9,
-                })
-            });
+    try {
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt, task: 'QQ character background',
+            request: [{ role: 'user', content: 'Choose an independent action based on the available context.' }] });
         
                 if (!response.ok) {
                     const errorData = await response.json();
@@ -776,7 +395,7 @@ ${longTimeNoSee ? `【重要提示】你们已经很久没聊天了！你【必�
                 }
                 const data = await response.json();
         
-                const aiResponseContent = isGemini ? getGeminiResponseText(data) : data.choices[0].message.content;
+                const aiResponseContent = getGeminiResponseText(data);
         
                 if (!aiResponseContent || aiResponseContent.trim() === '') {
                      console.warn(`API为空回，角色 "${chat.name}" 的本次后台活动跳过。`);

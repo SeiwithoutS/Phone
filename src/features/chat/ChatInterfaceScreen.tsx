@@ -1,8 +1,9 @@
 import { ChatSessions } from './ChatSessions'
 import { useNavigate } from 'react-router-dom'
-import { screenPaths } from '../../app/routes'
+import { screenPaths, showScreen } from '../../app/routes'
 import { runtime } from '../../legacy/runtime/state.js'
 import { BackButton, FilePicker, Screen, ScreenHeader } from '../../components/phone'
+import { IconButton } from '../../components/icons'
 
 export function ChatInterfaceScreen() {
   const navigate = useNavigate()
@@ -81,6 +82,7 @@ export function ChatInterfaceScreen() {
           <div id="chat-header-title-wrapper">
             {" "}
             <span id="chat-header-title">Character</span>
+            <span id="qq-branch-status" hidden>Branch</span>
             <div id="chat-header-status">
               {" "}
               <span className="status-dot" />
@@ -101,14 +103,9 @@ export function ChatInterfaceScreen() {
               {" "}
             </span>
             {" "}
-            <span className="action-btn" id="listen-together-btn" title="Listen Together">
-              <img src="https://i.postimg.cc/dV8sdNcx/210-20250618115221.png" alt="Listen Together" />
-            </span>
+            <IconButton icon="music" id="listen-together-btn" label="Listen Together" />
             {" "}
-            <ChatSessions />
-            <span className="action-btn" id="chat-settings-btn" title="Chat Settings">
-              <img src="https://i.postimg.cc/bvPq64cv/CCA834-BA-5-A90-408-D-94-FA-7-EE156-B6-A765.png" alt="Settings" />
-            </span>
+            <IconButton icon="settings" id="chat-settings-btn" label="Chat Settings" />
             {" "}
           </div>
         </div>
@@ -143,6 +140,7 @@ export function ChatInterfaceScreen() {
       }}>
         <div id="typing-indicator">{"Typing…"}</div>
       </div>
+      <p id="context-stream-preview" aria-live="polite" hidden />
       <div id="chat-input-area">
         <div id="chat-at-mention-popup" className="at-mention-popup" />
         <div id="reply-preview-bar">
@@ -264,24 +262,6 @@ export function ChatInterfaceScreen() {
             {" "}
           </button>
           {" "}
-          <button id="edit-last-response-btn" className="chat-action-icon-btn action-button" title={"Director Mode · Edit the last AI response"} type="button" aria-label={"Director Mode · Edit the last AI response"}>
-            {" "}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-            </svg>
-            {" "}
-          </button>
-          {" "}
-          <button id="regenerate-btn" className="chat-action-icon-btn action-button" title="Regenerate Reply" style={{ display: "flex" }} type="button" aria-label="Regenerate Reply">
-            {" "}
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4" />
-              <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
-            </svg>
-            {" "}
-          </button>
-          {" "}
           <button id="propel-btn" className="chat-action-icon-btn action-button" title="Advance the Story" style={{ display: "flex" }} type="button" aria-label="Advance the Story">
             {" "}
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -308,7 +288,7 @@ export function ChatInterfaceScreen() {
           {" "}
         </div>
         <div id="chat-input-main-row">
-          {" "}
+          <ChatSessions />
           <textarea id="chat-input" rows={1} placeholder={"Type a message…"} />
           <div id="input-actions-wrapper">
             {" "}
@@ -326,39 +306,22 @@ export function ChatInterfaceScreen() {
       </div>
       <div id="sticker-panel">
         <div id="sticker-panel-header">
-          {" "}
-          <span className="panel-btn" id="close-sticker-panel-btn">Cancel</span>
-          {" "}
-          <span className="title">My Stickers</span>
-          <div style={{ display: "flex", gap: "10px" }}>
-            {" "}
-            <span className="panel-btn" id="manage-sticker-categories-btn">Category</span>
-            {" "}
-            <span className="panel-btn" id="manage-stickers-btn">Manage</span>
-            {" "}
-            <span className="panel-btn" id="add-sticker-batch-btn">Batch Import</span>
-            {" "}
-            <span className="panel-btn" id="upload-sticker-btn">Upload</span>
-            {" "}
+          <IconButton icon="close" id="close-sticker-panel-btn" label="Close sticker picker" />
+          <span className="title">Stickers</span>
+          <div className="sticker-picker-tools">
+            <IconButton icon="upload" id="upload-sticker-btn" label="Quick upload sticker" />
+            <IconButton icon="folder" label="Manage sticker library" onClick={() => {
+              document.getElementById('sticker-panel')?.classList.remove('visible')
+              showScreen('sticker-library-screen', { stickerChatId: runtime.state.activeChatId ?? undefined })
+            }} />
           </div>
         </div>
         <div id="sticker-category-tabs" />
         <div id="sticker-search-container">
           {" "}
-          <input type="search" id="sticker-search-input" placeholder={"Search stickers…"} />
+          <input type="search" id="sticker-search-input" aria-label="Search stickers" placeholder="Search stickers…" />
         </div>
         <div id="sticker-grid" />
-        <div id="sticker-action-bar">
-          {" "}
-          <label className="select-all-label" style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-            {" "}
-            <input type="checkbox" id="select-all-stickers-checkbox" />
-            {" Select All "}
-          </label>
-          {" "}
-          <button id="delete-selected-stickers-btn" type="button">Delete (0)</button>
-          {" "}
-        </div>
       </div>
       {" "}
       <FilePicker id="sticker-upload-input" accept="image/*" />

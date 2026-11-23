@@ -14,6 +14,7 @@ export function CharacterProfileModal() {
           {" "}
         </button>
         <div id="profile-main-content">
+          <button id="character-social-profile-btn" className="form-button-secondary" type="button">Social profile</button>
           <div id="profile-timestamp" className="thought-header" />
           <div className="thought-content">
             <div className="voice">

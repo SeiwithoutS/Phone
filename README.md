@@ -6,7 +6,7 @@ EPhone is a local, mobile-first character chat app. It runs in your browser with
 
 1. Install Node.js 22 or later.
 2. Run `.\start.bat` in PowerShell from the project folder, or double-click `start.bat`. It installs missing dependencies, builds the frontend, and starts the server.
-3. Leave the terminal open and open the address it prints. The default is <http://127.0.0.1:8000>. The configured hostname <http://eephone.localhost:8000> is also available when the browser resolves it.
+3. Leave the terminal open and open the address it prints. The default is <http://127.0.0.1:8017>. The configured hostname <http://eephone.localhost:8017> is also available when the browser resolves it.
 
 ## Android with Termux
 
@@ -22,14 +22,14 @@ cd eephone
 bash start.sh
 ```
 
-Open <http://127.0.0.1:8000> in the phone's browser and leave Termux running. The URL always points to the device where you open it. To run EPhone locally on the phone, start it in Termux on that phone.
+Open <http://127.0.0.1:8017> in the phone's browser and leave Termux running. The URL always points to the device where you open it. To run EPhone locally on the phone, start it in Termux on that phone.
 
 ### Startup troubleshooting
 
 | What you see | What to do |
 | --- | --- |
 | `EPERM` or `EBUSY` during npm install | Close any EPhone or Vite terminals using that project folder, then run the launcher again. To reinstall, use `.\start.bat --install` on Windows or `bash start.sh --install` in Termux. |
-| Port `8000` is already in use | Stop the other server, or run `$env:PORT='8017'; .\start.bat` in PowerShell or `PORT=8017 bash start.sh` in Termux. Open the new address printed in the terminal. |
+| Port `8017` is already in use | Stop the other server, or run `$env:PORT='8018'; .\start.bat` in PowerShell or `PORT=8018 bash start.sh` in Termux. Open the new address printed in the terminal. |
 | A custom hostname does not open | Open `http://127.0.0.1:<port>` on the device running EPhone. |
 | The page says the storage API is missing | Start EPhone using the launcher and use its printed address. EPhone needs the Node server to read and save data. |
 
@@ -40,9 +40,11 @@ Open <http://127.0.0.1:8000> in the phone's browser and leave Termux running. Th
 - Swipe left or right to change home pages. Use the dots above the dock to jump between pages. Forms, feeds, and chats scroll inside their apps.
 - Open **Widgets** to add or edit a widget. Choose a template, width and shape. You can also paste CSS or import a `.css` file.
 - Hold an app or widget to arrange the home screen, or tap **Arrange**. Drag to reorder, or select an item, open a page and tap **Move to this page**. The dock holds up to four apps.
-- Use **Edit** to create a character or import a SillyTavern PNG, JSON, or CHARX card. **Avatar Gallery** rotates the QQ avatar by time or by connected call count. In QQ, **Chats** opens the history and lets you choose a greeting when starting a new chat.
+- Use the sun or moon icon on Home or Social to switch the app between light and dark mode. The choice is saved with your local data.
+- Use **Edit** to create a character or import a SillyTavern PNG, JSON, or CHARX card. **Avatar Gallery** rotates the QQ avatar by time or by connected call count.
+- In QQ, open the three-line **Chat actions** menu to start a chat, manage chat files, regenerate the latest reply, or delete messages from a selected point. Use the controls below a reply to edit it, generate an alternate, or return to an earlier version. The branch button opens a separate chat through the selected message and keeps the original in **Manage chat files**.
 - **Mini Prompts** stores prompts you can attach to chats. **World Info** manages lorebook entries and their activation keywords. Embedded card lorebooks appear here after you save the character.
-- **Social** offers a local timeline, editable profile, image posts, replies, likes, reposts, bookmarks and search. **Auto AI comment** is off by default. Turn it on and select a character to request one automatic AI comment per new post using your configured API.
+- **Social** offers a local timeline, editable profile, photo posts, replies, likes, reposts, bookmarks and search. Use the plus icon to compose a post with up to four photos. In **Social settings**, you can enable **Auto AI comment** and choose which character or NPC replies using your configured API.
 
 ## Local data and backup
 

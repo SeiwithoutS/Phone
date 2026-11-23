@@ -1,0 +1,38 @@
+.sticker-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 8rem), 1fr));
+  gap: 10px;
+}
+
+.phone-app-button.sticker-library-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  text-align: left;
+  white-space: normal;
+}
+
+.sticker-library-card[aria-pressed=true] { border-color: var(--ui-accent); background: var(--ui-accent-soft); }
+.sticker-library-card .ui-icon { width: 15px; height: 15px; }
+.sticker-library-card > span:not(.sticker-library-image) { overflow-wrap: anywhere; }
+.sticker-library-image {
+  display: grid;
+  grid-column: 1 / -1;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--ui-surface);
+}
+.sticker-library-image img { width: 100%; height: 100%; object-fit: contain; }
+.sticker-library-preview { width: min(100%, 11rem); margin: 0 auto; }
+.sticker-chat-links { min-width: 0; border: 1px solid var(--ui-divider); border-radius: 9px; padding: 8px 12px; }
+.sticker-chat-links legend { padding: 0 5px; font-weight: 600; }
+.sticker-chat-links .phone-app-check { padding-block: 5px; }
+.sticker-chat-links small { margin-inline-start: auto; color: var(--ui-muted); }
+
+#chat-interface-screen { overflow: clip; }
+#phone-screen.dark-mode #sticker-panel { color: var(--ui-text); background: var(--ui-surface); }

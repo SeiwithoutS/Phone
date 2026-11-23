@@ -2,6 +2,7 @@ import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PointerEvent } from 'react'
 import { AppShortcut, BackButton, Screen, ScreenContext, ScreenHeader } from '../../components/phone'
 import { showScreen } from '../../app/routes'
+import { ThemeToggle } from '../../components/ThemeToggle'
 import type { LocalDatabase } from '../../storage/database'
 import { screenActions } from '../../app/actions'
 import { applyAppIcons } from '../../legacy/appearance/icons.js'
@@ -20,12 +21,14 @@ const apps = {
   font: { label: 'Fonts', image: 'https://i.postimg.cc/pXxk1JXk/IMG-6442.jpg', open: () => showScreen('font-settings-screen') },
   'char-phone': { label: 'Cphone', image: 'https://i.postimg.cc/pXj9h20L/IMG-7275.jpg', open: screenActions.openCharacterSelector },
   social: { label: 'Social', image: 'https://i.postimg.cc/Pq2xJN1g/IMG-7301.jpg', open: () => showScreen('social-screen') },
+  stickers: { label: 'Stickers', image: '', open: () => showScreen('sticker-library-screen') },
+  context: { label: 'Context', image: '', open: () => showScreen('context-screen') },
 }
 
 export const launcherIcons = Object.fromEntries(Object.entries(apps).map(([id, app]) => [id, app.image]))
 
 const firstPage = ['qq', 'world-info', 'wallpaper', 'edit'] as const
-const secondPage = ['preset', 'tutorial', 'world-book'] as const
+const secondPage = ['preset', 'tutorial', 'world-book', 'stickers', 'context'] as const
 const dockApps = ['api-settings', 'font', 'char-phone', 'social'] as const
 const layoutKey = 'home-layout'
 type Location = number | 'dock'
@@ -230,8 +233,8 @@ export function HomeScreen({ database }: { database?: LocalDatabase }) {
         onContextMenu={event => event.preventDefault()} onClick={() => pick(item, location)}>
         {app ? <>
           <span className="home-icon-art">
-            <span aria-hidden="true">{app.label[0]}</span>
-            <img id={'icon-img-' + item.app} src={app.image} alt="" draggable={false}
+            <span aria-hidden="true">{item.app === 'stickers' ? '😊' : app.label[0]}</span>
+            <img id={'icon-img-' + item.app} src={app.image || undefined} hidden={!app.image} alt="" draggable={false}
               onError={event => { event.currentTarget.hidden = true }} />
           </span>
           <span className="home-app-label">{app.label}</span>
@@ -251,8 +254,11 @@ export function HomeScreen({ database }: { database?: LocalDatabase }) {
       }}>
       <div className="home-tools">
         <button className="home-tool" type="button" onClick={() => { setWidgetsOpen(true); setEditing(undefined) }}>Widgets</button>
-        <button className="home-tool" type="button" disabled={!database}
-          onClick={() => arranging ? endArrangement() : setArranging(true)}>{arranging ? 'Done' : 'Arrange'}</button>
+        <div className="home-tool-group">
+          <ThemeToggle />
+          <button className="home-tool" type="button" disabled={!database}
+            onClick={() => arranging ? endArrangement() : setArranging(true)}>{arranging ? 'Done' : 'Arrange'}</button>
+        </div>
       </div>
       <div id="home-screen-pages-container">
         <div id="home-screen-pages" style={{ transform: 'translateX(-' + currentPage * 100 + '%)' }}>

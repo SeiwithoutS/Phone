@@ -7,7 +7,7 @@ import { renderGroupMemberSettings, updateWorldBookSelectionDisplay } from './se
 import { showCustomConfirm } from '../dialogs/dialogs.js'
 import { applyLyricsBarPosition } from '../music/player.js'
 import { renderOfflinePresetSelector } from '../presets/presets.js'
-import { openBatchStickerImportModal, renderStickerPanel } from '../stickers/stickers.js'
+import { openStickerPicker } from '../stickers/stickers.js'
 import { showScreen } from '../../app/routes'
 import { controls } from '../runtime/state.js'
 import { runtime } from '../runtime/state.js'
@@ -64,8 +64,6 @@ document.getElementById('chat-settings-btn').addEventListener('click', async () 
             document.getElementById('chat-name-input').value = chat.name;
             document.getElementById('my-persona').value = chat.settings.myPersona;
             document.getElementById('my-avatar-preview').src = chat.settings.myAvatar || (isGroup ? runtime.defaultMyGroupAvatar : runtime.defaultAvatar);
-            document.getElementById('max-memory').value = chat.settings.maxMemory;
-            document.getElementById('linked-memory-count').value = chat.settings.linkedMemoryCount || 10;
             const bgPreview = document.getElementById('bg-preview');
             const removeBgBtn = document.getElementById('remove-bg-btn');
             if (chat.settings.background) {
@@ -205,38 +203,12 @@ document.getElementById('enable-tts-switch').checked = chat.settings.enableTts !
         
             updateWorldBookSelectionDisplay();
 
-            const linkMemoryToggle = document.getElementById('link-memory-toggle'); const linkedMemorySelection = document.getElementById('linked-memory-selection'); const linkedChatsContainer = document.getElementById('linked-chats-checkboxes-container'); const linkedMemoryIds = chat.settings.linkedMemoryChatIds || []; linkMemoryToggle.checked = linkedMemoryIds.length > 0; linkedMemorySelection.style.display = linkMemoryToggle.checked ? 'block' : 'none'; linkedChatsContainer.innerHTML = ''; Object.values(runtime.state.chats).forEach(c => { if (c.id === chat.id) return; const isChecked = linkedMemoryIds.includes(c.id); const prefix = c.isGroup ? '[Group]' : '[Direct]'; const label = document.createElement('label'); label.innerHTML = `<input type="checkbox" value="${c.id}" ${isChecked ? 'checked' : ''}> ${prefix} ${c.name}`; linkedChatsContainer.appendChild(label); }); function updateLinkedMemorySelectionDisplay() { const checkedBoxes = linkedChatsContainer.querySelectorAll('input:checked'); const displayText = linkedMemorySelection.querySelector('.selected-options-text'); if (checkedBoxes.length === 0) { displayText.textContent = "Select entries"; } else if (checkedBoxes.length > 2) { displayText.textContent = `${checkedBoxes.length} selected`; } else { displayText.textContent = Array.from(checkedBoxes).map(cb => cb.parentElement.textContent.trim()).join(', '); } } updateLinkedMemorySelectionDisplay(); linkMemoryToggle.addEventListener('change', () => { linkedMemorySelection.style.display = linkMemoryToggle.checked ? 'block' : 'none'; }); const linkedMemorySelectBox = linkedMemorySelection.querySelector('.select-box'); const newLinkedMemorySelectBox = linkedMemorySelectBox.cloneNode(true); linkedMemorySelectBox.parentNode.replaceChild(newLinkedMemorySelectBox, linkedMemorySelectBox); newLinkedMemorySelectBox.addEventListener('click', (e) => { e.stopPropagation(); linkedChatsContainer.classList.toggle('visible'); newLinkedMemorySelectBox.classList.toggle('expanded'); }); linkedChatsContainer.addEventListener('change', updateLinkedMemorySelectionDisplay);
             const themeRadio = [...document.querySelectorAll('input[name="theme-select"]')]
                 .find(input => input.value === chat.settings.theme) ?? document.getElementById('theme-default');
             themeRadio.checked = true;
             const fontSizeSlider = document.getElementById('font-size-slider'); fontSizeSlider.value = chat.settings.fontSize || 13; document.getElementById('font-size-value').textContent = `${fontSizeSlider.value}px`;
             const customCssInput = document.getElementById('custom-css-input'); customCssInput.value = chat.settings.customCss || '';
             updateSettingsPreview();
-            document.getElementById('auto-memory-toggle').checked = chat.settings.enableAutoMemory || false;
-            document.getElementById('auto-memory-interval').value = chat.settings.autoMemoryInterval || 20;
-        setTimeout(() => {
-            runtime.updateTokenCountDisplay(); // 首次打开时计算一次
-
-            // 为所有影响上下文的输入框添加事件监听
-            const inputsToWatch = [
-                'ai-persona', 'my-persona', 'max-memory', 
-                'linked-memory-count', 'auto-memory-toggle', 'auto-memory-interval',
-                'offline-mode-toggle', 'offline-min-length-input', 
-                'offline-max-length-input', 'offline-preset-select'
-            ];
-            
-            inputsToWatch.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.addEventListener('input', runtime.updateTokenCountDisplay);
-                }
-            });
-
-            // 为多选框容器添加事件监听
-            document.getElementById('world-book-checkboxes-container').addEventListener('change', runtime.updateTokenCountDisplay);
-            document.getElementById('linked-chats-checkboxes-container').addEventListener('change', runtime.updateTokenCountDisplay);
-            document.getElementById('link-memory-toggle').addEventListener('change', runtime.updateTokenCountDisplay);
-        }, 100);
             showScreen('chat-settings-screen');
         });
 
@@ -303,8 +275,6 @@ document.getElementById('save-chat-settings-btn').addEventListener('click', asyn
     chat.settings.background = document.getElementById('bg-preview').getAttribute('src') || '';
     chat.settings.myPersona = document.getElementById('my-persona').value;
     chat.settings.myAvatar = document.getElementById('my-avatar-preview').src;
-    chat.settings.maxMemory = parseInt(document.getElementById('max-memory').value) || 10;
-    chat.settings.linkedMemoryCount = parseInt(document.getElementById('linked-memory-count').value) || 10;
     
     const checkedBookItems = document.querySelectorAll('#world-book-checkboxes-container input[type="checkbox"]:checked');
     const newLinkedBookIds = [];
@@ -315,15 +285,6 @@ document.getElementById('save-chat-settings-btn').addEventListener('click', asyn
     });
     chat.settings.linkedWorldBookIds = newLinkedBookIds;
     
-    const linkMemoryToggleChecked = document.getElementById('link-memory-toggle').checked;
-    if (linkMemoryToggleChecked) {
-        const checkedChats = document.querySelectorAll('#linked-chats-checkboxes-container input:checked');
-        chat.settings.linkedMemoryChatIds = Array.from(checkedChats).map(cb => cb.value);
-    } else {
-        chat.settings.linkedMemoryChatIds = [];
-    }
-    chat.settings.enableAutoMemory = document.getElementById('auto-memory-toggle').checked;
-    chat.settings.autoMemoryInterval = parseInt(document.getElementById('auto-memory-interval').value) || 20;
     chat.settings.enableTimePerception = document.getElementById('time-perception-toggle').checked;
     chat.settings.timeZone = document.getElementById('time-zone-select').value;
     const sourceName = chat.isGroup ? 'group-nai-prompt-source' : 'nai-prompt-source';
@@ -466,20 +427,8 @@ document.getElementById('remove-bg-btn').addEventListener('click', () => {
 
 controls.stickerPanel = document.getElementById('sticker-panel')
 
-document.getElementById('open-sticker-panel-btn').addEventListener('click', () => { 
-    const chat = runtime.state.chats[runtime.state.activeChatId];
-    if (chat && chat.settings.stickerCategoryId) {
-       
-        runtime.activeStickerCategoryId = chat.settings.stickerCategoryId;
-    } else {
-    
-        runtime.activeStickerCategoryId = 'all'; 
-    }
-    renderStickerPanel(); 
-    controls.stickerPanel.classList.add('visible'); 
-});
+document.getElementById('open-sticker-panel-btn').addEventListener('click', openStickerPicker);
 
 document.getElementById('close-sticker-panel-btn').addEventListener('click', () => controls.stickerPanel.classList.remove('visible'));
 
-document.getElementById('add-sticker-batch-btn').addEventListener('click', openBatchStickerImportModal);
 }

@@ -29,6 +29,7 @@ export function NpcEditorModal() {
           <FormField id="npc-persona-input" label="NPC Description">
             <textarea id="npc-persona-input" rows={4} placeholder={"Describe the NPC’s personality, background, and speech…"} />
           </FormField>
+          <label className="api-streaming"><input id="npc-context-switch" type="checkbox" defaultChecked /> Include profile in other characters’ Context</label>
           <hr style={{ opacity: "0.2" }} />
           <div className="form-group" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             {" "}
@@ -61,10 +62,11 @@ export function NpcEditorModal() {
           <div className="form-group">
             {" "}
             <label>Associated characters whose posts this NPC may comment on</label>
-            <div id="npc-association-list" style={{ maxHeight: "150px", overflowY: "auto", background: "#f9f9f9", padding: "10px", borderRadius: "8px" }}>{" "}</div>
+            <div id="npc-association-list" />
           </div>
         </div>
         <div className="modal-footer">
+          <button className="form-button-secondary" id="npc-social-profile-btn" type="button" hidden>Social profile</button>
           {" "}
           <button className="cancel" id="cancel-npc-editor-btn" type="button">Cancel</button>
           {" "}

@@ -1,0 +1,234 @@
+:root {
+  color-scheme: light;
+  --ui-canvas: #f4f5fa;
+  --ui-surface: #fff;
+  --ui-raised: #edf0f7;
+  --ui-text: #22263a;
+  --ui-muted: #5a6277;
+  --ui-divider: #d6dbea;
+  --ui-accent: #5040aa;
+  --ui-accent-soft: #eae5fb;
+  --ui-on-accent: #fff;
+  --ui-danger: #a32142;
+  --ui-danger-soft: #fbe8ed;
+  --ui-positive: #167265;
+  --ui-positive-soft: #e3f4ef;
+}
+:root[data-theme=dark] {
+  color-scheme: dark;
+  --ui-canvas: #111319;
+  --ui-surface: #191e29;
+  --ui-raised: #242b3a;
+  --ui-text: #eef0f8;
+  --ui-muted: #b0b9ce;
+  --ui-divider: #414c63;
+  --ui-accent: #c4b6ff;
+  --ui-accent-soft: #332a56;
+  --ui-on-accent: #211741;
+  --ui-danger: #ffaabd;
+  --ui-danger-soft: #422632;
+  --ui-positive: #79e1c1;
+  --ui-positive-soft: #15362f;
+  --secondary-bg: var(--ui-surface);
+  --border-color: var(--ui-divider);
+  --text-primary: var(--ui-text);
+  --text-secondary: var(--ui-muted);
+  --accent-color: #a9bfff;
+}
+.ui-icon {
+  width: 19px;
+  height: 19px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ui-icon-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none;
+  place-content: center;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  min-width: 40px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.ui-icon-button:not(:disabled):hover { background: var(--ui-accent-soft); color: var(--ui-accent); }
+.ui-icon-button:disabled { opacity: .5; cursor: default; }
+.ui-icon-button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: -2px; }
+.theme-toggle { color: var(--ui-accent); }
+.home-tool-group { display: flex; align-items: center; gap: 6px; }
+.home-tools .theme-toggle {
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 18px;
+  background: var(--ui-surface);
+}
+#phone-screen #world-book-screen .mini-prompts-header {
+  gap: 6px;
+  padding: max(4px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 4px max(8px, env(safe-area-inset-left));
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+#phone-screen.status-bar-visible #world-book-screen .mini-prompts-header { padding-top: calc(38px + env(safe-area-inset-top)); }
+.mini-prompts-header h1 { flex: 1; min-width: 0; margin: 0; font-size: 1.05rem; line-height: 1.25; }
+.mini-prompts-header .ui-icon-button { min-width: 36px; min-height: 40px; color: var(--ui-muted); }
+.mini-prompts-tools { display: flex; gap: 2px; }
+.mini-prompts-header #add-world-book-btn {
+  top: auto;
+  color: var(--ui-accent);
+  background: var(--ui-accent-soft);
+}
+.mini-prompts-header #add-world-book-btn:hover { color: var(--ui-on-accent); background: var(--ui-accent); }
+#world-book-screen .card-content-preview, .mini-prompts-empty { color: var(--ui-muted); }
+.mini-prompts-empty { margin: 32px 16px; text-align: center; }
+#chat-messages .qq-editing { width: min(100%, 42rem); }
+#chat-messages .qq-editing .message-bubble { flex-basis: 100%; }
+#chat-messages .qq-editing .message-bubble > .content { padding: 0; }
+#chat-messages .qq-editing > .qq-message-tools { display: none; }
+#chat-messages .qq-inline-edit {
+  padding: 8px 10px 4px;
+  border: 1px solid var(--ui-divider);
+  border-radius: 10px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+#chat-messages .qq-inline-edit:focus-within { border-color: var(--ui-accent); }
+#chat-messages .qq-inline-edit textarea {
+  display: block;
+  width: 100%;
+  min-height: 2lh;
+  max-height: min(40dvh, 20rem);
+  box-sizing: border-box;
+  padding: 2px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: max(1rem, 1em);
+  field-sizing: content;
+  resize: none;
+}
+#chat-messages .qq-inline-edit textarea:focus { outline: none; }
+.qq-edit-status { margin: 4px 2px 0; color: var(--ui-danger); font-size: .8rem; }
+.qq-edit-status:empty { display: none; }
+.qq-inline-edit-actions { display: flex; justify-content: flex-end; gap: 3px; margin-top: 4px; }
+.qq-inline-edit-actions button[type=submit] { color: var(--ui-accent); background: var(--ui-accent-soft); }
+.qq-message-button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: -2px; }
+.qq-message-button { border-color: transparent; background: transparent; }
+.qq-message-button:hover:not(:disabled) { border-color: var(--ui-divider); background: var(--ui-raised); }
+@media (pointer: coarse) {
+  .mini-prompts-header .ui-icon-button { min-height: 44px; }
+  #chat-messages .qq-message-button { width: 36px; min-height: 34px; }
+}
+#chat-interface-screen .qq-chat-menu-button { flex-basis: 36px; }
+.qq-file-delete { color: var(--ui-danger); }
+.form-button-secondary, .change-icon-btn {
+  border: 1px solid var(--ui-divider);
+  border-radius: 9px;
+  color: var(--ui-text);
+  background-color: var(--ui-raised);
+}
+.change-icon-btn { min-height: 30px; }
+.form-button-secondary:hover:not(:disabled), .change-icon-btn:hover:not(:disabled) {
+  color: var(--ui-accent);
+  background-color: var(--ui-accent-soft);
+}
+.api-image-input-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.api-image-input-setting .toggle-switch { flex: none; }
+.api-image-input-setting small { display: block; margin-top: .3rem; color: var(--ui-muted); font-weight: 400; }
+#npc-association-list { max-height: 150px; overflow: auto; background: var(--ui-raised); padding: 10px; border-radius: 8px; }
+#character-social-profile-btn { min-height: 36px; padding-inline: 12px; }
+#chat-interface-screen :is(#open-memory-screen-btn, #chat-settings-btn, #listen-together-btn) {
+  min-width: 36px;
+  min-height: 36px;
+  color: var(--ui-text);
+}
+#chat-interface-screen #listen-together-btn[aria-pressed=true] { color: var(--ui-accent); background: var(--ui-accent-soft); }
+#chat-interface-screen #listen-together-btn[data-playing=true] { box-shadow: inset 0 -2px 0 var(--ui-accent); }
+:root[data-theme=dark] body { background: var(--ui-canvas); color: var(--ui-text); }
+#phone-screen.dark-mode {
+  background-color: var(--ui-canvas);
+  --secondary-bg: var(--ui-surface);
+  --text-primary: var(--ui-text);
+  --text-secondary: var(--ui-muted);
+  --border-color: var(--ui-divider);
+}
+#phone-screen.dark-mode :is(
+  #world-book-screen, #world-book-editor-screen, #chat-settings-screen, #font-settings-screen,
+  #preset-screen, #preset-editor-screen, #character-selection-screen, #tutorial-screen, #album-screen,
+  #album-photos-screen, #shopping-screen, #product-detail-screen, #cart-screen, #api-settings-screen,
+  #wallpaper-screen, #contact-picker-screen, #member-management-screen, #call-history-screen,
+  #search-history-screen, #long-term-memory-screen, #browser-screen
+) { background-color: var(--ui-canvas); color: var(--ui-text); }
+#phone-screen.dark-mode :is(.header, .qzone-header, #chat-input-area) { background-color: var(--ui-surface); color: var(--ui-text); }
+#phone-screen.dark-mode #chat-settings-screen {
+  --feature-panel: var(--ui-raised);
+  --feature-border: var(--ui-divider);
+  --feature-accent: var(--ui-accent);
+  --feature-muted: var(--ui-muted);
+}
+#phone-screen.dark-mode :is(
+  .chat-list-item, .chat-group-header, .world-book-card, .world-book-entry, .preset-item,
+  #world-book-tabs, .world-book-category-pane, #settings-preview-area, #chat-lock-overlay
+) { background-color: var(--ui-surface); color: var(--ui-text); }
+#phone-screen.dark-mode :is(.form-container, #chat-action-panel, .select-box, .checkboxes-container, #wallpaper-preview,
+  #cphone-wallpaper-preview, #global-bg-preview, #font-preview, #button-order-editor, .search-bar-container) {
+  background-color: var(--ui-raised);
+  color: var(--ui-text);
+  border-color: var(--ui-divider);
+}
+#phone-screen.dark-mode :is(.checkboxes-container label:hover, .chat-list-item:hover, .world-book-card:hover) {
+  background-color: var(--ui-accent-soft);
+  color: var(--ui-text);
+}
+#phone-screen.dark-mode :is(.change-icon-btn, .form-button-secondary) { background-color: var(--ui-raised); color: var(--ui-text); border-color: var(--ui-divider); }
+#phone-screen.dark-mode :is(.change-icon-btn, .form-button-secondary):hover:not(:disabled) { background-color: var(--ui-accent-soft); color: var(--ui-accent); }
+:root[data-theme=dark] #character-profile-modal :is(.thought-content .text, .thought-card) { color: var(--ui-text); }
+:root[data-theme=dark] #character-profile-modal :is(.thought-content .label, .thought-header) { color: var(--ui-muted); border-color: var(--ui-divider); }
+:root[data-theme=dark] #character-profile-modal .thought-card { background: var(--ui-raised); border-color: var(--ui-divider); }
+:root[data-theme=dark] :is(.modal-content, #custom-modal, .custom-modal-card, .startup-card) {
+  background-color: var(--ui-surface);
+  color: var(--ui-text);
+}
+:root[data-theme=dark] .startup-overlay { background: #111319ec; }
+:root[data-theme=dark] .toggle-switch .slider { background-color: #4b566d; }
+:root[data-theme=dark] .toggle-switch input:checked + .slider { background-color: #397f64; }
+:root[data-theme=dark] .toggle-switch .slider::before { background-color: var(--ui-text); }
+.toggle-switch input:focus-visible + .slider { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+:root[data-theme=dark] .message-editor-block { background: var(--ui-surface); color: var(--ui-text); }
+:root[data-theme=dark] :is(.modal, #custom-modal-overlay).visible { background-color: #050610bb !important; }
+:root[data-theme=dark] :is(.modal-content, #custom-modal, #phone-screen .form-group) :is(
+  input:not([type=checkbox],[type=radio],[type=range],[type=color]), select, textarea
+) { background-color: var(--ui-raised); color: var(--ui-text); border-color: var(--ui-divider); }
+#phone-screen.dark-mode :is(.form-group > label, .world-book-card .card-title, .preset-item .preset-name) { color: var(--ui-text); }
+#phone-screen.dark-mode :is(.form-group > small, .form-group > p:not([role=alert]), #chat-messages .timestamp) { color: var(--ui-muted); text-shadow: none; }
+#phone-screen.dark-mode :is(#chat-messages, #settings-preview-area)[data-theme=default] .message-bubble:not(.is-card-like) .content {
+  background-color: var(--ui-surface);
+  color: var(--ui-text);
+}
+#phone-screen.dark-mode :is(#chat-messages, #settings-preview-area)[data-theme=default] .message-wrapper:not(.qq-editing) .message-bubble.user:not(.is-card-like) .content {
+  background-color: #292447;
+  color: #f0ebff;
+}
+#phone-screen.dark-mode :is(#send-btn, button.form-button:not(.form-button-secondary)) { background-color: #aec2ff; color: #182343; }
+:root[data-theme=dark] .modal-footer .cancel { background-color: var(--ui-raised); color: var(--ui-accent); }
+:root[data-theme=dark] :is(.modal-footer .save, #custom-modal-confirm.confirm-btn) { color: #182343; background-color: #aec2ff; }
+:root[data-theme=dark] :is(.modal-footer .save, #custom-modal-confirm.confirm-btn).btn-danger {
+  color: var(--ui-danger);
+  background: var(--ui-danger-soft);
+}
+#phone-screen.dark-mode .home-tools .home-tool { background: var(--ui-surface); color: var(--ui-text); border-color: var(--ui-divider); }
+@media (prefers-reduced-motion: reduce) {
+  .ui-icon-button, .social-photo-button, .social-navigation button { transition: none; }
+}

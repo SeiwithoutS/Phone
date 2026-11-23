@@ -2,6 +2,7 @@ import { openMemberManagementScreen } from '../chat/groups.js'
 import { addLongPressListener, showCustomConfirm } from '../dialogs/dialogs.js'
 import { runtime } from '../runtime/state.js'
 import { fileDataUrl } from '../../runtime/files'
+import { showScreen } from '../../app/routes'
 
 export function bindNpcEvents() {
   const modal = document.getElementById('npc-editor-modal')
@@ -10,6 +11,11 @@ export function bindNpcEvents() {
   document.getElementById('add-npc-btn').addEventListener('click', () => openNpcEditor())
   document.getElementById('save-npc-btn').addEventListener('click', saveNpc)
   document.getElementById('cancel-npc-editor-btn').addEventListener('click', () => modal.classList.remove('visible'))
+  document.getElementById('npc-social-profile-btn').addEventListener('click', () => {
+    if (runtime.editingNpcId == null) return
+    modal.classList.remove('visible')
+    showScreen('social-screen', { socialActorId: 'npc:' + runtime.editingNpcId })
+  })
   avatarInput.addEventListener('change', async () => {
     const file = avatarInput.files[0]
     if (!file) return
@@ -62,6 +68,7 @@ export async function openNpcEditor(npcId = null) {
             runtime.editingNpcId = npcId;
             const modal = document.getElementById('npc-editor-modal');
             const titleEl = document.getElementById('npc-editor-title');
+            document.getElementById('npc-social-profile-btn').hidden = npcId == null;
             const nameInput = document.getElementById('npc-name-input');
             const personaInput = document.getElementById('npc-persona-input');
             const avatarPreview = document.getElementById('npc-avatar-preview');
@@ -69,6 +76,8 @@ export async function openNpcEditor(npcId = null) {
             
             
             const activitySwitch = document.getElementById('npc-background-activity-switch');
+            const contextSwitch = document.getElementById('npc-context-switch');
+            contextSwitch.checked = true;
             const cooldownInput = document.getElementById('npc-action-cooldown-input');
             
             associationListEl.innerHTML = ''; 
@@ -91,6 +100,7 @@ export async function openNpcEditor(npcId = null) {
                     
                     
                     activitySwitch.checked = npc.enableBackgroundActivity !== false; 
+                    contextSwitch.checked = npc.includeInContext !== false;
                     cooldownInput.value = npc.actionCooldownMinutes || 15;
 
                     if (npc.associatedWith && Array.isArray(npc.associatedWith)) {
@@ -135,6 +145,7 @@ export async function saveNpc() {
         persona,
         avatar: document.getElementById('npc-avatar-preview').src,
         associatedWith: selectedAssociations,
+        includeInContext: document.getElementById('npc-context-switch').checked,
         enableBackgroundActivity: enableBackgroundActivity,
         actionCooldownMinutes: actionCooldownMinutes
     };

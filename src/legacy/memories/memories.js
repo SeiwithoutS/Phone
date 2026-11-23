@@ -1,6 +1,7 @@
 import { withConversationRequest } from '../../features/chat/sessions'
-import { openAiUrl } from '../../features/api/endpoints'
-import { getGeminiResponseText, toGeminiRequestData } from '../api/client.js'
+import { requestContextCompletion } from '../../features/api/completion'
+import { contextConfig } from '../../features/context/context'
+import { getGeminiResponseText } from '../api/client.js'
 import { showChoiceModal, showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
 import { runtime } from '../runtime/state.js'
 
@@ -142,7 +143,11 @@ export async function checkAndTriggerAutoSummary(chatId) {
             const chat = runtime.state.chats[chatId];
             if (!chat || !chat.settings.enableAutoMemory) return;
         
-            const lastSummaryTimestamp = chat.lastMemorySummaryTimestamp || 0;
+            if (!contextConfig().sources.qq.enabled || !contextConfig().sources.qq.percent) {
+        if (force) alert('Enable QQ chat in Context to summarize messages.');
+        return;
+    }
+    const lastSummaryTimestamp = chat.lastMemorySummaryTimestamp || 0;
             const messagesSinceLastSummary = chat.history.filter(m => m.timestamp > lastSummaryTimestamp && !m.isHidden);
         
             if (messagesSinceLastSummary.length >= chat.settings.autoMemoryInterval) {
@@ -153,6 +158,7 @@ export async function checkAndTriggerAutoSummary(chatId) {
 
 export async function summarizeCallTranscript(chatId, transcriptText) {
     const chat = runtime.state.chats[chatId];
+    if (!contextConfig().sources.activity.enabled || !contextConfig().sources.activity.percent) throw new Error('Enable App activity in Context to summarize the call.');
     if (!chat || !transcriptText) {
         throw new Error("基础数据不完整，无法开始总结。");
     }
@@ -216,7 +222,6 @@ ${protagonistChat.settings.aiPersona}
 ${userPersonaInGroup}
 
 # 待总结的群组视频通话记录
-${transcriptText}
 
 现在，请以“${protagonist.originalName}”的身份，开始你的客观总结。`;
         
@@ -250,7 +255,6 @@ ${chat.settings.aiPersona}
 ${chat.settings.myPersona}
 
 # 待总结的视频通话记录
-${transcriptText}
 
 现在，请以“${chat.originalName}”的身份，开始你的客观总结。`;
     }
@@ -258,27 +262,9 @@ ${transcriptText}
 
 
     try {
-        const useSecondaryApi = runtime.state.apiConfig.secondaryProxyUrl && runtime.state.apiConfig.secondaryApiKey && runtime.state.apiConfig.secondaryModel;
-        const { proxyUrl, apiKey, model } = useSecondaryApi ? 
-            { proxyUrl: runtime.state.apiConfig.secondaryProxyUrl, apiKey: runtime.state.apiConfig.secondaryApiKey, model: runtime.state.apiConfig.secondaryModel } : 
-            runtime.state.apiConfig;
-
-        if (!proxyUrl || !apiKey || !model) throw new Error('API未配置，无法进行总结。');
-
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, [{ role: 'user', content: "请开始总结。" }]);
-
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, {role: 'user', content: "请开始总结。"}],
-                    temperature: 0.1
-                })
-            });
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt, includeOnly: ['activity'],
+            task: 'Call summary', scope: 'memory:call:' + chat.id, activity: transcriptText.split('\n'),
+            request: [{ role: 'user', content: 'Summarize the provided call transcript.' }] }, { temperature: 0.1 });
 
         if (!response.ok) {
              const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }));
@@ -286,7 +272,7 @@ ${transcriptText}
         }
         
         const data = await response.json();
-        let rawContent = isGemini ? getGeminiResponseText(data) : data.choices[0].message.content;
+        let rawContent = getGeminiResponseText(data);
         rawContent = rawContent.replace(/^```json\s*/, '').replace(/```$/, '').trim();
         const result = JSON.parse(rawContent);
 
@@ -419,31 +405,6 @@ async function summarizeConversation(chatId, force) {
 
     const userNickname = runtime.state.qzoneSettings.nickname || '用户';
     
-    const formattedHistory = messagesToSummarize.map(msg => {
-        if (msg.isHidden && msg.role === 'system' && msg.content.includes('内心独白')) {
-            return msg.content;
-        }
-        let sender;
-        if (msg.role === 'user') {
-            sender = userNickname;
-        } else {
-            sender = msg.senderName || chat.originalName;
-        }
-        let contentToSummarize = '';
-        if (msg.type === 'offline_text') {
-            if (msg.content) {
-                 contentToSummarize = msg.content;
-            } else {
-                const dialogue = msg.dialogue ? `「${msg.dialogue}」` : '';
-                const description = msg.description ? `(${msg.description})` : '';
-                contentToSummarize = `${dialogue} ${description}`.trim();
-            }
-        } else {
-            contentToSummarize = String(msg.content);
-        }
-        return `${sender}: ${contentToSummarize}`;
-    }).join('\n');
-
     let systemPrompt;
 
     if (chat.isGroup) {
@@ -466,7 +427,6 @@ async function summarizeConversation(chatId, force) {
     }
     \`\`\`
 # 待总结的群聊记录
-${formattedHistory}
 # 群成员列表 (你的总结目标)
 ${chat.members.map(m => `- ${m.groupNickname} (本名: ${m.originalName})`).join('\n')}
 现在，请为【参与了对话的AI角色】生成他们各自的、第一人称的、精简的记忆。`;
@@ -502,24 +462,19 @@ ${chat.settings.aiPersona}
 # 你的聊天对象（用户）的人设
 ${chat.settings.myPersona}
 # 待总结的对话历史
-${formattedHistory}
 
 现在，请以“${chat.originalName}”的身份，开始你的客观总结。`;
 
     }
 
     try {
-        const useSecondaryApi = runtime.state.apiConfig.secondaryProxyUrl && runtime.state.apiConfig.secondaryApiKey && runtime.state.apiConfig.secondaryModel;
-        const { proxyUrl, apiKey, model } = useSecondaryApi ? { proxyUrl: runtime.state.apiConfig.secondaryProxyUrl, apiKey: runtime.state.apiConfig.secondaryApiKey, model: runtime.state.apiConfig.secondaryModel } : runtime.state.apiConfig;
-        if (!proxyUrl || !apiKey || !model) throw new Error('API未配置');
-        
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, [{ role: 'user', content: "请开始总结。" }]);
-        const response = isGemini ? await fetch(geminiConfig.url, geminiConfig.data) : await fetch(openAiUrl(proxyUrl, 'chat/completions'), { method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`}, body: JSON.stringify({ model: model, messages: [{role: 'system', content: systemPrompt}, {role: 'user', content: "请开始总结。"}], temperature: 0.2 }) });
-        
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt, includeOnly: ['qq'],
+            task: 'QQ memory summary', scope: 'memory:qq:' + chat.id, rawHistory: messagesToSummarize,
+            request: [{ role: 'user', content: 'Summarize the provided messages.' }] }, { temperature: 0.2 });
+
         if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
         const data = await response.json();
-        let rawContent = isGemini ? getGeminiResponseText(data) : data.choices[0].message.content;
+        let rawContent = getGeminiResponseText(data);
         rawContent = rawContent.replace(/^```json\s*/, '').replace(/```$/, '').trim();
         const result = JSON.parse(rawContent);
 

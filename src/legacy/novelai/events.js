@@ -1,10 +1,7 @@
 import { executeBatchDeleteFrames, handleSelectAllFrames, toggleFrameManagementMode } from '../avatars/frames.js'
 import { switchToCharScreen } from '../character-phone/launcher.js'
-import { addLongPressListener, showCustomAlert } from '../dialogs/dialogs.js'
 import { generateNovelAIImage, loadNovelAISettings, resetNovelAISettings, saveNovelAISettings } from './images.js'
 import { handleDeleteCurrentCategory } from '../shopping/store.js'
-import { openStickerCategoryBindingModal } from '../stickers/stickers.js'
-import { controls } from '../runtime/state.js'
 import { runtime } from '../runtime/state.js'
 
 export function bindNovelAiEvents() {
@@ -165,32 +162,6 @@ document.getElementById('delete-current-category-btn').addEventListener('click',
 document.getElementById('char-wallet-back-btn').addEventListener('click', () => {
 
     switchToCharScreen('char-taobao-screen');
-});
-
-document.getElementById('sticker-binding-chat-list').addEventListener('click', (e) => {
-    const item = e.target.closest('.contact-picker-item');
-    if (item) {
-        const checkbox = item.querySelector('.sticker-binding-checkbox');
-        if (checkbox && e.target !== checkbox) {
-            checkbox.checked = !checkbox.checked;
-        }
-    }
-});
-
-controls.stickerTabsContainer = document.getElementById('sticker-category-tabs')
-
-addLongPressListener(controls.stickerTabsContainer, (e) => {
-    const tab = e.target.closest('.sticker-category-tab');
-    if (tab) {
-        e.preventDefault(); 
-        const categoryIdStr = tab.dataset.categoryId;
-        if (categoryIdStr === 'all') {
-            showCustomAlert("Notice", "Choose a specific sticker category to link.");
-            return;
-        }
-        const categoryId = categoryIdStr === 'uncategorized' ? 'uncategorized' : parseInt(categoryIdStr);
-        openStickerCategoryBindingModal(categoryId);
-    }
 });
 
 }

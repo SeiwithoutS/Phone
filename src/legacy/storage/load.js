@@ -172,7 +172,7 @@ if (typeof chat.settings.stickerCategoryIds === 'undefined') {
     if (memoriesToUpdate.length > 0) {
         await runtime.db.memories.bulkPut(memoriesToUpdate);
     }
-    runtime.state.apiConfig = apiConfig || { id: 'main', proxyUrl: '', apiKey: '', model: '', secondaryProxyUrl: '', secondaryApiKey: '', secondaryModel: '', minimaxGroupId: '', minimaxApiKey: '', minimaxModel: 'speech-01' };
+    runtime.state.apiConfig = apiConfig || { id: 'main', proxyUrl: '', apiKey: '', model: '', minimaxGroupId: '', minimaxApiKey: '', minimaxModel: 'speech-01' };
     runtime.state.userStickers = userStickers || [];
     runtime.state.worldBooks = worldBooks || [];
     runtime.state.lorebooks = lorebooks || [];

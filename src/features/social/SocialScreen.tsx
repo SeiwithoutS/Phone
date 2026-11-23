@@ -1,31 +1,27 @@
-import { useContext, useEffect, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
-import { PhoneAvatar, PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
+import { useContext, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Icon, IconButton } from '../../components/icons'
+import { PhoneAvatar, Screen, ScreenContext } from '../../components/phone'
+import { ThemeToggle } from '../../components/ThemeToggle'
 import { showScreen } from '../../app/routes'
-import { fileDataUrl, imageSource } from '../../runtime/files'
-import { getCharacters } from '../characters/characters'
-import { characterAvatar } from '../characters/gallery'
-import { createAiComment, defaultSocialProfile, profileKey } from './social'
+import { imageSource } from '../../runtime/files'
+import { defaultSocialProfile, postPhotos, profileKey, socialActors } from './social'
+import { ensureActorProfile, generateSocialComment, getSocialActivityError, isCommentPending, isSocialPostPending,
+  maxPostMinutes, publishActorPost, readSocialSettings, refreshSocial, saveSocialSettings, subscribeSocial } from './activity'
+import { readSocialImage, shortDate, SocialDialog } from './SocialDialog'
+import { FeedPost, PostComposer } from './SocialPost'
+import type { FormEvent } from 'react'
 import type { LocalDatabase } from '../../storage/database'
-import type { Post, SocialProfile } from './social'
+import type { ActorProfile, Post, SocialActor, SocialNotification, SocialPhoto, SocialProfile } from './social'
 
-const preferencesKey = 'social-ai-comments'
-const pending = new Set<string>()
-const listeners = new Set<() => void>()
-const refreshFeed = () => listeners.forEach(listener => listener())
-const tabs = ['Timeline', 'My profile', 'Saved'] as const
-
-function settings(database: LocalDatabase) {
-  const value = database.getPreference(preferencesKey) as { ai?: boolean; characterId?: string } | null
-  return { ai: value?.ai === true, characterId: value?.characterId ?? '' }
-}
-
-async function readImage(file: File) {
-  if (file.size > 8 * 1024 * 1024) throw new Error('Choose an image smaller than 8 MiB.')
-  const source = imageSource(await fileDataUrl(file))
-  if (!source) throw new Error('Choose a PNG, JPEG, WebP, GIF or other supported image.')
-  return source
-}
+const tabs = [
+  { title: 'Timeline', icon: 'feed' }, { title: 'Search', icon: 'search' },
+  { title: 'New post', icon: 'plus' }, { title: 'Saved', icon: 'bookmark' }, { title: 'My profile', icon: 'profile' },
+] as const
+type Tab = Exclude<typeof tabs[number]['title'], 'New post'>
+type Panel = 'settings' | 'compose' | 'profile' | 'notifications'
+type FeedData = { posts: Post[]; actors: SocialActor[]; profiles: ActorProfile[]; notifications: SocialNotification[] }
+const emptyFeed: FeedData = { posts: [], actors: [], profiles: [], notifications: [] }
 
 export function SocialScreen({ database }: { database?: LocalDatabase }) {
   const active = useContext(ScreenContext) === 'social-screen'
@@ -35,40 +31,67 @@ export function SocialScreen({ database }: { database?: LocalDatabase }) {
 }
 
 function SocialFeed({ database }: { database: LocalDatabase }) {
-  const [posts, setPosts] = useState<Post[]>([])
+  const [params, setParams] = useSearchParams()
+  const [feed, setFeed] = useState(emptyFeed)
+  const [loaded, setLoaded] = useState(false)
   const [profile, setProfile] = useState(() => ({
     ...defaultSocialProfile(), ...(database.getPreference(profileKey) as Partial<SocialProfile> | null),
   }))
-  const [tab, setTab] = useState<typeof tabs[number]>('Timeline')
+  const [tab, setTab] = useState<Tab>('Timeline')
+  const [media, setMedia] = useState(false)
   const [query, setQuery] = useState('')
-  const [editingProfile, setEditingProfile] = useState(false)
-  const [preferences, setPreferences] = useState(() => settings(database))
-  const [updatingSettings, setUpdatingSettings] = useState(false)
+  const [panel, setPanel] = useState<Panel>()
+  const [preferences, setPreferences] = useState(() => readSocialSettings(database))
+  const [updating, setUpdating] = useState(false)
+  const [generatingProfile, setGeneratingProfile] = useState<string>()
+  const [profileError, setProfileError] = useState('')
+  const [activityError, setActivityError] = useState(getSocialActivityError)
+  const [posting, setPosting] = useState(() => isSocialPostPending(database))
+  const [trialPost, setTrialPost] = useState<Post>()
+  const [unreadOnly, setUnreadOnly] = useState(false)
   const [error, setError] = useState('')
   const [commentErrors, setCommentErrors] = useState<Record<string, string>>({})
-  const characters = getCharacters()
-  const characterId = characters.some(chat => chat.id === preferences.characterId) ? preferences.characterId : characters[0]?.id ?? ''
+  const { actors, posts, profiles, notifications } = feed
+  const selectedActor = preferences.actorId || actors[0]?.id || ''
+  const actorExists = actors.some(actor => actor.id === selectedActor)
+  const activeActorId = params.get('profile')
+  const actor = actors.find(item => item.id === activeActorId)
+  const actorProfile = profiles.find(item => item.id === activeActorId)
+  const selectedId = params.get('post')
+  const selectedPost = posts.find(post => post.id === selectedId)
+  const viewingProfile = Boolean(activeActorId) || tab === 'My profile'
+  const viewedProfile = activeActorId ? actorProfile : profile
+  const unread = notifications.filter(item => !item.read)
+  const visibleNotifications = unreadOnly ? unread : notifications
 
   useEffect(() => {
     let active = true
+    let request = 0
     const refresh = () => {
-      void database.socialPosts.orderBy('time').reverse().toArray().then(rows => {
-        if (active) setPosts(rows as Post[])
-      }).catch(() => { if (active) setError('Could not load the timeline.') })
+      const current = ++request
+      setPreferences(readSocialSettings(database))
+      setActivityError(getSocialActivityError())
+      setPosting(isSocialPostPending(database))
+      void Promise.all([database.socialPosts.orderBy('time').reverse().toArray(), socialActors(database),
+        database.socialProfiles.toArray(), database.socialNotifications.orderBy('time').reverse().toArray()])
+        .then(([posts, actors, profiles, notifications]) => {
+          if (active && current === request) {
+            setFeed({ posts: posts as Post[], actors, profiles: profiles as ActorProfile[], notifications: notifications as SocialNotification[] })
+            setLoaded(true)
+          }
+        }).catch(() => { if (active && current === request) { setError('Could not load Social.'); setLoaded(true) } })
     }
+    const unsubscribe = subscribeSocial(refresh)
     refresh()
-    listeners.add(refresh)
-    return () => { active = false; listeners.delete(refresh) }
+    return () => { active = false; unsubscribe() }
   }, [database])
 
-  async function configure(value: typeof preferences) {
-    setUpdatingSettings(true)
+  async function configure(change: Partial<typeof preferences>) {
+    setUpdating(true)
     setError('')
-    try {
-      await database.deviceSettings.put({ id: preferencesKey, value })
-      setPreferences(value)
-    } catch { setError('Could not save AI comment settings.') }
-    finally { setUpdatingSettings(false) }
+    try { setPreferences(await saveSocialSettings(database, { actorId: selectedActor, ...change })) }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not save Social settings.') }
+    finally { setUpdating(false) }
   }
 
   async function updatePost(id: string, update: (post: Post) => Partial<Post>) {
@@ -78,104 +101,276 @@ function SocialFeed({ database }: { database: LocalDatabase }) {
       const changes = update(post)
       if (Object.keys(changes).length) await tx.socialPosts.update(id, changes)
     })
-    refreshFeed()
+    refreshSocial()
   }
 
   async function generate(post: Post) {
-    const current = settings(database)
-    if (!current.ai || pending.has(post.id)) return
-    pending.add(post.id)
     setCommentErrors(state => ({ ...state, [post.id]: '' }))
-    refreshFeed()
-    try {
-      const latest = await database.socialPosts.get(post.id) as Post | undefined
-      if (!latest || latest.comments.some(comment => comment.ai) || !settings(database).ai) return
-      const available = getCharacters()
-      const character = available.find(chat => chat.id === current.characterId) ?? available[0]
-      if (!character) throw new Error('Create a character in Edit to enable AI replies.')
-      const text = await createAiComment(latest, character)
-      await updatePost(post.id, fresh => fresh.comments.some(comment => comment.ai) || !settings(database).ai ? {} : ({
-        comments: [...fresh.comments, { id: crypto.randomUUID(), author: character.name, text, ai: true, avatar: characterAvatar(character) }],
-      }))
-    } catch (failure) {
+    try { await generateSocialComment(database, post.id) }
+    catch (failure) {
       setCommentErrors(state => ({ ...state, [post.id]: failure instanceof Error ? failure.message : 'AI comment failed.' }))
-    } finally {
-      pending.delete(post.id)
-      refreshFeed()
     }
   }
 
-  async function publish(text: string, image: string) {
-    const post: Post = { id: crypto.randomUUID(), author: profile.name, text, image, time: Date.now(), liked: false, comments: [] }
+  async function publish(text: string, photos: SocialPhoto[]) {
+    const post: Post = { id: crypto.randomUUID(), author: profile.name, text, photos, time: Date.now(), liked: false, comments: [] }
     await database.socialPosts.add(post)
-    refreshFeed()
+    refreshSocial()
+    selectTab('Timeline')
+    setPanel(undefined)
     void generate(post)
   }
 
+  async function generateProfile(actor: SocialActor) {
+    setGeneratingProfile(actor.id)
+    setProfileError('')
+    try { await ensureActorProfile(database, actor) }
+    catch (failure) { setProfileError(failure instanceof Error ? failure.message : 'Could not generate the profile.') }
+    finally { setGeneratingProfile(undefined) }
+  }
+
+  function openActor(id: string) {
+    setMedia(false)
+    setProfileError('')
+    setParams({ profile: id })
+  }
+
+  function selectTab(next: Tab) {
+    setTab(next)
+    if (next !== 'Search') setQuery('')
+    if (activeActorId || selectedId) setParams({})
+  }
+
+  function openThread(postId: string) {
+    setParams(activeActorId ? { profile: activeActorId, post: postId } : { post: postId })
+  }
+
+  function closeThread() {
+    setParams(activeActorId ? { profile: activeActorId } : {}, { replace: true })
+  }
+
+  async function markRead(ids: string[]) {
+    try {
+      await database.socialNotifications.where('id').anyOf(ids).modify({ read: true })
+      refreshSocial()
+    } catch {
+      setError('Could not mark notifications as read.')
+    }
+  }
+
+  async function postOnce() {
+    setError('')
+    setTrialPost(undefined)
+    try { setTrialPost(await publishActorPost(database, selectedActor)) }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not publish a post.') }
+  }
+
   const needle = query.trim().toLocaleLowerCase()
-  const visible = posts.filter(post => (tab !== 'Saved' || post.bookmarked) &&
-    (!needle || [post.text, post.author, ...post.comments.map(comment => comment.text)].some(text => text.toLocaleLowerCase().includes(needle))))
-  if (tab === 'Timeline') visible.sort((left, right) => (right.repostedAt || right.time) - (left.repostedAt || left.time))
+  const matches = (...values: string[]) => values.some(value => value.toLocaleLowerCase().includes(needle))
+  const visible = posts.filter(post => {
+    if (activeActorId) return post.authorId === activeActorId
+    if (tab === 'My profile') return !post.authorId
+    if (tab === 'Saved') return post.bookmarked
+    if (tab === 'Search' && needle) return matches(post.text, post.author, ...post.comments.map(comment => comment.text))
+    return true
+  })
+  if (!viewingProfile && tab === 'Timeline') {
+    visible.sort((left, right) => (right.repostedAt || right.time) - (left.repostedAt || left.time))
+  }
 
-  return <>
-    <PhoneFeatureHeader title="Social" onBack={() => showScreen('home-screen')} />
-    <div className="phone-app-scroll social-scroll">
-      <nav className="social-tabs" aria-label="Social views">
-        {tabs.map(item => <button type="button" key={item} aria-current={tab === item ? 'page' : undefined} onClick={() => {
-          setTab(item); setQuery(''); setEditingProfile(false)
-        }}>{item}</button>)}
-      </nav>
+  function postCard(post: Post, thread = false) {
+    return <FeedPost key={post.id} post={post} profile={profile} authorProfile={profiles.find(item => item.id === post.authorId)}
+      openActor={openActor} thread={thread} ai={preferences.ai} pendingReply={isCommentPending(post.id)} aiError={commentErrors[post.id]}
+      generate={() => void generate(post)} update={change => updatePost(post.id, change)} openThread={() => openThread(post.id)}
+      remove={async () => {
+        await database.socialPosts.delete(post.id)
+        if (thread) closeThread()
+        refreshSocial()
+      }} />
+  }
 
-      {tab === 'My profile' && <section className="social-profile">
-        <div className="social-banner">{imageSource(profile.banner) && <img src={profile.banner} alt="" />}</div>
-        <div className="social-profile-info">
-          <PhoneAvatar source={profile.avatar} name={profile.name} />
-          <button className="phone-app-button compact" type="button" onClick={() => setEditingProfile(!editingProfile)}>
-            {editingProfile ? 'Close editor' : 'Edit profile'}
-          </button>
-          <h2>{profile.name}</h2>
-          <span className="social-meta">@{profile.handle} · {posts.length} {posts.length === 1 ? 'post' : 'posts'}</span>
-          {profile.bio && <p className="social-text">{profile.bio}</p>}
+  return <div className="social-shell">
+    <header className="social-header">
+      <IconButton icon="back" label="Back" onClick={() => activeActorId ? selectTab(tab) : showScreen('home-screen')} />
+      <h1>{activeActorId ? 'Profile' : 'Social'}</h1>
+      <IconButton icon="bell" label={unread.length ? 'Notifications, ' + unread.length + ' unread' : 'Notifications'}
+        count={unread.length || undefined} aria-haspopup="dialog" onClick={() => { setError(''); setPanel('notifications') }} />
+      <ThemeToggle />
+      <IconButton icon="settings" label="Social settings" aria-haspopup="dialog" onClick={() => { setError(''); setPanel('settings') }} />
+    </header>
+
+    <div className="social-scroll" role="region" aria-label={activeActorId ? 'Actor profile' : tab} key={activeActorId || tab}>
+      {!viewingProfile && tab === 'Timeline' && <button type="button" className="social-compose-trigger" onClick={() => setPanel('compose')}>
+        <PhoneAvatar source={profile.avatar} name={profile.name} />
+        <span>Share something.</span><Icon name="plus" />
+      </button>}
+
+      {!viewingProfile && tab === 'Search' && <>
+        <label className="social-search">
+          <Icon name="search" /><input type="search" aria-label="Search profiles and posts" value={query}
+            onChange={event => setQuery(event.target.value)} placeholder="Search profiles and posts" />
+        </label>
+        <div className="social-directory">
+          {actors.map(item => {
+            const identity = profiles.find(saved => saved.id === item.id)
+            if (needle && !matches(item.name, identity?.name || '', identity?.handle || '')) return null
+            return <button key={item.id} type="button" onClick={() => openActor(item.id)}>
+              <PhoneAvatar source={identity?.avatar || item.avatar} name={identity?.name || item.name} />
+              <span><strong>{identity?.name || item.name}</strong>
+                <small>{identity ? '@' + identity.handle : item.id.startsWith('npc:') ? 'NPC' : 'Character'}</small></span>
+              <Icon name="next" />
+            </button>
+          })}
         </div>
-        {editingProfile && <ProfileEditor profile={profile} save={async value => {
-          await database.deviceSettings.put({ id: profileKey, value })
-          setProfile(value)
-          setEditingProfile(false)
-        }} />}
+      </>}
+      {!viewingProfile && tab === 'Saved' && <h2 className="social-section-title">Saved posts</h2>}
+
+      {viewingProfile && viewedProfile && <ProfileHeader profile={viewedProfile} posts={visible}
+        edit={activeActorId ? undefined : () => setPanel('profile')} media={media} setMedia={setMedia} />}
+      {activeActorId && !actorProfile && loaded && <section className="social-empty">
+        {actor
+          ? <><PhoneAvatar source={actor.avatar} name={actor.name} /><h2>{actor.name}</h2>
+            <button className="social-primary" type="button" disabled={Boolean(generatingProfile)}
+              onClick={() => void generateProfile(actor)}>{generatingProfile === actor.id ? 'Generating profile…' : 'Generate profile with AI'}</button>
+            {profileError && <p role="alert" className="phone-app-error">{profileError}</p>}</>
+          : <p>This profile is unavailable.</p>}
       </section>}
 
-      {tab === 'Timeline' && <>
-        <PostComposer profile={profile} submit={publish} />
-        <details className="settings-disclosure social-ai-settings">
-          <summary>AI comments</summary>
-          <label className="phone-app-check">
-            <input type="checkbox" role="switch" checked={preferences.ai} disabled={updatingSettings}
-              onChange={event => void configure({ ai: event.target.checked, characterId })} /> Auto AI comment
-          </label>
-          {preferences.ai && (characters.length > 0 ? <label>Comment as<select value={characterId} disabled={updatingSettings}
-            onChange={event => void configure({ ai: true, characterId: event.target.value })}>
-            {characters.map(chat => <option key={chat.id} value={chat.id}>{chat.name}</option>)}
-          </select></label> : <p className="phone-app-muted">Create a character in Edit to receive AI comments.</p>)}
-        </details>
+      {error && !panel && <p className="phone-app-error" role="alert">{error}</p>}
+      {viewingProfile && viewedProfile && media ? (
+        <div className="social-profile-grid">{visible.map(post => {
+          const photos = postPhotos(post)
+          if (!photos.length) return null
+          return <button type="button" key={post.id}
+            aria-label={post.text ? 'Open post: ' + post.text.slice(0, 60) : 'Open photo post'}
+            onClick={() => openThread(post.id)}>
+            <img src={photos[0].source} alt={photos[0].description} loading="lazy" />
+            {photos.length > 1 && <Icon name="stack" />}
+          </button>
+        })}{!visible.some(post => postPhotos(post).length > 0) && <p className="social-empty">Photo posts will appear here.</p>}</div>
+      ) : <>
+        {loaded && !visible.length && (!viewingProfile || viewedProfile) && <div className="social-empty">
+          <Icon name={tab === 'Saved' ? 'bookmark' : tab === 'Search' ? 'search' : 'feed'} />
+          <p>{tab === 'Search' && needle ? 'No matching posts.' : tab === 'Saved' ? 'Bookmark a post to find it here.' : 'No posts yet.'}</p>
+        </div>}
+        <div className="social-timeline">{visible.map(post => postCard(post))}</div>
       </>}
-
-      {(posts.length > 0 || needle) && <label className="social-search">
-        <span>Search posts</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search posts and replies" />
-      </label>}
-      {error && <p className="phone-app-error" role="alert">{error}</p>}
-      {!visible.length && <p className="social-empty">
-        {needle ? 'No matching posts.' : tab === 'Saved' ? 'Saved posts will appear here.' : 'Your posts will appear here.'}
-      </p>}
-      <div className="social-timeline">
-        {visible.map(post => <FeedPost key={post.id} post={post} profile={profile}
-          ai={preferences.ai} pendingReply={pending.has(post.id)} aiError={commentErrors[post.id]}
-          generate={() => void generate(post)} update={change => updatePost(post.id, change)}
-          remove={async () => { await database.socialPosts.delete(post.id); refreshFeed() }} />)}
-      </div>
     </div>
-  </>
-}
 
+    <nav className="social-navigation" aria-label="Social views">
+      {tabs.map(item => <IconButton key={item.title} icon={item.icon} label={item.title}
+        className={item.title === 'New post' ? 'social-create' : undefined}
+        aria-current={!activeActorId && tab === item.title ? 'page' : undefined}
+        onClick={() => item.title === 'New post' ? setPanel('compose') : selectTab(item.title)} />)}
+    </nav>
+
+    {panel === 'settings' && <SocialDialog title="Social settings" close={() => setPanel(undefined)}>
+      <div className="social-settings phone-app-stack">
+        <label className="social-setting-row">
+          <span><strong>Auto AI comment</strong><small>Generate one comment when you publish a post.</small></span>
+          <input type="checkbox" role="switch" aria-label="Auto AI comment" checked={preferences.ai} disabled={updating}
+            onChange={event => void configure({ ai: event.target.checked })} />
+        </label>
+        <label className="social-setting-row">
+          <span><strong>Auto AI posts</strong><small>Publish every {preferences.postEveryMinutes} minutes while EPhone is open.</small></span>
+          <input type="checkbox" role="switch" aria-label="Auto AI posts" checked={preferences.autoPost} disabled={updating || (!actorExists && !preferences.autoPost)}
+            onChange={event => void configure({ autoPost: event.target.checked })} />
+        </label>
+        <form className="social-post-interval" key={preferences.postEveryMinutes} onSubmit={event => {
+          event.preventDefault()
+          void configure({ postEveryMinutes: Number(new FormData(event.currentTarget).get('post-every-minutes')) })
+        }}>
+          <label>Minutes between auto posts<input type="number" name="post-every-minutes" min={1} max={maxPostMinutes}
+            step={1} required defaultValue={preferences.postEveryMinutes} disabled={updating} /></label>
+          <button type="submit" className="phone-app-button compact" disabled={updating}>Save interval</button>
+        </form>
+        <label htmlFor="social-actor">AI actor</label>
+        <select id="social-actor" value={selectedActor} disabled={updating || !actors.length}
+          onChange={event => void configure({ actorId: event.target.value })}>
+          {!actorExists && <option value={selectedActor}>{selectedActor ? 'Choose another identity' : 'No characters or NPCs yet'}</option>}
+          {(['character:', 'npc:'] as const).map(prefix => {
+            const options = actors.filter(actor => actor.id.startsWith(prefix))
+            return options.length > 0 && <optgroup key={prefix} label={prefix === 'character:' ? 'Characters' : 'NPCs'}>
+              {options.map(actor => <option key={actor.id} value={actor.id}>{actor.name}</option>)}
+            </optgroup>
+          })}
+        </select>
+        <div className="phone-app-actions">
+          <button type="button" className="phone-app-button" disabled={!actorExists || updating || posting}
+            onClick={() => void postOnce()}>{posting ? 'Generating post…' : 'Try one post'}</button>
+          {trialPost && <button type="button" className="phone-app-button" onClick={() => {
+            setPanel(undefined)
+            openThread(trialPost.id)
+          }}>View published post</button>}
+        </div>
+        {actorExists && <button className="social-author-link" type="button" onClick={() => { setPanel(undefined); openActor(selectedActor) }}>
+          View selected profile
+        </button>}
+        <div className="social-settings-links">
+          <button type="button" onClick={() => showScreen('character-edit-screen')}><Icon name="profile" /> Characters</button>
+          <button type="button" onClick={() => showScreen('chat-list-screen', { chatListView: 'npc-list-view' })}><Icon name="settings" /> Manage NPCs</button>
+        </div>
+        {(error || activityError) && <p className="phone-app-error" role="alert">{error || activityError}</p>}
+      </div>
+    </SocialDialog>}
+    {panel === 'notifications' && <SocialDialog title="Notifications" close={() => setPanel(undefined)}>
+      <div className="phone-app-actions social-notification-filters" aria-label="Filter notifications" role="group">
+        <button type="button" className="phone-app-button compact" aria-pressed={!unreadOnly} onClick={() => setUnreadOnly(false)}>All</button>
+        <button type="button" className="phone-app-button compact" aria-pressed={unreadOnly} onClick={() => setUnreadOnly(true)}>Unread ({unread.length})</button>
+        {unread.length > 0 && <button type="button" className="phone-app-button compact"
+          onClick={() => void markRead(unread.map(item => item.id))}>Mark all as read</button>}
+      </div>
+      {visibleNotifications.length === 0 && <p className="social-empty">{unreadOnly ? 'No unread notifications.' : 'No activity yet.'}</p>}
+      {error && <p className="phone-app-error" role="alert">{error}</p>}
+      <div className="social-directory">
+        {visibleNotifications.map(item => <button key={item.id} type="button" data-unread={!item.read} onClick={() => {
+          if (!item.read) void markRead([item.id])
+          setPanel(undefined)
+          openThread(item.postId)
+        }}>
+          <PhoneAvatar source={item.avatar} name={item.actorName} />
+          <span><strong>{item.actorName} {item.type === 'comment' ? 'commented on your post' : 'published a post'}</strong>
+            <small>{item.preview}</small><small>{!item.read && 'Unread · '}{shortDate(item.time)}</small></span>
+          <Icon name={item.type === 'comment' ? 'reply' : 'feed'} />
+        </button>)}
+      </div>
+    </SocialDialog>}
+    {panel === 'compose' && <SocialDialog title="New post" close={() => setPanel(undefined)}>
+      <PostComposer profile={profile} submit={publish} />
+    </SocialDialog>}
+    {panel === 'profile' && <SocialDialog title="Edit profile" close={() => setPanel(undefined)}>
+      <ProfileEditor profile={profile} save={async value => {
+        await database.deviceSettings.put({ id: profileKey, value })
+        setProfile(value)
+        setPanel(undefined)
+      }} />
+    </SocialDialog>}
+    {selectedId && loaded && <SocialDialog key={selectedId} title="Post and replies" close={closeThread}>
+      {selectedPost ? postCard(selectedPost, true) : <p className="social-empty">This post is no longer available.</p>}
+    </SocialDialog>}
+  </div>
+}
+function ProfileHeader({ profile, posts, edit, media, setMedia }: {
+  profile: SocialProfile; posts: Post[]; edit?: () => void; media: boolean; setMedia: (next: boolean) => void
+}) {
+  return <section className="social-profile">
+    <div className="social-banner">{imageSource(profile.banner) && <img src={profile.banner} alt="" onError={event => { event.currentTarget.hidden = true }} />}</div>
+    <div className="social-profile-info">
+      <div className="social-profile-top">
+        <PhoneAvatar source={profile.avatar} name={profile.name} />
+        {edit && <IconButton icon="edit" label="Edit profile" onClick={edit} />}
+      </div>
+      <h2>{profile.name}</h2>
+      <p className="social-meta">@{profile.handle}</p>
+      {profile.bio && <p className="social-text">{profile.bio}</p>}
+      <p className="social-meta"><strong>{posts.length}</strong> {posts.length === 1 ? 'post' : 'posts'}</p>
+    </div>
+    <div className="social-profile-tabs" aria-label="Profile views">
+      <IconButton icon="feed" label="Profile posts" aria-pressed={!media} onClick={() => setMedia(false)} />
+      <IconButton icon="image" label="Profile photos" aria-pressed={media} onClick={() => setMedia(true)} />
+    </div>
+  </section>
+}
 function ProfileEditor({ profile, save }: { profile: SocialProfile; save: (value: SocialProfile) => Promise<void> }) {
   const [value, setValue] = useState(profile)
   const [busy, setBusy] = useState(false)
@@ -208,7 +403,7 @@ function ProfileEditor({ profile, save }: { profile: SocialProfile; save: (value
           if (!file) return
           setBusy(true)
           setError('')
-          try { update(key, await readImage(file)) }
+          try { update(key, await readSocialImage(file)) }
           catch (failure) { setError((failure as Error).message) }
           finally { setBusy(false) }
         }} />
@@ -216,132 +411,6 @@ function ProfileEditor({ profile, save }: { profile: SocialProfile; save: (value
       {value[key] && <button type="button" className="phone-app-button compact" onClick={() => update(key, '')}>Remove {key}</button>}
     </div>)}
     {error && <p role="alert" className="phone-app-error">{error}</p>}
-    <button type="submit" className="phone-app-button primary" disabled={busy}>Save profile</button>
+    <button type="submit" className="social-primary" disabled={busy}>Save profile</button>
   </form>
-}
-
-function PostComposer({ profile, submit, post }: {
-  profile: SocialProfile; post?: Post; submit: (text: string, image: string) => Promise<void>
-}) {
-  const [text, setText] = useState(post?.text ?? '')
-  const [image, setImage] = useState(post?.image ?? '')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const input = useRef<HTMLInputElement>(null)
-  return <form className="social-compose phone-app-stack" onSubmit={async event => {
-    event.preventDefault()
-    if (busy || (!text.trim() && !image)) return
-    setBusy(true)
-    setError('')
-    try {
-      await submit(text.trim(), image)
-      if (!post) { setText(''); setImage('') }
-    } catch { setError('Could not save your post.') } finally { setBusy(false) }
-  }}>
-    <div className="social-compose-body">
-      <PhoneAvatar source={profile.avatar} name={profile.name} />
-      <label>{post ? 'Edit post text' : 'New post'}
-        <textarea rows={3} maxLength={1000} placeholder="Write a post" value={text} onChange={event => setText(event.target.value)} />
-      </label>
-    </div>
-    {image && <img className="social-media" src={image} alt="Attached to post" />}
-    <input ref={input} type="file" accept="image/*" hidden onChange={async event => {
-      const file = event.currentTarget.files?.[0]
-      event.currentTarget.value = ''
-      if (!file) return
-      setBusy(true)
-      setError('')
-      try { setImage(await readImage(file)) }
-      catch (failure) { setError((failure as Error).message) } finally { setBusy(false) }
-    }} />
-    <div className="social-compose-actions">
-      <button type="button" className="phone-app-button compact" disabled={busy} onClick={() => input.current?.click()}>{image ? 'Change image' : 'Add image'}</button>
-      {image && <button type="button" className="phone-app-button compact" onClick={() => setImage('')}>Remove image</button>}
-      <button type="submit" className="phone-app-button primary" disabled={busy || (!text.trim() && !image)}>{post ? 'Save post' : 'Post'}</button>
-    </div>
-    {error && <p className="phone-app-error" role="alert">{error}</p>}
-  </form>
-}
-
-function FeedPost({ post, profile, ai, pendingReply, aiError, generate, update, remove }: {
-  post: Post; profile: SocialProfile; ai: boolean; pendingReply: boolean; aiError?: string; generate: () => void
-  update: (change: (post: Post) => Partial<Post>) => Promise<void>; remove: () => Promise<void>
-}) {
-  const [showReplies, setShowReplies] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [text, setText] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const date = new Date(post.time)
-  const recentAi = post.comments.findLast(comment => comment.ai)
-  const replies = showReplies ? post.comments : recentAi ? [recentAi] : []
-  async function act(action: () => Promise<void>) {
-    if (busy) return
-    setBusy(true)
-    setError('')
-    try { await action() }
-    catch { setError('Could not update this post.') } finally { setBusy(false) }
-  }
-
-  return <article className="social-post">
-    {post.repostedAt && <p className="social-meta social-reposted">Reposted by you</p>}
-    <header className="social-post-heading">
-      <PhoneAvatar source={profile.avatar} name={profile.name} />
-      <div><strong>{profile.name}</strong> <span className="social-meta">@{profile.handle}</span>
-        <time className="social-meta" dateTime={date.toISOString()}>{date.toLocaleString()}{post.editedAt ? ' · Edited' : ''}</time>
-      </div>
-      <details className="social-post-menu">
-        <summary aria-label="Post options">•••</summary>
-        <button type="button" onClick={() => { setEditing(!editing); setDeleting(false) }}>{editing ? 'Cancel edit' : 'Edit post'}</button>
-        <button type="button" className="social-danger" disabled={busy} onClick={() => {
-          if (deleting) void act(remove)
-          else { setEditing(false); setDeleting(true) }
-        }}>{deleting ? 'Confirm delete' : 'Delete post'}</button>
-        {deleting && <button type="button" onClick={() => setDeleting(false)}>Cancel delete</button>}
-      </details>
-    </header>
-    {editing ? <PostComposer profile={profile} post={post} submit={async (value, image) => {
-      await update(() => ({ text: value, image, editedAt: Date.now() }))
-      setEditing(false)
-    }} /> : <>
-      {post.text && <p className="social-text">{post.text}</p>}
-      {post.image && <img className="social-media" src={imageSource(post.image)} alt="Post attachment" loading="lazy" />}
-    </>}
-    <div className="social-actions">
-      <button type="button" aria-expanded={showReplies} onClick={() => setShowReplies(!showReplies)}>
-        Reply{post.comments.length ? ' ' + post.comments.length : ''}
-      </button>
-      <button type="button" aria-pressed={Boolean(post.repostedAt)} disabled={busy} onClick={() =>
-        void act(() => update(item => ({ repostedAt: item.repostedAt ? 0 : Date.now() })))}>Repost{post.repostedAt ? ' 1' : ''}</button>
-      <button type="button" aria-pressed={post.liked} disabled={busy}
-        onClick={() => void act(() => update(item => ({ liked: !item.liked })))}>Like{post.liked ? ' 1' : ''}</button>
-      <button type="button" aria-pressed={Boolean(post.bookmarked)} disabled={busy}
-        onClick={() => void act(() => update(item => ({ bookmarked: !item.bookmarked })))}>{post.bookmarked ? 'Saved' : 'Save'}</button>
-    </div>
-    {pendingReply && <small role="status">AI is replying.</small>}
-    {ai && !pendingReply && !recentAi && <button type="button" className="social-ai-action" onClick={generate}>
-      {aiError ? 'Retry AI comment' : 'Ask AI to comment'}
-    </button>}
-    {(error || aiError) && <p className="phone-app-error" role="alert">{error || aiError}</p>}
-    {replies.map(comment => <div className="social-comment" key={comment.id}>
-      <PhoneAvatar source={comment.ai ? comment.avatar : profile.avatar} name={comment.author} />
-      <div><strong>{comment.ai ? comment.author : profile.name}{comment.ai && <small> · AI</small>}</strong>
-        <p className="social-text">{comment.text}</p></div>
-      {showReplies && <button type="button" className="social-danger" disabled={busy} aria-label={'Delete reply by ' + (comment.ai ? comment.author : profile.name)}
-        onClick={() => void act(() => update(item => ({ comments: item.comments.filter(entry => entry.id !== comment.id) })))}>Delete</button>}
-    </div>)}
-    {showReplies && <form className="social-reply phone-app-stack" onSubmit={event => {
-      event.preventDefault()
-      const value = text.trim()
-      if (!value) return
-      void act(async () => {
-        await update(item => ({ comments: [...item.comments, { id: crypto.randomUUID(), author: profile.name, text: value }] }))
-        setText('')
-      })
-    }}>
-      <label>Your reply<textarea rows={2} maxLength={500} value={text} onChange={event => setText(event.target.value)} /></label>
-      <button type="submit" className="phone-app-button primary compact" disabled={busy || !text.trim()}>Reply</button>
-    </form>}
-  </article>
 }

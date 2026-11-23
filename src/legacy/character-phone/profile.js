@@ -1,6 +1,7 @@
 import { showCustomAlert, showCustomConfirm } from '../dialogs/dialogs.js'
 import { hideLoader, showLoader } from '../dialogs/dialogs.js'
 import { runtime } from '../runtime/state.js'
+import { showScreen } from '../../app/routes'
 
 export function showCharacterProfileModal(chatId) {
             const chat = runtime.state.chats[chatId];
@@ -14,6 +15,10 @@ export function showCharacterProfileModal(chatId) {
             document.getElementById('profile-random-jottings').textContent = chat.randomJottings || '...';
 
             const modal = document.getElementById('character-profile-modal');
+            document.getElementById('character-social-profile-btn').onclick = () => {
+                modal.classList.remove('visible');
+                showScreen('social-screen', { socialActorId: 'character:' + chatId });
+            };
         
             
             

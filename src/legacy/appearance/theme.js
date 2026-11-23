@@ -96,21 +96,16 @@ export async function updateSettingsPreview() {
             applyScopedCss(customCss, '#settings-preview-area', 'preview-bubble-style');
         }
 
-export function applyTheme(theme) {
-            const phoneScreen = document.getElementById('phone-screen');
-            const toggleSwitch = document.getElementById('theme-toggle-switch');
-            
-            const isDark = theme === 'dark';
-            
-            phoneScreen.classList.toggle('dark-mode', isDark);
-            
-            
-            if (toggleSwitch) {
-                toggleSwitch.checked = isDark;
-            }
-            
-            preferences.setItem('ephone-theme', theme);
-        }
+export function applyTheme(theme, persist = true) {
+    const isDark = theme === 'dark';
+    document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+    document.getElementById('phone-screen')?.classList.toggle('dark-mode', isDark);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isDark ? '#111319' : '#f5f6fa');
+    const toggle = document.getElementById('theme-toggle-switch');
+    if (toggle) toggle.checked = isDark;
+    if (persist) preferences.setItem('ephone-theme', isDark ? 'dark' : 'light');
+    document.dispatchEvent(new Event('eephone:theme'));
+}
 
 export function toggleTheme() {
             const toggleSwitch = document.getElementById('theme-toggle-switch');

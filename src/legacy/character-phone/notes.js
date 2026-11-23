@@ -1,9 +1,7 @@
-import { openAiUrl } from '../../features/api/endpoints'
-import { getGeminiResponseText, toGeminiRequestData } from '../api/client.js'
+import { requestContextCompletion } from '../../features/api/completion'
+import { getGeminiResponseText } from '../api/client.js'
 import { switchToCharScreen } from './launcher.js'
-import { formatTimeAgo } from '../../features/chat/format'
 import { addLongPressListener, showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
-import { generateSummaryForTimeframe } from '../memories/memories.js'
 import { parseMarkdown } from '../rendering/markup.js'
 import { runtime } from '../runtime/state.js'
 
@@ -96,42 +94,13 @@ export async function handleGenerateSimulatedDiaries() {
     await showCustomAlert("Please wait…", `Opening the diary for “${chat.name}”…`);
 
     const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-    if (!proxyUrl || !apiKey || !model) {
+    if (!proxyUrl || !model) {
         alert("Configure your provider in API Connections first.");
         return;
     }
 
     const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
 
-    const longTermMemoryContext = chat.longTermMemory && chat.longTermMemory.length > 0
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n')
-    : '无';
-    const maxMemory = chat.settings.maxMemory || 10;
-const recentHistoryWithUser = chat.history.slice(-maxMemory).map(msg => `${msg.role === 'user' ? userDisplayNameForAI : chat.name}: ${String(msg.content).substring(0, 30)}...`).join('\n');
-    const worldBookContext = (chat.settings.linkedWorldBookIds || [])
-        .map(bookId => runtime.state.worldBooks.find(wb => wb.id === bookId))
-        .filter(Boolean)
-        .map(book => `\n## 世界书《${book.name}》设定:\n${book.content.filter(e=>e.enabled).map(e => `- ${e.content}`).join('\n')}`)
-        .join('');
-
-const summary3Hours = generateSummaryForTimeframe(chat, 3, 'hours');
-const summary6Hours = generateSummaryForTimeframe(chat, 6, 'hours');
-const summary9Hours = generateSummaryForTimeframe(chat, 9, 'hours');
-const summaryToday = generateSummaryForTimeframe(chat, 1, 'days');
-const summary3Days = generateSummaryForTimeframe(chat, 3, 'days');
-const summary7Days = generateSummaryForTimeframe(chat, 7, 'days');
-
-let multiLayeredSummaryContext = '';
-if (summary3Hours || summary6Hours || summary9Hours || summaryToday || summary3Days || summary7Days) {
-    multiLayeredSummaryContext += `\n# 智能总结 (基于不同时间维度的对话回顾)\n`;
-    if (summary3Hours) multiLayeredSummaryContext += summary3Hours;
-    if (summary6Hours) multiLayeredSummaryContext += summary6Hours;
-    if (summary9Hours) multiLayeredSummaryContext += summary9Hours;
-    if (summary3Hours || summary6Hours || summary9Hours) multiLayeredSummaryContext += '\n';
-    if (summaryToday) multiLayeredSummaryContext += summaryToday;
-    if (summary3Days) multiLayeredSummaryContext += summary3Days;
-    if (summary7Days) multiLayeredSummaryContext += summary7Days;
-}
 const userPersona = chat.settings.myPersona || '(未设置)';    
     const systemPrompt = `
 # 你的任务
@@ -172,34 +141,15 @@ const userPersona = chat.settings.myPersona || '(未设置)';
 - **你的角色设定**: ${chat.settings.aiPersona}
 - **你的聊天对象设定**:${userPersona}
 - **你的长期记忆**:
-${longTermMemoryContext}
-${worldBookContext}
-${multiLayeredSummaryContext} 
 - **你最近和“${userDisplayNameForAI}”的对话摘要**:
-${recentHistoryWithUser}
 
 现在，请开始撰写这组充满真情实感、并熟练运用了Markdown语法的日记。`;
       
 
     try {
         const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的日记内容。" }];
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-        
-        
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.95,
-                    
-                })
-            });
-          
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt, request: messagesForApi,
+            task: 'Cphone diary · ' + chat.name, scope: 'cphone:' + chat.id });
 
         if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
         
@@ -244,16 +194,10 @@ export async function handleWriteNewDiaryEntry() {
             await showCustomAlert("Please wait…", `Asking “${chat.name}” to write a diary entry…`);
         
             const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
-            if (!proxyUrl || !apiKey || !model) return;
+            if (!proxyUrl || !model) return;
 
             const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
 
-            const longTermMemoryContext = chat.longTermMemory && chat.longTermMemory.length > 0
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n')
-    : '无';
-            const maxMemory = chat.settings.maxMemory || 10;
-const recentHistoryWithUser = chat.history.slice(-maxMemory).map(msg => `${msg.role === 'user' ? userDisplayNameForAI : chat.name}: ${String(msg.content).substring(0, 30)}...`).join('\n');
-            const worldBookContext = (chat.settings.linkedWorldBookIds || []).map(bookId=>runtime.state.worldBooks.find(wb=>wb.id===bookId)).filter(Boolean).map(book=>`\n## 世界书《${book.name}》设定:\n${book.content.filter(e=>e.enabled).map(e=>`- ${e.content}`).join('\n')}`).join('');
             
             
             const systemPrompt = `          
@@ -289,26 +233,14 @@ const recentHistoryWithUser = chat.history.slice(-maxMemory).map(msg => `${msg.r
 # 供你参考的上下文
 - **你的角色设定**: ${chat.settings.aiPersona}
 - **你的长期记忆**:
-${longTermMemoryContext}
-${worldBookContext}
 - **你最近和“${userDisplayNameForAI}”的对话摘要**:
-${recentHistoryWithUser}
 
 现在，请开始撰写这篇充满真情实感、并熟练运用了Markdown语法的日记。`;
         
             try {
                 const messagesForApi = [{ role: 'user', content: "请根据你的设定，写一篇新日记。" }];
-                let isGemini = proxyUrl.includes('generativelanguage');
-                let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-                const response = isGemini ? await fetch(geminiConfig.url, geminiConfig.data) : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                    body: JSON.stringify({
-                        model: model,
-                        messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
-                        temperature: runtime.state.globalSettings.apiTemperature ?? 0.95,
-                    })
-                });
+                const response = await requestContextCompletion(chat, { instructions: systemPrompt, request: messagesForApi,
+                    task: 'Cphone diary · ' + chat.name, scope: 'cphone:' + chat.id });
                 if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
                 const data = await response.json();
                 const aiResponseContent = getGeminiResponseText(data);

@@ -1,6 +1,6 @@
 # Đổi host và avatar EPhone
 
-Mở [http://127.0.0.1:8000](http://127.0.0.1:8000) trên thiết bị chạy server. Tên host mặc định là [http://eephone.localhost:8000](http://eephone.localhost:8000) và dùng được khi trình duyệt phân giải tên đó. Nếu dùng Termux, hãy chạy server trong Termux và mở địa chỉ trên cùng điện thoại.
+Mở [http://127.0.0.1:8017](http://127.0.0.1:8017) trên thiết bị chạy server. Tên host mặc định là [http://eephone.localhost:8017](http://eephone.localhost:8017) và dùng được khi trình duyệt phân giải tên đó. Nếu dùng Termux, hãy chạy server trong Termux và mở địa chỉ trên cùng điện thoại.
 
 ## Đổi host hoặc cổng
 
@@ -10,17 +10,17 @@ Chọn một tên kết thúc bằng `.localhost`, ví dụ `myphone.localhost`.
 
 ```powershell
 $env:EEPHONE_HOST = 'myphone.localhost'
-$env:PORT = '8017'
+$env:PORT = '8018'
 npm start
 ```
 
 **Android Termux**
 
 ```bash
-EEPHONE_HOST=myphone.localhost PORT=8017 npm start
+EEPHONE_HOST=myphone.localhost PORT=8018 npm start
 ```
 
-Sau khi server khởi động, mở [http://myphone.localhost:8017](http://myphone.localhost:8017) hoặc [http://127.0.0.1:8017](http://127.0.0.1:8017). Có thể bỏ `PORT` để dùng cổng 8000. Hai biến cũng áp dụng khi chạy `npm run dev`. Nếu chưa có bản build, dùng `start.bat` trên Windows hoặc `bash start.sh` trong Termux.
+Sau khi server khởi động, mở [http://myphone.localhost:8018](http://myphone.localhost:8018) hoặc [http://127.0.0.1:8018](http://127.0.0.1:8018). Có thể bỏ `PORT` để dùng cổng 8017. Hai biến cũng áp dụng khi chạy `npm run dev`. Nếu chưa có bản build, dùng `start.bat` trên Windows hoặc `bash start.sh` trong Termux.
 
 Để lưu tên mặc định trong mã dự án, sửa chuỗi `eephone.localhost` trong [server/local-address.ts](server/local-address.ts), rồi chạy lại `npm run build` và `npm start`. Với một tên tùy chỉnh ngoài `.localhost`, máy đang chạy trình duyệt cần phân giải tên đó về `127.0.0.1` qua cấu hình DNS hoặc file hosts. Địa chỉ công khai cần cấu hình triển khai và DNS riêng.
 
