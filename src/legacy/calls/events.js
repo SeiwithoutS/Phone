@@ -1,6 +1,6 @@
 import { addAvatarToMyLibraryFromURL, closeMyAvatarLibraryModal, handleBatchImportForMyAvatar, handleLocalMyAvatarUpload, openMyAvatarLibraryModal } from '../avatars/libraries.js'
 import { deleteCallMessage, hideCallMessageActions, openCallMessageEditor } from './calls.js'
-import { createAiResponseEditorBlock, saveEditedAiResponse, openAiResponseEditor } from '../chat/editor.js'
+import { createAiResponseEditorBlock, saveEditedAiResponse } from '../chat/editor.js'
 import { showCustomPrompt } from '../dialogs/dialogs.js'
 
 export function bindCallEvents() {
@@ -13,8 +13,6 @@ document.getElementById('edit-call-message-btn').addEventListener('click', openC
 document.getElementById('delete-call-message-btn').addEventListener('click', deleteCallMessage);
 
 document.getElementById('cancel-call-message-action-btn').addEventListener('click', hideCallMessageActions);
-
-document.getElementById('edit-last-response-btn').addEventListener('click', openAiResponseEditor);
 
 document.getElementById('cancel-ai-response-editor-btn').addEventListener('click', () => {
             document.getElementById('ai-response-editor-modal').classList.remove('visible');

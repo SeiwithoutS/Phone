@@ -37,12 +37,11 @@ import { renderQzoneScreen } from '../qzone/feed.js'
 import { bindQzoneInteractions } from '../qzone/interactions.js'
 import { bindReadingEvents } from '../reading/reading.js'
 import { bindShoppingEvents, bindShoppingVariations } from '../shopping/events.js'
-import { bindStickerEvents, calculateCurrentContextTokens } from '../stickers/stickers.js'
+import { bindStickerEvents } from '../stickers/stickers.js'
 import { renderWorldBookScreen, bindWorldBookEditor, bindWorldBookCategories, bindWorldBookDeletion } from '../world-book/books.js'
 import { openLocalDatabase } from '../../storage/database'
 import { initializePhoneUi } from './startup.js'
 import { runtime } from './state.js'
-import { debounce } from '../../runtime/helpers'
 
 function prepareRuntime() {
   if (!Array.prototype.findLastIndex) {
@@ -379,10 +378,6 @@ window.renderWallpaperScreenProxy = renderWallpaperScreen;
 
 window.renderWorldBookScreenProxy = renderWorldBookScreen;
 
-runtime.isStickerManagementMode = false
-
-runtime.selectedStickers = new Set()
-
 window.updateListenTogetherIconProxy = updateListenTogetherIcon;
 
 runtime.personaLibraryModal = document.getElementById('persona-library-modal')
@@ -494,8 +489,8 @@ runtime.DEFAULT_BUTTON_ORDER = [
     'transfer-btn', 'voice-message-btn', 'send-waimai-request-btn', 
     'video-call-btn', 'group-video-call-btn', 'send-poll-btn', 
     'share-link-btn', 'share-location-btn', 'gomoku-btn', 
-    'open-shopping-btn', 'pat-btn', 'edit-last-response-btn', 
-    'regenerate-btn', 'propel-btn', 'show-announcement-board-btn',
+    'open-shopping-btn', 'pat-btn',
+    'propel-btn', 'show-announcement-board-btn',
 
     
     'read-together-btn'
@@ -505,28 +500,6 @@ runtime.selectedCharsForClear = []
 
 runtime.selectedTypesForClear = []
 
-
-runtime.updateTokenCountDisplay = debounce(async () => {
-    const displayEl = document.getElementById('token-count-display');
-    if (!displayEl) return;
-    displayEl.innerHTML = `
-        <span id="token-count-label">Calculating…</span>
-        <span id="token-count-value">--</span>
-    `;
-    try {
-        const tokenCount = await calculateCurrentContextTokens();
-        displayEl.innerHTML = `
-            <span id="token-count-label">Estimated Context Tokens</span>
-            <span id="token-count-value"><strong> ${tokenCount}</strong> Tokens</span>
-        `;
-    } catch (error) {
-        console.error("Token calculation error:", error);
-        displayEl.innerHTML = `
-            <span id="token-count-label">Estimated Context Tokens</span>
-            <span id="token-count-value" style="color: red;">Calculation Failed</span>
-        `;
-    }
-}, 300)
 
 }
 

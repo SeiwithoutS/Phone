@@ -1,4 +1,4 @@
-import { handlePropelAction, handleRegenerateCallResponse, handleRegenerateResponse } from '../chat/ai.js'
+import { handlePropelAction, handleRegenerateCallResponse } from '../chat/ai.js'
 import { showCustomAlert } from '../dialogs/dialogs.js'
 import { saveGlobalPlaylist, updatePlayerUI, updatePlaylistUI } from '../music/player.js'
 import { addSongFromSearch, getPlayableSongDetails } from '../music/search.js'
@@ -77,7 +77,6 @@ document.getElementById('select-all-recipients').addEventListener('change', func
             });
         });
 
-document.getElementById('regenerate-btn').addEventListener('click', handleRegenerateResponse);
 
 document.getElementById('regenerate-call-btn').addEventListener('click', handleRegenerateCallResponse);
 

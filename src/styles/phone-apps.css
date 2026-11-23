@@ -146,11 +146,6 @@
 .session-opening, .social-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .session-excerpt { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--feature-muted); }
 .session-history-row > small { flex-shrink: 0; }
-#chat-interface-screen #qq-chat-sessions-btn { min-height: 44px; width: auto; padding-inline: 4px; font-size: .8rem; }
-#chat-interface-screen .header-actions:has(#qq-chat-sessions-btn) { gap: clamp(2px, 1.2vw, 10px); }
-.default-controls:has(#qq-chat-sessions-btn) #chat-header-title-wrapper { min-width: 0; }
-.default-controls:has(#qq-chat-sessions-btn) :is(#chat-header-title, #chat-header-status) { overflow: hidden; text-overflow: ellipsis; }
-.chat-session-panel { position: absolute; inset: 0; z-index: 90; display: flex; flex-direction: column; }
 @media (max-width: 365px) {
   .phone-app-two { grid-template-columns: minmax(0, 1fr); }
 }
@@ -204,68 +199,122 @@
 .local-backup a { display: inline-flex; text-decoration: none; }
 .local-backup ol { padding: 0 0 0 20px; }
 
-#phone-screen #world-book-screen .mini-prompts-header { display: flex; align-items: center; justify-content: start; gap: 10px; }
-#phone-screen #world-book-screen .mini-prompts-header > span { flex: 1; text-align: left; }
-#phone-screen #world-book-screen .mini-prompts-tools { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 10px; }
-#phone-screen .mini-prompts-tools button { min-height: 40px; padding: 4px 11px; }
+#chat-interface-screen > .header {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+#phone-screen.status-bar-visible #chat-interface-screen > .header {
+  padding-top: calc(40px + env(safe-area-inset-top));
+}
+#chat-interface-screen #chat-messages {
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  margin: 0;
+  padding: 12px max(10px, env(safe-area-inset-right)) 12px max(10px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+#chat-interface-screen #chat-input-area {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 0;
+  z-index: 21;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+}
+#chat-interface-screen #chat-input { min-width: 0; }
+#chat-interface-screen .default-controls #chat-header-title-wrapper { min-width: 0; }
+#chat-interface-screen .default-controls :is(#chat-header-title, #chat-header-status) { overflow: hidden; text-overflow: ellipsis; }
+#chat-interface-screen .default-controls .header-actions { gap: clamp(4px, 2vw, 15px); }
+#qq-branch-status { color: var(--accent-color); font-size: .72rem; }
+#chat-interface-screen .qq-chat-menu-button {
+  flex: 0 0 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  background: var(--secondary-bg);
+}
+:is(.qq-chat-menu-button, .qq-message-button) svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
-#phone-screen .social-app {
-  --feature-bg: #f8f7fb;
-  --feature-panel: #fff;
-  --feature-text: #241c35;
-  --feature-muted: #635b75;
-  --feature-border: #ded8e8;
-  --feature-accent: #5b3e9c;
+.qq-chat-dialog {
+  position: fixed;
+  inset: 0;
+  width: min(calc(100% - 24px), 42rem);
+  max-width: none;
+  max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--feature-border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 16px 50px #1020394d;
 }
-#phone-screen.dark-mode .social-app {
-  --feature-bg: #1c1924;
-  --feature-panel: #252131;
-  --feature-text: #f0eafa;
-  --feature-muted: #c0b6d1;
-  --feature-border: #4a415b;
-  --feature-accent: #cfbaf8;
+.qq-chat-dialog::backdrop { background: #18253a85; }
+.qq-chat-dialog.qq-chat-menu {
+  inset: auto auto var(--qq-menu-bottom, 62px) max(var(--qq-menu-left, 8px), env(safe-area-inset-left));
+  width: min(17rem, calc(100% - var(--qq-menu-left, 8px) - max(8px, env(safe-area-inset-right))));
+  max-height: min(23rem, calc(100dvh - var(--qq-menu-bottom, 62px) - max(8px, env(safe-area-inset-top))));
+  margin: 0;
 }
-#phone-screen .social-app .phone-feature-header { border-bottom: 1px solid var(--feature-border); }
-.social-scroll { max-width: 42rem; padding-top: 8px; }
-.social-tabs { display: flex; gap: 6px; margin: 0 0 12px; padding: 4px; border: 1px solid var(--feature-border); border-radius: 14px; background: var(--feature-panel); }
-.social-tabs button { flex: 1; min-width: 0; min-height: 38px; border-radius: 10px; font-weight: 700; color: var(--feature-muted); }
-.social-tabs button[aria-current] { background: #7a50c226; color: var(--feature-accent); }
-.social-post, .social-compose, .social-profile { border: 1px solid var(--feature-border); border-radius: 14px; background: var(--feature-panel); }
-.social-post, .social-compose { padding: 12px; }
-.social-post { margin: 0 0 10px; position: relative; }
-.social-post-heading > div { flex: 1; overflow-wrap: anywhere; }
-.social-meta { color: var(--feature-muted); font-size: .79rem; }
-.social-reposted { margin: 0 0 5px; }
-.social-text { margin: 8px 0; overflow-wrap: anywhere; white-space: pre-wrap; }
-.social-post-menu { position: relative; align-self: start; }
-.social-post-menu summary { list-style: none; cursor: pointer; min-width: 34px; min-height: 36px; display: grid; place-items: center; }
-.social-post-menu summary::-webkit-details-marker { display: none; }
-.social-post-menu[open] { display: grid; gap: 4px; max-width: 113px; }
-.social-post-menu button, .social-actions button, .social-ai-action, .social-comment button { min-height: 34px; padding: 3px 6px; color: var(--feature-accent); border-radius: 7px; }
-.social-post-menu button:hover, .social-actions button:hover { background: #7a50c215; }
-.social-post .social-danger { color: var(--feature-error); }
-.social-actions { margin-top: 7px; border-top: 1px solid var(--feature-border); display: flex; flex-wrap: wrap; gap: 3px; justify-content: space-between; }
-.social-actions button[aria-pressed=true] { background: #7a50c22a; font-weight: 750; }
-.social-media { max-height: 270px; width: 100%; display: block; object-fit: contain; border-radius: 11px; background: #75609c18; }
-.social-compose-body { display: flex; align-items: flex-start; gap: 9px; }
-.social-compose-body label { flex: 1; }
-.social-compose-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
-.social-compose-actions button[type=submit] { margin-left: auto; }
-.social-app .phone-app-button.primary { background: #6244a8; border-color: #6244a8; color: white; }
-.social-ai-settings { font-size: .87rem; }
-.social-ai-settings label { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
-.social-search { display: grid; gap: 4px; margin-block: 10px; font-size: .82rem; color: var(--feature-muted); }
-.social-search input { min-width: 0; border: 1px solid var(--feature-border); background: var(--feature-panel); border-radius: 9px; padding: 8px; color: var(--feature-text); }
-.social-empty { padding: 10px; color: var(--feature-muted); }
-.social-profile { overflow: hidden; margin-bottom: 12px; }
-.social-banner { height: clamp(64px, 18vw, 125px); background: linear-gradient(115deg, #42346d, #9e7fdb 70%, #72b9ad); }
-.social-banner img { width: 100%; height: 100%; object-fit: cover; }
-.social-profile-info { position: relative; padding: 26px 12px 12px; }
-.social-profile-info .phone-app-avatar { position: absolute; top: -24px; width: 54px; height: 54px; border: 3px solid var(--feature-panel); }
-.social-profile-info button { float: right; }
-.social-profile-info h2 { font-size: 1.22rem; margin: 8px 0 2px; }
-.social-profile-form { border-top: 1px solid var(--feature-border); padding: 12px; }
-.social-comment { display: grid; grid-template-columns: 27px minmax(0, 1fr) auto; align-items: start; gap: 6px; padding-block: 7px; border-top: 1px solid var(--feature-border); font-size: .87rem; }
-.social-comment .phone-app-avatar { width: 27px; height: 27px; font-size: .72rem; }
-.social-comment .social-text { margin: 3px 0 0; }
-.social-reply { margin-top: 6px; padding-top: 7px; }
+.qq-chat-menu::backdrop { background: transparent; }
+.qq-dialog-body { display: flex; flex-direction: column; max-height: inherit; }
+.qq-dialog-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: .65rem;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--feature-border);
+  background: var(--feature-panel);
+}
+.qq-dialog-header .back-btn { flex: 0 0 44px; font-size: 1.5rem; }
+.qq-dialog-header h2 { margin: 0; font-size: 1rem; }
+.qq-dialog-content { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px; }
+.qq-menu-options { display: grid; gap: 4px; }
+.qq-menu-options button { height: auto; min-height: 40px; white-space: normal; text-align: left; }
+.qq-file-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px; }
+.qq-file-row .session-history-row { min-width: 0; }
+.qq-delete-file { grid-column: 1 / -1; }
+.qq-delete-file p, .qq-delete-instructions { margin: 0; font-size: .88rem; }
+.qq-delete-file p { flex-basis: 100%; }
+.qq-delete-list { display: flex; flex-direction: column; gap: 6px; }
+.qq-delete-list button[data-in-range=true] { border-color: var(--feature-error); background: #ef687325; }
+.qq-delete-list button[aria-pressed=true] { outline: 2px solid var(--feature-error); outline-offset: -2px; }
+
+#chat-messages .has-qq-message-tools { display: flex; flex-wrap: wrap; flex-shrink: 0; gap: 3px 7px; max-width: 94%; }
+#chat-messages .has-qq-message-tools > .sender-name { flex-basis: 100%; }
+.qq-message-tools, .qq-message-error { flex-basis: 100%; }
+.qq-message-tools { display: flex; align-items: center; gap: 3px; }
+.message-wrapper.user > .qq-message-tools { justify-content: flex-end; }
+.message-wrapper.ai > .qq-message-tools { padding-inline-start: 18px; }
+#chat-interface-screen.selection-mode .qq-message-tools,
+#chat-interface-screen.selection-mode .qq-inline-edit { display: none; }
+.qq-message-button {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  color: var(--text-primary);
+  background: var(--secondary-bg);
+}
+.qq-message-button:disabled { opacity: .48; }
+.qq-message-button svg { width: 15px; height: 15px; }
+.qq-swipe-count, .qq-message-error { font-size: .75rem; color: var(--text-primary); background: var(--secondary-bg); border-radius: 5px; padding: 2px 5px; }
+.qq-message-error:empty { display: none; }

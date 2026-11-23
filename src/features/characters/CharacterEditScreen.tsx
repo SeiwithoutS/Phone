@@ -102,17 +102,25 @@ function Editor({ path }: { path: string }) {
       </div>
       <label>Description<textarea rows={5} value={draft.description} onChange={event => set('description', event.target.value)} /></label>
       <label>First message<textarea rows={5} value={draft.firstMessage} onChange={event => set('firstMessage', event.target.value)} /></label>
-      {draft.alternateGreetings.map((text, index) => <div className="phone-app-stack" key={index}>
-        <label>Alternate opening {index + 1}<textarea rows={4} value={text} onChange={event =>
-          set('alternateGreetings', draft.alternateGreetings.map((item, i) => i === index ? event.target.value : item))} /></label>
-        <button type="button" className="phone-app-button compact" onClick={() =>
-          set('alternateGreetings', draft.alternateGreetings.filter((_, i) => i !== index))}>Remove opening {index + 1}</button>
-      </div>)}
-      <button type="button" className="phone-app-button compact" onClick={() => set('alternateGreetings', [...draft.alternateGreetings, ''])}>+ Alternate opening</button>
+      <details className="settings-disclosure" key={draft.id ?? 'new'}>
+        <summary>Alternate openings <small>{draft.alternateGreetings.length}</small></summary>
+        <div className="phone-app-stack">
+          {draft.alternateGreetings.map((text, index) => <div className="phone-app-stack" key={index}>
+            <label>Alternate opening {index + 1}<textarea rows={4} value={text} onChange={event =>
+              set('alternateGreetings', draft.alternateGreetings.map((item, i) => i === index ? event.target.value : item))} /></label>
+            <button type="button" className="phone-app-button compact danger" onClick={() =>
+              set('alternateGreetings', draft.alternateGreetings.filter((_, i) => i !== index))}>Remove opening {index + 1}</button>
+          </div>)}
+          <button type="button" className="phone-app-button compact" onClick={() =>
+            set('alternateGreetings', [...draft.alternateGreetings, ''])}>+ Alternate opening</button>
+        </div>
+      </details>
       {draft.lorebook && <p className="phone-app-muted">World Info · {draft.lorebook.name} ({draft.lorebook.content.length} entries)</p>}
       <div className="phone-app-actions">
         <button type="submit" className="phone-app-button primary" disabled={busy}>Save character</button>
         {draft.id && <button type="button" className="phone-app-button" onClick={() => showScreen('chat-list-screen')}>Open QQ</button>}
+        {draft.id && <button type="button" className="phone-app-button" onClick={() =>
+          showScreen('social-screen', { socialActorId: 'character:' + draft.id })}>Social profile</button>}
       </div>
       {error && <p role="status" className={error.startsWith('Saved') ? 'phone-app-muted' : 'phone-app-error'}>{error}</p>}
     </form> : <div className="phone-app-scroll phone-app-stack">

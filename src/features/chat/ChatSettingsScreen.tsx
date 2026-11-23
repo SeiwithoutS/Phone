@@ -1,4 +1,4 @@
-import { BackButton, FilePicker, FormField, Screen, ScreenHeader } from '../../components/phone'
+import { BackButton, FilePicker, Screen, ScreenHeader } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 import { useNavigate } from 'react-router-dom'
 import { runtime } from '../../legacy/runtime/state.js'
@@ -70,7 +70,7 @@ export function ChatSettingsScreen() {
               {" "}
               <label htmlFor="inject-thought-toggle" style={{ marginBottom: "0" }}>
                 {" Include Latest Inner Monologue "}
-                <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Include the AI’s last inner monologue in its next prompt. This can improve continuity and increase token usage. "}</p>
+                <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Include the AI’s last inner monologue in its next prompt. This can improve continuity and increase token usage. "}</p>
               </label>
               {" "}
               <label className="toggle-switch">
@@ -87,7 +87,7 @@ export function ChatSettingsScreen() {
             {" "}
             <label htmlFor="char-background-activity-switch" style={{ marginBottom: "0" }}>
               {" Enable independent background activity "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Allow background posts and messages for this character. Enable background activity in API Connections as well. "}</p>
+              <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Allow background posts and messages for this character. Enable background activity in API Connections as well. "}</p>
               {" "}
             </label>
             <label className="toggle-switch">
@@ -104,7 +104,7 @@ export function ChatSettingsScreen() {
           {" "}
           <label htmlFor="ai-action-cooldown-input">
             {" Action cooldown (minutes) "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Minimum interval between this character’s background actions. "}</p>
+            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Minimum interval between this character’s background actions. "}</p>
             {" "}
           </label>
           {" "}
@@ -116,7 +116,7 @@ export function ChatSettingsScreen() {
             {" "}
             <label htmlFor="time-perception-toggle" style={{ marginBottom: "0" }}>
               {" Enable Time Awareness "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Turn off to omit the current time from the conversation prompt. "}</p>
+              <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Turn off to omit the current time from the conversation prompt. "}</p>
               {" "}
             </label>
             <label className="toggle-switch">
@@ -141,7 +141,7 @@ export function ChatSettingsScreen() {
             {" "}
             <label htmlFor="group-background-activity-switch" style={{ marginBottom: "0" }}>
               {" Enable Group Background Activity "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Allow AI members to act independently in this group. Enable background activity in API Connections as well. "}</p>
+              <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Allow AI members to act independently in this group. Enable background activity in API Connections as well. "}</p>
               {" "}
             </label>
             <label className="toggle-switch">
@@ -158,7 +158,7 @@ export function ChatSettingsScreen() {
           {" "}
           <label htmlFor="group-action-cooldown-input">
             {" Group action cooldown (minutes) "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Minimum interval between background actions in this group. "}</p>
+            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Minimum interval between background actions in this group. "}</p>
             {" "}
           </label>
           {" "}
@@ -235,9 +235,9 @@ export function ChatSettingsScreen() {
             {" "}
             <label htmlFor="offline-mode-toggle" style={{ marginBottom: "0" }}>
               {" Enable Offline Roleplay Mode "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>
+              <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>
                 {" The AI will write a scene with dialogue and"}
-                <i style={{ color: "#666" }}>actions or setting descriptions</i>
+                <i style={{ color: "var(--ui-muted)" }}>actions or setting descriptions</i>
                 {". "}
               </p>
               {" "}
@@ -273,31 +273,6 @@ export function ChatSettingsScreen() {
               <select id="offline-preset-select" style={{ width: "100%", marginTop: "5px" }} />
               {" "}
             </div>
-          </div>
-        </div>
-        <div className="form-group" id="linked-memory-group">
-          {" "}
-          <label htmlFor="link-memory-toggle">Attach Memories from Other Chats</label>
-          {" "}
-          <input type="checkbox" id="link-memory-toggle" style={{ width: "auto", height: "20px", verticalAlign: "middle", marginLeft: "10px" }} />
-          <div id="linked-memory-selection" style={{ display: "none", marginTop: "10px" }}>
-            {" "}
-            <label>Select chats to draw memories from</label>
-            <div className="custom-multiselect">
-              <div className="select-box">
-                {" "}
-                <span className="selected-options-text">Select entries</span>
-                {" "}
-                <span className="arrow-down">{"▼"}</span>
-                {" "}
-              </div>
-              <div id="linked-chats-checkboxes-container" className="checkboxes-container" style={{ maxHeight: "120px" }}>{" "}</div>
-            </div>
-            <p style={{ fontSize: "12px", color: "#8a8a8a", marginTop: "8px", lineHeight: "1.5" }}>
-              {" Attached memories are provided to the AI as reference context and are hidden from the timeline."}
-              <br />
-              {" Start with 3–10 turns per attached chat to keep responses fast. "}
-            </p>
           </div>
         </div>
         <details id="qq-character-details" className="settings-disclosure">
@@ -362,9 +337,9 @@ export function ChatSettingsScreen() {
         <div className="form-group" id="group-nai-settings-group" style={{ display: "none" }}>
           <hr style={{ opacity: "0.2", margin: "20px 0" }} />
           <label style={{ fontWeight: "600", color: "var(--accent-color)" }}>NovelAI Image Settings</label>
-          <p style={{ fontSize: "12px", color: "#666", marginTop: "5px" }}>{" Customize the image prompts for this character. "}</p>
+          <p style={{ fontSize: "12px", color: "var(--ui-muted)", marginTop: "5px" }}>{" Customize the image prompts for this character. "}</p>
           <div style={{ marginTop: "15px" }}>
-            <label style={{ fontWeight: "500", color: "#333" }}>Prompt Source</label>
+            <label style={{ fontWeight: "500", color: "var(--ui-text)" }}>Prompt Source</label>
             <div style={{ display: "flex", gap: "15px", marginTop: "10px" }}>
               <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
                 <input type="radio" name="group-nai-prompt-source" defaultChecked style={{ width: "auto", marginRight: "8px" }} defaultValue="system" />
@@ -383,7 +358,7 @@ export function ChatSettingsScreen() {
             {" "}
             <label htmlFor="enable-tts-switch" style={{ marginBottom: "0" }}>
               {" Enable Text-to-Speech (TTS) "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Turn off to ignore the [V] voice-message prefix. "}</p>
+              <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Turn off to ignore the [V] voice-message prefix. "}</p>
               {" "}
             </label>
             <label className="toggle-switch">
@@ -404,9 +379,9 @@ export function ChatSettingsScreen() {
         <div className="form-group" id="nai-character-settings-group" style={{ display: "none" }}>
           <hr style={{ opacity: "0.2", margin: "20px 0" }} />
           <label style={{ fontWeight: "600", color: "var(--accent-color)" }}>NovelAI Image Settings</label>
-          <p style={{ fontSize: "12px", color: "#666", marginTop: "5px" }}>{" Customize the image prompts for this character. "}</p>
+          <p style={{ fontSize: "12px", color: "var(--ui-muted)", marginTop: "5px" }}>{" Customize the image prompts for this character. "}</p>
           <div style={{ marginTop: "15px" }}>
-            <label style={{ fontWeight: "500", color: "#333" }}>Prompt Source</label>
+            <label style={{ fontWeight: "500", color: "var(--ui-text)" }}>Prompt Source</label>
             <div style={{ display: "flex", gap: "15px", marginTop: "10px" }}>
               <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
                 <input type="radio" name="nai-prompt-source" defaultChecked style={{ width: "auto", marginRight: "8px" }} defaultValue="system" />
@@ -420,52 +395,7 @@ export function ChatSettingsScreen() {
           </div>
           <button id="character-nai-prompts-btn" className="form-button form-button-secondary" style={{ width: "100%", marginTop: "15px" }} type="button">Edit Character Prompts</button>
         </div>
-        <FormField id="max-memory" label="Chat History Context (messages)">
-          <input type="number" id="max-memory" defaultValue="10" />
-        </FormField>
-        <div className="form-group">
-          {" "}
-          <label htmlFor="linked-memory-count">Attached Memory Limit</label>
-          {" "}
-          <input type="number" id="linked-memory-count" defaultValue="10" />
-          <p style={{ fontSize: "12px", color: "#8a8a8a", marginTop: "8px", lineHeight: "1.5" }}>
-            {" Most recent messages included from each attached chat. "}
-            <br />
-            {" Suggested range 5–20. Higher values add memory context and increase API usage. "}
-          </p>
-        </div>
-        <div className="form-group">
-          <label htmlFor="token-count-display">
-            {" Estimated Context Tokens "}
-            <span title="Estimate based on text and formatting. Actual token usage can vary by model." style={{ cursor: "help", color: "#999" }} />
-          </label>
-          <p id="token-count-display">{" Calculating… "}</p>
-        </div>
-        <hr style={{ opacity: "0.3", margin: "20px 0" }} />
-        <div className="form-group" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          {" "}
-          <label htmlFor="auto-memory-toggle" style={{ marginBottom: "0" }}>
-            {" Automatically Summarize Long-Term Memory "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Summarize older messages when the conversation reaches the configured interval. "}</p>
-          </label>
-          {" "}
-          <label className="toggle-switch">
-            {" "}
-            <input type="checkbox" id="auto-memory-toggle" />
-            {" "}
-            <span className="slider" />
-            {" "}
-          </label>
-          {" "}
-        </div>
-        <div className="form-group">
-          {" "}
-          <label htmlFor="auto-memory-interval">Summary Interval (messages)</label>
-          {" "}
-          <input type="number" id="auto-memory-interval" min="10" style={{ width: "80px", textAlign: "center" }} defaultValue="20" />
-          <p style={{ fontSize: "12px", color: "#8a8a8a", marginTop: "8px" }}>{" Suggested range 15–30. Smaller values summarize more often and increase API costs. "}</p>
-        </div>
-        <hr style={{ opacity: "0.3", margin: "20px 0" }} />
+        <button type="button" className="form-button-secondary" onClick={() => showScreen('context-screen', { contextChatId: runtime.state.activeChatId ?? undefined })}>Open Context</button>
         <details id="qq-appearance-details" className="settings-disclosure">
           <summary>Chat appearance</summary>
           <fieldset className="qq-theme-picker">
@@ -499,7 +429,7 @@ export function ChatSettingsScreen() {
             {" "}
             <button id="save-theme-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Save preset</button>
             {" "}
-            <button id="delete-theme-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "#ffebee", color: "#d32f2f", borderColor: "#ffcdd2" }} type="button">Delete preset</button>
+            <button id="delete-theme-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)" }} type="button">Delete preset</button>
             {" "}
           </div>
         </div>
@@ -507,7 +437,7 @@ export function ChatSettingsScreen() {
           {" "}
           <label htmlFor="custom-css-input">
             {" Custom Bubble CSS "}
-            <button id="reset-custom-css-btn" type="button" style={{ background: "none", border: "1px solid #ccc", color: "#555", fontSize: "12px", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", marginLeft: "10px" }}>Reset</button>
+            <button id="reset-custom-css-btn" type="button" style={{ background: "none", border: "1px solid var(--ui-divider)", color: "var(--ui-muted)", fontSize: "12px", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", marginLeft: "10px" }}>Reset</button>
           </label>
           {" "}
           <textarea id="custom-css-input" rows={5} style={{ width: "100%", marginTop: "8px", fontFamily: "monospace", fontSize: "16px", resize: "vertical" }} placeholder={"/* Add styles for your chat bubbles */ .message-bubble.user .content { border-radius: 15px 4px 15px 15px; }"} />
@@ -536,10 +466,10 @@ export function ChatSettingsScreen() {
         </details>
         <hr style={{ margin: "25px 0", border: "none", borderTop: "1px solid #eee" }} />
         {" "}
-        <button className="form-button form-button-secondary" id="block-chat-btn" style={{ backgroundColor: "#ff3b30", color: "white", borderColor: "#ff3b30" }} type="button">Block Character</button>
+        <button className="form-button form-button-secondary" id="block-chat-btn" style={{ backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)" }} type="button">Block Character</button>
         <hr style={{ margin: "25px 0", border: "none", borderTop: "1px solid #eee" }} />
-        <button className="form-button form-button-secondary" id="export-single-chat-btn" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32", borderColor: "#c8e6c9" }} type="button">Export This Chat</button>
-        <button className="form-button form-button-secondary" id="import-single-chat-btn" style={{ backgroundColor: "#fff3e0", color: "#ef6c00", borderColor: "#ffe0b2" }} type="button">Import Chat</button>
+        <button className="form-button form-button-secondary" id="export-single-chat-btn" style={{ backgroundColor: "var(--ui-positive-soft)", color: "var(--ui-positive)", borderColor: "var(--ui-divider)" }} type="button">Export This Chat</button>
+        <button className="form-button form-button-secondary" id="import-single-chat-btn" style={{ backgroundColor: "var(--ui-raised)", color: "var(--ui-accent)", borderColor: "var(--ui-divider)" }} type="button">Import Chat</button>
         <FilePicker id="import-single-chat-input" accept="application/json" />
         {" "}
         <button className="form-button form-button-secondary" id="clear-chat-btn" type="button">Clear Chat History</button>

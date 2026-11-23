@@ -1,6 +1,7 @@
+import { maySendImages } from '../../features/api/image-input'
 import { runtime } from '../runtime/state.js'
 import { showCustomConfirm, showCustomAlert, showCustomPrompt } from '../dialogs/dialogs.js'
-import { openAiUrl } from '../../features/api/endpoints'
+import { requestContextCompletion } from '../../features/api/completion'
 import { getGeminiResponseText } from '../api/client.js'
 import { handleIconChange } from '../appearance/icons.js'
 
@@ -20,11 +21,10 @@ export async function handleLocalGroupAvatarUpload(event) {
         
             try {
                 
-                const description = await getAvatarDescriptionFromApi(base64Url);
-                
-                if (!description) {
-                    throw new Error("AI未能成功描述图片。");
-                }
+                const description = maySendImages()
+                    ? await getAvatarDescriptionFromApi(base64Url)
+                    : (await showCustomPrompt("Name Avatar", "Enter a name for this group avatar"))?.trim();
+                if (!description) return;
         
                 
                 const chat = runtime.state.chats[runtime.state.activeChatId];
@@ -36,7 +36,7 @@ export async function handleLocalGroupAvatarUpload(event) {
                 
                 await runtime.db.chats.put(chat);
                 renderGroupAvatarLibrary();
-                await showCustomAlert("Upload Complete", `The AI named the group avatar “${description}”.`);
+                await showCustomAlert("Upload Complete", `Saved the group avatar “${description}”.`);
         
             } catch (error) {
                 console.error("本地群头像上传及识别失败:", error);
@@ -63,11 +63,10 @@ export async function handleLocalAvatarUpload(event) {
         
             try {
                 
-                const description = await getAvatarDescriptionFromApi(base64Url);
-                
-                if (!description) {
-                    throw new Error("AI未能成功描述图片。");
-                }
+                const description = maySendImages()
+                    ? await getAvatarDescriptionFromApi(base64Url)
+                    : (await showCustomPrompt("Name Avatar", "Enter a name for this avatar"))?.trim();
+                if (!description) return;
         
                 
                 const chat = runtime.state.chats[runtime.state.activeChatId];
@@ -79,7 +78,7 @@ export async function handleLocalAvatarUpload(event) {
                 
                 await runtime.db.chats.put(chat);
                 renderAiAvatarLibrary();
-                await showCustomAlert("Upload Complete", `The AI named the avatar “${description}”.`);
+                await showCustomAlert("Upload Complete", `Saved the avatar “${description}”.`);
         
             } catch (error) {
                 console.error("本地头像上传及识别失败:", error);
@@ -91,64 +90,22 @@ export async function handleLocalAvatarUpload(event) {
         }
 
 export async function getAvatarDescriptionFromApi(base64Url) {
+            if (!maySendImages()) throw new Error("Enable image input in API Connections to use AI vision.");
             
-            const useSecondaryApi = runtime.state.apiConfig.secondaryProxyUrl && runtime.state.apiConfig.secondaryApiKey && runtime.state.apiConfig.secondaryModel;
-            const { proxyUrl, apiKey, model } = useSecondaryApi 
-                ? { proxyUrl: runtime.state.apiConfig.secondaryProxyUrl, apiKey: runtime.state.apiConfig.secondaryApiKey, model: runtime.state.apiConfig.secondaryModel }
-                : runtime.state.apiConfig;
-        
-            if (!proxyUrl || !apiKey || !model) {
-                throw new Error("主API和副API均未配置或配置不完整。");
-            }
-        
             const prompt = "请为这张图片起一个简洁的、适合作为头像库标签的名字。例如：“微笑自拍”、“阳光下的猫咪”、“蓝发动漫少女”。请直接回答名字，不要加任何多余的解释。";
             
-            let isGemini = proxyUrl.includes('generativelanguage');
-            let response;
-        
-            if (isGemini) {
-                const mimeType = base64Url.match(/^data:(.*);base64/)[1];
-                const base64Data = base64Url.split(',')[1];
-                const payload = {
-                    contents: [{
-                        parts: [
-                            { text: prompt },
-                            { inline_data: { mime_type: mimeType, data: base64Data } }
-                        ]
-                    }]
-                };
-                response = await fetch(`${proxyUrl}/${model}:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-        
-            } else { 
-                const payload = {
-                    model: model,
-                    messages: [{
-                        role: 'user',
-                        content: [
-                            { type: 'text', text: prompt },
-                            { type: 'image_url', image_url: { url: base64Url } }
-                        ]
-                    }],
-                    max_tokens: 50 
-                };
-                response = await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                    body: JSON.stringify(payload)
-                });
-            }
-        
+            const response = await requestContextCompletion(undefined, { instructions: '', standalone: true,
+                task: 'Avatar description', scope: 'avatar', request: [{ role: 'user', content: [
+                    { type: 'text', text: prompt }, { type: 'image_url', image_url: { url: base64Url } },
+                ] }] });
+
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(`API 错误: ${errorData.error.message}`);
             }
         
             const data = await response.json();
-            let description = isGemini ? getGeminiResponseText(data) : data.choices[0].message.content;
+            let description = getGeminiResponseText(data);
             
             
             return description.trim().replace(/["'“”‘’]/g, '');

@@ -7,6 +7,7 @@ import { bindScreenNavigation, resolveScreen, screenPaths } from './routes'
 import { openChat } from '../legacy/chat/conversation.js'
 import { bindImageDownloads } from '../legacy/novelai/download.js'
 import { startRuntime } from '../legacy/runtime/start.js'
+import { startSocialActivity } from '../features/social/activity'
 import { runtime } from '../legacy/runtime/state.js'
 
 import type { LocalDatabase } from '../storage/database'
@@ -33,7 +34,9 @@ export function App() {
     if (screen === 'chat-interface-screen' && runtime.state.activeChatId) {
       chatPrepared.current = runtime.state.activeChatId
     }
-    if (path !== pathname) void navigate(path, { state: { ...screenState, prepared: true } })
+    const search = screen === 'social-screen' && screenState?.socialActorId
+      ? '?' + new URLSearchParams({ profile: screenState.socialActorId }) : ''
+    if (path !== pathname || search) void navigate({ pathname: path, search }, { state: { ...screenState, prepared: true } })
   }), [navigate, pathname])
 
   useEffect(() => {
@@ -51,6 +54,8 @@ export function App() {
         setStatus('error')
       })
   }, [])
+
+  useEffect(() => database && startSocialActivity(database), [database])
 
   useEffect(() => {
     const notice = (event: Event) => setStorageError((event as CustomEvent<string>).detail)
@@ -77,7 +82,7 @@ export function App() {
     } else {
       chatPrepared.current = undefined
     }
-    enterScreen(route.id)
+    enterScreen(route.id, locationState?.chatListView)
   }, [locationState, navigate, pathname, route?.chatId, route?.id, status])
 
   const active = route?.id ?? 'home-screen'

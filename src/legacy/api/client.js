@@ -1,41 +1,11 @@
-import { openAiUrl } from '../../features/api/endpoints'
+import { completionText, requestContextCompletion } from '../../features/api/completion'
 import { showChoiceModal, showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
 import { renderLongTermMemoryList } from '../memories/memories.js'
-import { getRandomValue } from '../../runtime/helpers'
 import { runtime } from '../runtime/state.js'
 
-export function isImage(content) {
-                if(content.image_url && content.image_url.url){
-                    let currentImageData = content.image_url.url
-                    
-                    const base64Data = currentImageData.split(',')[1];
-                    
-                    const mimeType = currentImageData.match(/^data:(.*);base64/)[1];
-                    return [
-                        {text: '用户向你发送了一张图片'},
-                        {
-                            inline_data: {
-                                mime_type: mimeType,
-                                data: base64Data
-                            }
-                        }
-                    ]
-                }
-                return []
-            }
-
 export function getGeminiResponseText(data) {
-            
-            if (data.choices && Array.isArray(data.choices) && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
-                return data.choices[0].message.content;
-            }
-        
-            
-            if (data.candidates && Array.isArray(data.candidates) && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts) {
-                return data.candidates[0].content.parts[0].text;
-            }
-        
-            
+    const text = completionText(data);
+    if (text) return text;
             console.error("Gemini API返回了非预期的格式:", data);
             let errorReason = "AI返回了空内容或未知格式。";
         
@@ -63,73 +33,6 @@ export function getGeminiResponseText(data) {
             
             throw new Error(errorReason);
         }
-
-export function toGeminiRequestData(model, apiKey, systemInstruction, messagesForDecision) {
-    const apiTemperature = runtime.state.globalSettings.apiTemperature ?? 0.8; 
-    const roleType = {
-        user: 'user',
-        assistant: 'model',
-        system: 'user'
-    };
-
- 
-    const contents = [
-        {
-            role: 'user',
-            parts: [{ text: systemInstruction }]
-        },
-        {
-            role: 'model',
-            parts: [{ text: '好的，我明白了。我会严格遵守以上所有规则和设定。' }]
-        },
-
-        ...messagesForDecision.map((item) => {
-            const parts = [];
-            
-            if (Array.isArray(item.content)) {
-                item.content.forEach(part => {
-                    if (part.type === 'text') {
-                        parts.push({ text: part.text });
-                    } else if (part.type === 'image_url' && part.image_url && part.image_url.url) {
-                        
-                        const currentImageData = part.image_url.url;
-                        const base64Data = currentImageData.split(',')[1];
-                        const mimeTypeMatch = currentImageData.match(/^data:(.*);base64/);
-                        if (mimeTypeMatch && base64Data) {
-                            parts.push({
-                                inline_data: {
-                                    mime_type: mimeTypeMatch[1],
-                                    data: base64Data
-                                }
-                            });
-                        }
-                    }
-                });
-            } else {
-                
-                parts.push({ text: String(item.content) });
-            }
-            return { role: roleType[item.role], parts: parts };
-        })
-    ];
-
-    
-    return {
-        url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${getRandomValue(apiKey)}`,
-        data: {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: contents,
-                generationConfig: {
-                    temperature: apiTemperature, 
-                },
-            })
-        }
-    };
-}
 
 export function parseAiResponse(content) {
             const trimmedContent = content.trim();
@@ -352,34 +255,14 @@ ${memoryContent}
     await showCustomAlert("Please wait…", "Asking the AI to refine the memories…");
 
     try {
-        const useSecondaryApi = runtime.state.apiConfig.secondaryProxyUrl && runtime.state.apiConfig.secondaryApiKey && runtime.state.apiConfig.secondaryModel;
-        const { proxyUrl, apiKey, model } = useSecondaryApi 
-            ? { proxyUrl: runtime.state.apiConfig.secondaryProxyUrl, apiKey: runtime.state.apiConfig.secondaryApiKey, model: runtime.state.apiConfig.secondaryModel } 
-            : runtime.state.apiConfig;
-
-        if (!proxyUrl || !apiKey || !model) {
-            throw new Error('请先在API设置中配置好（主或副）API以进行总结。');
-        }
-
-        let isGemini = proxyUrl.includes('generativelanguage');
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, [{ role: 'user', content: "请开始整合。" }]);
-
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: "请开始整合。" }],
-                    temperature: 0.2,
-                })
-            });
+        const response = await requestContextCompletion(targetChatForRefine, { instructions: systemPrompt, standalone: true,
+            task: 'Refine selected memories', scope: 'memory:refine:' + targetChatForRefine.id,
+            request: [{ role: 'user', content: 'Summarize the selected saved memories.' }] }, { temperature: 0.2 });
 
         if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
 
         const data = await response.json();
-        let rawContent = isGemini ? getGeminiResponseText(data) : data.choices[0].message.content;
+        let rawContent = getGeminiResponseText(data);
         
         const result = robustJsonParse(rawContent);
 

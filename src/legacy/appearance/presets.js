@@ -391,30 +391,6 @@ export async function deleteThemePreset() {
             }
         }
 
-export async function openStickerCategoryManager() {
-            await renderStickerCategoriesInManager();
-            document.getElementById('sticker-category-manager-modal').classList.add('visible');
-        }
-
-export async function renderStickerCategoriesInManager() {
-            const listEl = document.getElementById('existing-sticker-categories-list');
-            const categories = await runtime.db.stickerCategories.toArray();
-            listEl.innerHTML = '';
-            if (categories.length === 0) {
-                listEl.innerHTML = "<p style=\"text-align: center; color: var(--text-secondary);\">No categories yet.</p>";
-                return;
-            }
-            categories.forEach(cat => {
-                const item = document.createElement('div');
-                item.className = 'existing-group-item'; 
-                item.innerHTML = `
-                    <span class="group-name">${cat.name}</span>
-                    <span class="delete-group-btn" data-id="${cat.id}">×</span>
-                `;
-                listEl.appendChild(item);
-            });
-        }
-
 export async function importAppearanceSettings(file) {
     if (!file) return;
 

@@ -23,7 +23,8 @@ import { WallpaperScreen } from '../features/appearance/WallpaperScreen'
 import { BrowserScreen } from '../features/browser/BrowserScreen'
 import { FontSettingsScreen } from '../features/appearance/FontSettingsScreen'
 import { ContactPickerScreen, MemberManagementScreen, MemberSettingsModal, GroupManagementModal } from '../features/chat/GroupManagement'
-import { StickerCategoryManagerModal, StickerBindingModal } from '../features/stickers/StickerDialogs'
+import { StickerLibraryScreen } from '../features/stickers/StickerLibraryScreen'
+import { ContextScreen } from '../features/context/ContextScreen'
 import { IncomingCallModal, CallTranscriptModal, CallMessageActionsModal } from '../features/calls/CallDialogs'
 import { VideoCallScreen, OutgoingCallScreen, CallHistoryScreen } from '../features/calls/CallScreens'
 import { LongTermMemoryScreen } from '../features/memories/LongTermMemoryScreen'
@@ -54,7 +55,6 @@ export function PhoneContent({ database }: { database?: LocalDatabase }) {
       <NpcEditorModal />
       <ClearPostsModal />
       <FilePicker id="album-photo-input" accept="image/*" multiple />
-      <StickerCategoryManagerModal />
       <IncomingCallModal />
       <ProductEditorModal />
       <GiftReceiptModal />
@@ -62,6 +62,8 @@ export function PhoneContent({ database }: { database?: LocalDatabase }) {
       <CharacterEditScreen ready={Boolean(database)} />
       <LorebookScreen ready={Boolean(database)} />
       <SocialScreen database={database} />
+      <StickerLibraryScreen database={database} />
+      <ContextScreen database={database} />
       <CharacterSelectionScreen />
       <CharacterPhoneScreen />
       <WorldBookScreen />
@@ -144,7 +146,6 @@ export function PhoneOverlays() {
       <ProductCategoryManagerModal />
       <VariationSelectionModal />
       <ShoppingSettingsModal />
-      <StickerBindingModal />
       <NovelaiSettingsModal />
       <NovelaiTestModal />
       <CharacterNaiPromptsModal />

@@ -1,4 +1,4 @@
-import { loadAppearancePresetsDropdown, loadCssPresetsDropdown, deleteCssPreset, deleteFontPreset, deleteThemePreset, handleCssPresetSelectionChange, handleFontPresetSelectionChange, handleThemePresetSelectionChange, openStickerCategoryManager, saveCssPreset, saveFontPreset, saveThemePreset } from './presets.js'
+import { loadAppearancePresetsDropdown, loadCssPresetsDropdown, deleteCssPreset, deleteFontPreset, deleteThemePreset, handleCssPresetSelectionChange, handleFontPresetSelectionChange, handleThemePresetSelectionChange, saveCssPreset, saveFontPreset, saveThemePreset } from './presets.js'
 import { renderCPhoneIconSettings, renderIconSettings, applyCPhoneAppIcons, applyCPhoneWallpaper } from '../character-phone/settings.js'
 import { initializeButtonOrderEditor, renderButtonOrderEditor } from '../chat/button-order.js'
 import { runtime } from '../runtime/state.js'
@@ -8,7 +8,6 @@ import { exportSingleChat } from '../chat/import.js'
 import { showCustomPrompt } from '../dialogs/dialogs.js'
 import { applyStatusBarVisibility } from '../music/player.js'
 import { handleConfirmClearPosts } from '../qzone/feed.js'
-import { addNewStickerCategory, deleteStickerCategory, handleSelectAllStickers, renderStickerPanel, switchStickerCategory } from '../stickers/stickers.js'
 import { showScreen } from '../../app/routes'
 
 export function renderWallpaperScreen() {
@@ -218,33 +217,6 @@ document.getElementById('theme-preset-select').addEventListener('change', handle
 document.getElementById('save-theme-preset-btn').addEventListener('click', saveThemePreset);
 
 document.getElementById('delete-theme-preset-btn').addEventListener('click', deleteThemePreset);
-
-document.getElementById('manage-sticker-categories-btn').addEventListener('click', openStickerCategoryManager);
-
-document.getElementById('close-sticker-category-manager-btn').addEventListener('click', () => {
-            document.getElementById('sticker-category-manager-modal').classList.remove('visible');
-            renderStickerPanel(); 
-        });
-
-document.getElementById('add-new-sticker-category-btn').addEventListener('click', addNewStickerCategory);
-
-document.getElementById('existing-sticker-categories-list').addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-group-btn')) {
-                const categoryId = parseInt(e.target.dataset.id);
-                deleteStickerCategory(categoryId);
-            }
-        });
-
-document.getElementById('sticker-category-tabs').addEventListener('click', (e) => {
-            if (e.target.classList.contains('sticker-category-tab')) {
-                const categoryId = e.target.dataset.categoryId;
-                
-                const finalId = (categoryId !== 'all' && categoryId !== 'uncategorized') ? parseInt(categoryId) : categoryId;
-                switchStickerCategory(finalId);
-            }
-        });
-
-document.getElementById('select-all-stickers-checkbox').addEventListener('change', handleSelectAllStickers);
 
 document.getElementById('export-single-chat-btn').addEventListener('click', exportSingleChat);
 

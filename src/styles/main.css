@@ -16,6 +16,10 @@
 @import "./components.css";
 @import "./home-desktop.css";
 @import "./phone-apps.css";
+@import "./theme.css";
+@import "./social.css";
+@import "./stickers.css";
+@import "./context.css";
 
 @source "../";
 @source "../../index.html";

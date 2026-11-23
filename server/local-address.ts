@@ -6,7 +6,7 @@ export function localAddress() {
   if (host.length > 253 || !new RegExp(`^${label}(?:\\.${label})*$`).test(host)) {
     throw new Error('EEPHONE_HOST must be a hostname without a scheme, port, or path.')
   }
-  const port = Number(process.env.PORT ?? 8000)
+  const port = Number(process.env.PORT ?? 8017)
   if (!Number.isSafeInteger(port) || port < 1 || port > 65535) {
     throw new Error('PORT must be between 1 and 65535.')
   }

@@ -14,7 +14,7 @@ export function FontSettingsScreen() {
         {" "}
       </ScreenHeader>
       <div className="form-container">
-        <h3 style={{ marginTop: "0", borderBottom: "1px solid #eee", paddingBottom: "10px" }}>Font Presets</h3>
+        <h3 style={{ marginTop: "0", borderBottom: "1px solid var(--ui-divider)", paddingBottom: "10px" }}>Font Presets</h3>
         <div className="form-group">
           {" "}
           <label htmlFor="font-preset-select">Select a preset</label>
@@ -24,7 +24,7 @@ export function FontSettingsScreen() {
             {" "}
             <button id="save-font-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Save</button>
             {" "}
-            <button id="delete-font-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "#ffebee", color: "#d32f2f", borderColor: "#ffcdd2" }} type="button">Delete</button>
+            <button id="delete-font-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)" }} type="button">Delete</button>
             {" "}
           </div>
         </div>

@@ -1,8 +1,7 @@
-import { loreContext } from '../../features/world-book/lore-storage'
 import { characterPrompt } from '../../features/characters/characters'
 import { characterAvatar, registerAvatarCall } from '../../features/characters/gallery'
-import { openAiUrl } from '../../features/api/endpoints'
-import { parseAiResponse, toGeminiRequestData } from '../api/client.js'
+import { requestContextCompletion } from '../../features/api/completion'
+import { getGeminiResponseText, parseAiResponse } from '../api/client.js'
 import { triggerAiResponse } from '../chat/ai.js'
 import { renderCallHistoryScreen } from '../chat/attachments.js'
 import { openChat, renderChatInterface } from '../chat/conversation.js'
@@ -270,26 +269,9 @@ export async function triggerAiInCallAction(userInput = null) {
             if (!runtime.videoCallState.isActive) return;
         
             const chat = runtime.state.chats[runtime.videoCallState.activeChatId];
-            const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
+            if (!chat) return;
             const callFeed = document.getElementById('video-call-main');
             const userNickname = chat.settings.myNickname || '我';
-        
-            let worldBookContent = '';
-            if (chat.settings.linkedWorldBookIds && chat.settings.linkedWorldBookIds.length > 0) {
-                const linkedContents = chat.settings.linkedWorldBookIds.map(bookId => {
-                    const worldBook = runtime.state.worldBooks.find(wb => wb.id === bookId);
-                    return worldBook && worldBook.content ? `\n\n## 世界书: ${worldBook.name}\n${worldBook.content}` : '';
-                }).filter(Boolean).join('');
-                if (linkedContents) {
-                    worldBookContent = `# --- 世界书 (World Book) ---
-# 【最高优先级规则：世界观设定】
-# 你【必须】将以下所有“世界书”中的设定，视为绝对的、不可动摇的背景事实。
-# 你的所有回复和行为都【绝对不能】与这些设定产生任何冲突。
-${linkedContents}
-# --- 世界书设定结束 ---
-`;
-                }
-            }
         
             
             if (userInput && runtime.videoCallState.isUserParticipating) {
@@ -322,10 +304,8 @@ ${linkedContents}
         # 当前情景
         你们正在一个群视频通话中。
         **通话前的聊天摘要**:
-        ${runtime.videoCallState.preCallContext}
         **当前参与者**: ${participantNames.join('、 ')}。
         **通话刚刚开始...**
-        ${worldBookContent}${loreContext(chat, runtime.videoCallState.callHistory)} // <-- 【核心】注入世界书
         现在，请根据【通话前摘要】和下面的【通话实时记录】，继续进行对话。
         `;
             } else { 
@@ -342,37 +322,22 @@ ${linkedContents}
         你正在和用户（${userNickname}，人设: ${chat.settings.myPersona}）进行视频通话。
         **${openingContext}**
         **通话前的聊天摘要 (这是你们通话的原因，至关重要！)**:
-        ${runtime.videoCallState.preCallContext}
         现在，请根据【通话前摘要】和下面的【通话实时记录】，继续进行对话。
         `;
             }
             
             // 3. 构建发送给API的 messages 数组
-            const messagesForApi = [
-                { role: 'system', content: inCallPrompt },
-                ...runtime.videoCallState.callHistory.map(h => ({ role: h.role, content: h.content }))
-            ];
-        
-            if (runtime.videoCallState.callHistory.length === 0) {
-                const firstLineTrigger = runtime.videoCallState.initiator === 'user' ? `*你按下了接听键...*` : `*对方按下了接听键...*`;
-                messagesForApi.push({ role: 'user', content: firstLineTrigger });
-            }
-            
-                try {
-                    let  isGemini = proxyUrl === runtime.GEMINI_API_URL;
-                    let geminiConfig = toGeminiRequestData(model,apiKey,inCallPrompt, messagesForApi)
-                    const response = isGemini ? await fetch(geminiConfig.url, geminiConfig.data) : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                        body: JSON.stringify({
-                            model: model, messages: messagesForApi, temperature: runtime.state.globalSettings.apiTemperature ?? 0.8
-                        })
-                    });
-                    if (!response.ok) throw new Error((await response.json()).error.message);
-        
+            const transcript = runtime.videoCallState.callHistory;
+            const currentSpeech = userInput && runtime.videoCallState.isUserParticipating ? transcript.at(-1) : undefined;
+            const previousSpeech = currentSpeech ? transcript.slice(0, -1) : transcript;
+            const turns = previousSpeech.map(message => '[Current call] ' + (message.role === 'user' ? userNickname : chat.name) + ': ' + message.content);
+            try {
+                    const response = await requestContextCompletion(chat, { instructions: inCallPrompt, activity: turns,
+                        extraMessages: transcript, task: 'Video call · ' + chat.name, scope: 'call:' + chat.id,
+                        request: [{ role: 'user', content: currentSpeech ? currentSpeech.content : 'Continue the call in character.' }] });
+                    if (!response.ok) throw new Error('API request failed (HTTP ' + response.status + ').');
                     const data = await response.json();
-                    const aiResponse = isGemini? data.candidates[0].content.parts[0].text : data.choices[0].message.content;
-        
+                    const aiResponse = getGeminiResponseText(data);
                     const connectingElement = callFeed.querySelector('em');
                     if (connectingElement) connectingElement.remove();
                 if (runtime.videoCallState.isGroupCall) {

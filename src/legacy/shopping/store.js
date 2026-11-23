@@ -1,7 +1,6 @@
-import { openAiUrl } from '../../features/api/endpoints'
-import { getGeminiResponseText, toGeminiRequestData } from '../api/client.js'
+import { requestContextCompletion } from '../../features/api/completion'
+import { getGeminiResponseText } from '../api/client.js'
 import { appendMessage } from '../chat/conversation.js'
-import { formatTimeAgo } from '../../features/chat/format'
 import { getDisplayNameInGroup } from '../chat/groups.js'
 import { renderChatList } from '../chat/list.js'
 import { showCustomAlert, showCustomConfirm } from '../dialogs/dialogs.js'
@@ -684,13 +683,10 @@ export async function handleGenerateShoppingItems() {
     await showCustomAlert("Please wait…", `Generating products for “${chat.name}”…`);
 
 
-    const useSecondaryApi = runtime.state.apiConfig.secondaryProxyUrl && runtime.state.apiConfig.secondaryApiKey && runtime.state.apiConfig.secondaryModel;
-    const { proxyUrl, apiKey, model } = useSecondaryApi 
-        ? { proxyUrl: runtime.state.apiConfig.secondaryProxyUrl, apiKey: runtime.state.apiConfig.secondaryApiKey, model: runtime.state.apiConfig.secondaryModel } 
-        : runtime.state.apiConfig;
+    const { proxyUrl, apiKey, model } = runtime.state.apiConfig;
 
-    if (!proxyUrl || !apiKey || !model) {
-        await showCustomAlert("API Connection Required", "Configure a primary or secondary connection in API Connections.");
+    if (!proxyUrl || !model) {
+        await showCustomAlert("API Connection Required", "Configure a connection in API Connections.");
         return;
     }
 
@@ -710,30 +706,6 @@ const existingCategories = await runtime.db.shoppingCategories.toArray();
     }    
  
     const userNickname = runtime.state.qzoneSettings.nickname || '我';
-    const longTermMemoryContext = chat.longTermMemory && chat.longTermMemory.length > 0
-    ? chat.longTermMemory.map(mem => `- (记录于 ${formatTimeAgo(mem.timestamp)}) ${mem.content}`).join('\n')
-    : '无';
-    const recentHistoryContext = chat.history.slice(-10).map(msg => 
-        `${msg.role === 'user' ? userNickname : chat.name}: ${String(msg.content).substring(0, 30)}...`
-    ).join('\n');
-
-    let worldBookContext = '';
-    if (chat.settings.linkedWorldBookIds && chat.settings.linkedWorldBookIds.length > 0) {
-        const linkedContents = chat.settings.linkedWorldBookIds.map(bookId => {
-            const worldBook = runtime.state.worldBooks.find(wb => wb.id === bookId);
-            if (!worldBook || !Array.isArray(worldBook.content)) return '';
-            const enabledEntries = worldBook.content
-                .filter(entry => entry.enabled !== false)
-                .map(entry => `- ${entry.content}`)
-                .join('\n');
-            return enabledEntries ? `\n## 来自《${worldBook.name}》:\n${enabledEntries}` : '';
-        }).filter(Boolean).join('');
-
-        if (linkedContents) {
-            worldBookContext = `\n# 世界观设定 (必须参考)\n${linkedContents}\n`;
-        }
-    }
-
     const systemPrompt = `
 # 你的任务
 你是一个虚拟的、极具创造力的商品规划师。你的任务是为下面的角色“${chat.name}”量身打造一个专属的商品列表。
@@ -774,32 +746,15 @@ const existingCategories = await runtime.db.shoppingCategories.toArray();
 # 角色与上下文 (你的灵感来源)
 - **角色名称**: ${chat.name}
 - **角色人设**: ${chat.settings.aiPersona}
-- **长期记忆**: ${longTermMemoryContext}
-- **世界书设定**: ${worldBookContext}
 ${existingCategoriesContext}
 - **最近对话摘要**:
-${recentHistoryContext}
 
 现在，请根据以上【所有上下文信息】，开始为“${chat.name}”生成这组【与角色高度相关】的商品数据。`;
 
     try {
         const messagesForApi = [{ role: 'user', content: "请根据以上设定，生成商品数据。" }];
-        let isGemini = proxyUrl.includes('generativelanguage');
-        // 3. 【核心新增】调用 toGeminiRequestData 来自动绑定温度值
-        let geminiConfig = toGeminiRequestData(model, apiKey, systemPrompt, messagesForApi);
-        
-        const response = isGemini 
-            ? await fetch(geminiConfig.url, geminiConfig.data) 
-            : await fetch(openAiUrl(proxyUrl, 'chat/completions'), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`},
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{role: 'system', content: systemPrompt}, ...messagesForApi],
-                    // 4. 【核心新增】为OpenAI兼容API也绑定温度值
-                    temperature: runtime.state.globalSettings.apiTemperature ?? 0.9
-                })
-            });
+        const response = await requestContextCompletion(chat, { instructions: systemPrompt, request: messagesForApi,
+            task: 'Shop generation · ' + chat.name, scope: 'shop:' + chat.id });
 
         if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
         

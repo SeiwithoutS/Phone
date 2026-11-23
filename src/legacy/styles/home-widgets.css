@@ -375,10 +375,6 @@
 
 #profile-main-content, #thoughts-history-list { -ms-overflow-style: none; scrollbar-width: none; }
 
-.character-profile-content {
-    background-color: #ffffff !important;
-}
-
 #character-profile-modal .jottings .label {
     display: none;
 }

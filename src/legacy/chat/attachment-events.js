@@ -7,40 +7,59 @@ import { showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
 import { closePersonaEditor, closePersonaLibrary, deletePersonaPreset, hidePresetActions, openPersonaEditorForCreate, openPersonaEditorForEdit, openPersonaLibrary, savePersonaPreset } from '../personas/personas.js'
 import { renderMemoriesScreen } from '../qzone/feed.js'
 import { renderStickerPanel } from '../stickers/stickers.js'
+import { importStickers, loadStickers, readStickerFile } from '../../features/stickers/library'
 import { switchToChatListView } from '../app/screen-effects.js'
 import { controls } from '../runtime/state.js'
 import { runtime } from '../runtime/state.js'
+import { fileDataUrl, imageSource } from '../../runtime/files'
+import { maySendImages } from '../../features/api/image-input'
 
 export function bindChatAttachmentEvents() {
   document.getElementById('upload-sticker-btn').addEventListener('click', () => document.getElementById('sticker-upload-input').click());
 
-document.getElementById('sticker-upload-input').addEventListener('change', async (event) => { 
-            const file = event.target.files[0]; 
-            if (!file) return; 
-            const reader = new FileReader(); 
-            reader.readAsDataURL(file); 
-            reader.onload = async () => { 
-                const base64Url = reader.result; 
-                const name = await showCustomPrompt("Name Sticker", "Enter a name for this sticker"); 
-                if (name && name.trim()) { 
-                    const newSticker = { 
-                        id: 'sticker_' + Date.now(), 
-                        url: base64Url, 
-                        name: name.trim(),
-                        
-                        categoryId: (runtime.activeStickerCategoryId !== 'all' && runtime.activeStickerCategoryId !== 'uncategorized') ? runtime.activeStickerCategoryId : null
-                    }; 
-                    await runtime.db.userStickers.add(newSticker); 
-                    runtime.state.userStickers.push(newSticker); 
-                    renderStickerPanel(); 
-                } else if (name !== null) alert("Enter a sticker name."); 
-            }; 
-            event.target.value = null; 
-        });
+document.getElementById('sticker-upload-input').addEventListener('change', async event => {
+    const file = event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+        const sticker = await readStickerFile(file);
+        const name = await showCustomPrompt('Name sticker', 'Enter a name for this sticker', sticker.name);
+        if (name === null) return;
+        if (!name.trim()) throw new Error('Enter a sticker name.');
+        const categories = await runtime.db.stickerCategories.toArray();
+        const category = categories.find(item => String(item.id) === String(runtime.activeStickerCategoryId));
+        await importStickers(runtime.db, [{ ...sticker, name: name.trim() }], category?.id ?? null);
+        await loadStickers(runtime.db);
+        if (runtime.activeStickerCategoryId === 'assigned') runtime.activeStickerCategoryId = 'all';
+        await renderStickerPanel();
+    } catch (error) {
+        alert(error.message);
+    }
+});
 
 document.getElementById('upload-image-btn').addEventListener('click', () => document.getElementById('image-upload-input').click());
 
-document.getElementById('image-upload-input').addEventListener('change', async (event) => { const file = event.target.files[0]; if (!file || !runtime.state.activeChatId) return; const reader = new FileReader(); reader.onload = async (e) => { const base64Url = e.target.result; const chat = runtime.state.chats[runtime.state.activeChatId]; const msg = { role: 'user', content: [{ type: 'image_url', image_url: { url: base64Url } }], timestamp: Date.now() }; chat.history.push(msg); await runtime.db.chats.put(chat); appendMessage(msg, chat); renderChatList(); }; reader.readAsDataURL(file); event.target.value = null; });
+document.getElementById('image-upload-input').addEventListener('change', async event => {
+    const file = event.target.files[0];
+    const chat = runtime.state.chats[runtime.state.activeChatId];
+    const session = chat?.conversationId;
+    event.target.value = '';
+    if (!file || !chat) return;
+    try {
+        const url = imageSource(await fileDataUrl(file));
+        if (!url) throw new Error('Choose a supported image.');
+        const description = maySendImages() ? '' : await showCustomPrompt('Describe the photo', 'Enter a short description for the AI');
+        if (description === null || runtime.state.activeChatId !== chat.id || chat.conversationId !== session) return;
+        const msg = { role: 'user', content: [{ type: 'image_url', image_url: { url } }], imageDescription: description.trim().slice(0, 500), timestamp: Date.now() };
+        const history = [...chat.history, msg];
+        if (!await runtime.db.chats.update(chat.id, { history })) return;
+        chat.history = history;
+        appendMessage(msg, chat);
+        renderChatList();
+    } catch (error) {
+        alert(error.message);
+    }
+});
 
 document.getElementById('voice-message-btn').addEventListener('click', async () => {
     if (!runtime.state.activeChatId) return;

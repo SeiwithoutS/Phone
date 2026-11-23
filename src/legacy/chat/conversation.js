@@ -1,4 +1,5 @@
 import { escapeHtml } from '../../runtime/files'
+import { addMessageTools } from '../../features/chat/replies'
 import { characterAvatar } from '../../features/characters/gallery'
 import { sharedCardHtml } from '../../features/chat/shared-cards'
 import { applyScopedCss } from '../appearance/theme.js'
@@ -20,11 +21,14 @@ import { parseMarkdown } from '../rendering/markup.js'
 import { showScreen } from '../../app/routes'
 import { runtime } from '../runtime/state.js'
 
-export async function renderChatInterface(chatId) {
+let renderVersion = 0;
+
+export async function renderChatInterface(chatId, preserveScroll = false) {
             applyButtonOrder();
             cleanupWaimaiTimers();
             const chat = runtime.state.chats[chatId];
             if (!chat) return;
+            const version = ++renderVersion;
 
             exitSelectionMode();
 
@@ -39,6 +43,7 @@ export async function renderChatInterface(chatId) {
             applyScopedCss(chat.settings.customCss || '', '#chat-messages', 'custom-bubble-style');
 
             document.getElementById('chat-header-title').textContent = chat.name;
+            document.getElementById('qq-branch-status').hidden = !chat.branchFrom;
             const statusContainer = document.getElementById('chat-header-status');
             const statusTextEl = statusContainer.querySelector('.status-text');
 
@@ -151,11 +156,14 @@ export async function renderChatInterface(chatId) {
                 }
             }
             
+            const scrollTop = messagesContainer.scrollTop;
+            const pinned = messagesContainer.scrollHeight - scrollTop - messagesContainer.clientHeight < 16;
+            const previouslyRendered = runtime.currentRenderedCount || 0;
             messagesContainer.innerHTML = '';
             const history = chat.history;
             runtime.currentRenderedCount = 0;
             const renderWindow = runtime.state.globalSettings.chatRenderWindow || 50;
-            const initialMessages = history.slice(-renderWindow);
+            const initialMessages = history.slice(-Math.max(renderWindow, preserveScroll ? previouslyRendered : 0));
 
             
             
@@ -174,6 +182,7 @@ export async function renderChatInterface(chatId) {
 
             
             const messageElements = await Promise.all(messagePromises);
+            if (version !== renderVersion) return;
 
             
             const fragment = document.createDocumentFragment();
@@ -189,7 +198,11 @@ export async function renderChatInterface(chatId) {
             typingIndicator.textContent = "Typing…";
             messagesContainer.appendChild(typingIndicator);
 
-            setTimeout(() => messagesContainer.scrollTop = messagesContainer.scrollHeight, 0);
+            setTimeout(() => {
+                if (runtime.state.activeChatId === chatId) {
+                    messagesContainer.scrollTop = preserveScroll && !pinned ? scrollTop : messagesContainer.scrollHeight;
+                }
+            }, 0);
         }
 
 export async function loadMoreMessages() {
@@ -271,7 +284,7 @@ export function scrollToOriginalMessage(originalTimestamp) {
     }
 }
 
-export async function createMessageElement(msg, chat) {
+export async function createMessageElement(msg, chat, interactive = false) {
         
             
             if (msg.type === 'recalled_message') {
@@ -402,7 +415,7 @@ export async function createMessageElement(msg, chat) {
         
             let rawContent = msg.content; 
 
-            if (msg.isOpening) {
+            if (msg.isOpening || msg.plainText) {
                 contentHtml = parseMarkdown(escapeHtml(String(rawContent))).replace(/\n/g, '<br>');
             } else if (typeof rawContent === 'string' && rawContent.trim().startsWith('<') && rawContent.trim().endsWith('>')) {
                 contentHtml = rawContent;
@@ -618,6 +631,7 @@ export async function createMessageElement(msg, chat) {
             
             wrapper.appendChild(bubble);
             wrapper.appendChild(timestampEl);
+            if (interactive) addMessageTools(wrapper, msg, chat);
             
             addLongPressListener(wrapper, () => showMessageActions(msg.timestamp));
             wrapper.addEventListener('click', () => { if (runtime.isSelectionMode) toggleMessageSelection(msg.timestamp); });
@@ -638,7 +652,7 @@ export async function createMessageElement(msg, chat) {
 
 export async function prependMessage(msg, chat) { 
             const messagesContainer = document.getElementById('chat-messages'); 
-            const messageEl = await createMessageElement(msg, chat); 
+            const messageEl = await createMessageElement(msg, chat, true);
         
             
             if (!messageEl) return;
@@ -663,7 +677,7 @@ if (lastMessage && (msg.timestamp - lastMessage.timestamp > 600000)) {
     messagesContainer.insertBefore(timestampEl, typingIndicator);
 }
 
-            const messageEl = await createMessageElement(msg, chat);
+            const messageEl = await createMessageElement(msg, chat, true);
             if (!messageEl) return;
     
     

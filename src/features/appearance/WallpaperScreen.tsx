@@ -118,8 +118,8 @@ export function WallpaperScreen() {
             <button id="reset-button-order-btn" title="Restore Default Order" className="form-button-secondary" style={{ margin: "0", padding: "4px 12px", fontSize: "13px" }} type="button" aria-label="Restore Default Order">Reset Order</button>
             {" "}
           </div>
-          <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Drag the buttons below to reorder them. Changes are saved automatically. "}</p>
-          <div id="button-order-editor" style={{ display: "flex", flexWrap: "wrap", gap: "10px", padding: "10px", backgroundColor: "#f0f2f5", borderRadius: "8px", border: "1px solid var(--border-color)" }}>{" "}</div>
+          <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Drag the buttons below to reorder them. Changes are saved automatically. "}</p>
+          <div id="button-order-editor" style={{ display: "flex", flexWrap: "wrap", gap: "10px", padding: "10px", backgroundColor: "var(--ui-raised)", borderRadius: "8px", border: "1px solid var(--border-color)" }}>{" "}</div>
         </div>
         <hr style={{ width: "80%", opacity: "0.3", margin: "30px 0" }} />
         <div style={{ width: "100%", textAlign: "left", marginBottom: "15px" }}>
@@ -140,7 +140,7 @@ export function WallpaperScreen() {
             {" "}
             <button id="save-appearance-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Save</button>
             {" "}
-            <button id="delete-appearance-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "#ffebee", color: "#d32f2f", borderColor: "#ffcdd2" }} type="button">Delete</button>
+            <button id="delete-appearance-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)" }} type="button">Delete</button>
             {" "}
           </div>
         </div>
@@ -155,7 +155,7 @@ export function WallpaperScreen() {
             {" "}
             <button id="save-css-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Save</button>
             {" "}
-            <button id="delete-css-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "#ffebee", color: "#d32f2f", borderColor: "#ffcdd2" }} type="button">Delete</button>
+            <button id="delete-css-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)" }} type="button">Delete</button>
             {" "}
           </div>
         </div>
@@ -163,7 +163,7 @@ export function WallpaperScreen() {
           {" "}
           <label htmlFor="global-css-input">
             {" Global Custom CSS "}
-            <button id="reset-global-css-btn" type="button" style={{ background: "none", border: "1px solid #ccc", color: "#555", fontSize: "12px", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", marginLeft: "10px" }}>Reset</button>
+            <button id="reset-global-css-btn" type="button" style={{ background: "none", border: "1px solid var(--ui-divider)", color: "var(--ui-muted)", fontSize: "12px", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", marginLeft: "10px" }}>Reset</button>
             {" "}
           </label>
           {" "}

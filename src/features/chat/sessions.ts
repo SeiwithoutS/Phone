@@ -4,29 +4,39 @@ import { renderChatList } from '../../legacy/chat/list.js'
 import { cancelReplyMode } from '../../legacy/chat/attachments.js'
 import { exitSelectionMode } from '../../legacy/chat/messages.js'
 import { openingMessage } from '../characters/characters'
-import type { ChatSession, DirectChat } from './model'
+import type { ChatMessage, ChatSession } from './model'
 
-export type SessionAction = 'new' | 'change-opening' | 'open'
+type Chat = NonNullable<ReturnType<typeof getActiveChat>>
+export type SessionAction =
+  | { type: 'new' | 'change-opening'; greeting: string }
+  | { type: 'open' | 'delete'; id: string }
+  | { type: 'branch'; message: ChatMessage }
 
-const activeId = (chat: DirectChat) => chat.conversationId ?? 'original'
+const activeId = (chat: Chat) => chat.conversationId ?? 'original'
 
-export function getDirectChat(chatId = runtime.state.activeChatId) {
-  const chat = chatId === null ? undefined : runtime.state.chats[chatId]
+export function getActiveChat(id = runtime.state.activeChatId) {
+  return id === null ? undefined : runtime.state.chats[id]
+}
+
+export function getDirectChat(id = runtime.state.activeChatId) {
+  const chat = getActiveChat(id)
   return chat && !chat.isGroup ? chat : undefined
 }
 
-function snapshot(chat: DirectChat): ChatSession {
+function snapshot(chat: Chat): ChatSession {
   return {
     id: activeId(chat),
     createdAt: chat.conversationCreatedAt ?? chat.history[0]?.timestamp ?? Date.now(),
     history: chat.history,
-    longTermMemory: chat.longTermMemory || [],
+    longTermMemory: chat.longTermMemory ?? [],
     lastMemorySummaryTimestamp: chat.lastMemorySummaryTimestamp ?? 0,
     composerDraft: controls.chatInput?.value || '',
+    branchFrom: chat.branchFrom,
+    announcements: chat.announcements,
   }
 }
 
-export function getSessions(chat: DirectChat) {
+export function getSessions(chat: Chat) {
   return [snapshot(chat), ...(chat.chatSessions ?? [])].map(session => {
     const last = session.history.findLast(message => !message.isHidden && typeof message.content === 'string')
     return {
@@ -35,12 +45,13 @@ export function getSessions(chat: DirectChat) {
       date: last?.timestamp ?? session.createdAt,
       count: session.history.filter(message => !message.isHidden).length,
       preview: typeof last?.content === 'string' ? last.content : '',
+      branch: Boolean(session.branchFrom),
     }
-  }).sort((a, b) => b.date - a.date)
+  }).sort((a, b) => Number(b.active) - Number(a.active) || b.date - a.date)
 }
 
-export function canChangeOpening(chat: DirectChat) {
-  return chat.history.length === 0 || (chat.history.length === 1 && chat.history[0].isOpening === true)
+export function canChangeOpening(chat: Chat) {
+  return !chat.isGroup && (chat.history.length === 0 || (chat.history.length === 1 && chat.history[0].isOpening === true))
 }
 
 const changes = new Set<string>()
@@ -53,72 +64,138 @@ export function sessionChanging(chatId: string) {
 export async function withConversationRequest<T>(chatId: string | null, run: () => T | Promise<T>) {
   if (!chatId || sessionChanging(chatId)) return
   requests.set(chatId, (requests.get(chatId) || 0) + 1)
-  try {
-    return await run()
-  } finally {
+  try { return await run() }
+  finally {
     const left = (requests.get(chatId) ?? 1) - 1
     if (left) requests.set(chatId, left)
     else requests.delete(chatId)
   }
 }
 
-export async function changeSession(chat: DirectChat, action: SessionAction, value: string) {
-  if (getDirectChat() !== chat || changes.has(chat.id)) return
+export async function mutateConversation<T>(chat: Chat, run: () => Promise<T>) {
+  if (getActiveChat() !== chat) throw new Error('Open this chat again and try once more.')
   const call = runtime.videoCallState
-  if (requests.has(chat.id) || (call?.activeChatId === chat.id && (call.isActive || call.isAwaitingResponse))) {
-    throw new Error('Wait for the current reply or call to finish before changing chats.')
-  }
-
-  const current = snapshot(chat)
-  let next = current
-  let archives = chat.chatSessions ?? []
-  if (action === 'change-opening') {
-    if (!canChangeOpening(chat)) throw new Error('Start a new chat to pick a different opening.')
-    next = { ...current, history: value ? [openingMessage(chat, value)] : [] }
-  } else {
-    if (action === 'open') {
-      const archived = archives.find(session => session.id === value)
-      if (!archived) return
-      next = archived
-    } else {
-      next = {
-        id: crypto.randomUUID(),
-        createdAt: Date.now(),
-        history: value ? [openingMessage(chat, value)] : [],
-        longTermMemory: [],
-        lastMemorySummaryTimestamp: 0,
-        composerDraft: '',
-      }
-    }
-    archives = [...archives.filter(session => session.id !== next.id), current]
-  }
-
-  const update = {
-    history: next.history,
-    longTermMemory: next.longTermMemory,
-    lastMemorySummaryTimestamp: next.lastMemorySummaryTimestamp,
-    conversationId: next.id,
-    conversationCreatedAt: next.createdAt,
-    chatSessions: archives,
+  if (changes.has(chat.id) || requests.has(chat.id) ||
+      (call?.activeChatId === chat.id && (call.isActive || call.isAwaitingResponse))) {
+    throw new Error('Wait for the current reply or call to finish, then try again.')
   }
   changes.add(chat.id)
-  try {
-    const saved = await runtime.db.chats.update(chat.id, update)
-    if (!saved) throw new Error('This character was deleted.')
-    Object.assign(chat, update)
-    if (getDirectChat() === chat) {
+  try { return await run() }
+  finally { changes.delete(chat.id) }
+}
+
+export async function storeConversation(chat: Chat, update: Partial<Chat>) {
+  const saved = await runtime.db.chats.update(chat.id, update)
+  if (!saved) throw new Error('This chat was deleted.')
+  Object.assign(chat, update)
+  runtime.lastRawAiResponse = ''
+  runtime.lastResponseTimestamps = []
+}
+
+export function rerenderConversation(chat: Chat, preserveScroll = false) {
+  if (getActiveChat() === chat) void renderChatInterface(chat.id, preserveScroll)
+  void renderChatList()
+}
+
+function emptySession(): ChatSession {
+  return {
+    id: crypto.randomUUID(), createdAt: Date.now(), history: [], longTermMemory: [],
+    lastMemorySummaryTimestamp: 0, composerDraft: '',
+  }
+}
+
+function keepHistory(session: ChatSession, history: ChatMessage[]): ChatSession {
+  const timestamps = new Set(history.map(message => message.timestamp))
+  return {
+    ...session,
+    history,
+    longTermMemory: session.longTermMemory.filter(memory => (memory as { source?: string } | null)?.source === 'manual'),
+    lastMemorySummaryTimestamp: 0,
+    announcements: session.announcements?.filter(item => timestamps.has(item.messageTimestamp)),
+  }
+}
+
+function sessionChanges(session: ChatSession): Partial<Chat> {
+  return {
+    history: session.history,
+    longTermMemory: session.longTermMemory,
+    lastMemorySummaryTimestamp: session.lastMemorySummaryTimestamp,
+    conversationId: session.id,
+    conversationCreatedAt: session.createdAt,
+    branchFrom: session.branchFrom,
+    announcements: session.announcements,
+  }
+}
+
+export async function deleteMessagesFrom(chat: Chat, message: ChatMessage) {
+  await mutateConversation(chat, async () => {
+    const index = chat.history.indexOf(message)
+    if (index < 0) throw new Error('This message is no longer in this chat.')
+    const kept = keepHistory(snapshot(chat), chat.history.slice(0, index))
+    await storeConversation(chat, sessionChanges(kept))
+    if (getActiveChat() === chat) {
       exitSelectionMode()
       cancelReplyMode()
-      runtime.lastRawAiResponse = ''
-      runtime.lastResponseTimestamps = []
+    }
+    rerenderConversation(chat)
+  })
+}
+
+export async function changeSession(chat: Chat, action: SessionAction) {
+  await mutateConversation(chat, async () => {
+    // Clone copies kept in the archive so editing a branch cannot change its parent.
+    const current = structuredClone(snapshot(chat))
+    let next = current
+    let archives = chat.chatSessions ?? []
+    switch (action.type) {
+      case 'change-opening':
+        if (chat.isGroup || !canChangeOpening(chat)) throw new Error('Start a new chat to pick a different opening.')
+        next = { ...current, history: action.greeting ? [openingMessage(chat, action.greeting)] : [] }
+        break
+      case 'delete':
+        if (action.id === current.id) {
+          next = archives.reduce<ChatSession | undefined>((latest, session) =>
+            !latest || session.createdAt > latest.createdAt ? session : latest, undefined) ?? emptySession()
+        } else if (!archives.some(session => session.id === action.id)) {
+          throw new Error('This chat file no longer exists.')
+        }
+        archives = archives.filter(session => session.id !== action.id && session.id !== next.id)
+        break
+      case 'open': {
+        const found = archives.find(session => session.id === action.id)
+        if (!found) throw new Error('This chat file no longer exists.')
+        next = found
+        archives = [...archives.filter(session => session.id !== found.id), current]
+        break
+      }
+      case 'branch': {
+        const index = chat.history.indexOf(action.message)
+        if (index < 0 || action.message.timestamp === undefined) throw new Error('This message is no longer in this chat.')
+        next = {
+          ...keepHistory(current, current.history.slice(0, index + 1)),
+          ...{ id: crypto.randomUUID(), createdAt: Date.now(), composerDraft: '' },
+          branchFrom: { sessionId: current.id, timestamp: action.message.timestamp },
+        }
+        archives = [...archives, current]
+        break
+      }
+      case 'new':
+        next = emptySession()
+        if (!chat.isGroup && action.greeting) next.history = [openingMessage(chat, action.greeting)]
+        archives = [...archives, current]
+        break
+    }
+
+    const conversationChanged = action.type !== 'delete' || action.id === current.id
+    await storeConversation(chat, conversationChanged ? { ...sessionChanges(next), chatSessions: archives } : { chatSessions: archives })
+    if (getActiveChat() === chat && conversationChanged) {
+      exitSelectionMode()
+      cancelReplyMode()
       if (controls.chatInput) {
         controls.chatInput.value = next.composerDraft ?? ''
         controls.chatInput.style.height = 'auto'
       }
-      await renderChatInterface(chat.id)
-    }
-    void renderChatList()
-  } finally {
-    changes.delete(chat.id)
-  }
+      rerenderConversation(chat)
+    } else void renderChatList()
+  })
 }

@@ -33,7 +33,7 @@ export function hideMessageActions() {
 
 export async function openMessageEditor() {
             if (!runtime.activeMessageTimestamp) return;
-        
+
             const timestampToEdit = runtime.activeMessageTimestamp;
             const chat = runtime.state.chats[runtime.state.activeChatId];
             const message = chat.history.find(m => m.timestamp === timestampToEdit);
@@ -199,10 +199,10 @@ export function createMessageEditorBlock(initialContent = '') {
     return block;
 }
 
-export function openAdvancedMessageEditor() {
-            if (!runtime.activeMessageTimestamp) return;
+export function openAdvancedMessageEditor(timestamp = runtime.activeMessageTimestamp) {
+            if (timestamp == null) return;
         
-            const timestampToEdit = runtime.activeMessageTimestamp;
+            const timestampToEdit = timestamp;
             const chat = runtime.state.chats[runtime.state.activeChatId];
             const message = chat.history.find(m => m.timestamp === timestampToEdit);
             if (!message) return;
@@ -939,7 +939,17 @@ document.getElementById('existing-groups-list').addEventListener('click', (e) =>
 
 document.getElementById('cancel-message-action-btn').addEventListener('click', hideMessageActions);
 
-document.getElementById('edit-message-btn').addEventListener('click', openAdvancedMessageEditor);
+document.getElementById('edit-message-btn').addEventListener('click', () => {
+    const timestamp = runtime.activeMessageTimestamp;
+    const message = Number.isFinite(timestamp)
+        ? document.querySelector(`#chat-messages .message-bubble[data-timestamp="${timestamp}"]`)
+        : null;
+    const inline = message?.closest('.message-wrapper')?.querySelector('[data-inline-edit]');
+    if (inline) {
+        hideMessageActions();
+        inline.click();
+    } else openAdvancedMessageEditor();
+});
 
 document.getElementById('copy-message-btn').addEventListener('click', copyMessageContent);
 

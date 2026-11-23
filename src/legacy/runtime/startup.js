@@ -54,8 +54,6 @@ window.switchToCharHomeScreen = switchToCharHomeScreen;
 
 window.openNpcEditor = openNpcEditor;
 
-controls.stickerActionBar = document.getElementById('sticker-action-bar')
-
 controls.globalCssStyleTag = document.createElement('style')
 
 controls.globalCssStyleTag.id = 'global-custom-style';
@@ -66,9 +64,9 @@ runtime.qzoneStickerPanelState.panelEl = document.getElementById('qzone-sticker-
 
 runtime.qzoneStickerPanelState.gridEl = document.getElementById('qzone-sticker-grid');
 
-controls.savedTheme = preferences.getItem('ephone-theme') || 'light'
+controls.savedTheme = preferences.getItem('ephone-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
 
-applyTheme(controls.savedTheme);
+applyTheme(controls.savedTheme, false);
 
 controls.customBubbleStyleTag = document.createElement('style')
 
