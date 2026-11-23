@@ -100,14 +100,8 @@
 .chat-setting-switch small { display: block; color: var(--ui-muted); font: 400 .75rem/1.4 system-ui; }
 .chat-setting-toggles > .form-group { margin: 12px 0; }
 #phone-screen #chat-settings-screen { background: var(--ui-canvas); color: var(--ui-text); }
-#chat-settings-screen > .header { display: grid; grid-template-columns: 58px minmax(0, 1fr) 58px; text-align: center; }
 #chat-settings-screen > .header h1 { margin: 0; font-size: 1.03rem; }
 #chat-settings-screen > .header .back-btn { justify-self: start; }
-#chat-settings-screen > .header .save-btn {
-  justify-self: end; padding: 0 10px; min-height: 36px; border: 0;
-  border-radius: 999px; color: var(--ui-accent); background: var(--ui-accent-soft);
-  font: 650 .82rem system-ui, sans-serif; cursor: pointer;
-}
 .chat-settings-identity { display: grid; justify-items: center; gap: 8px; padding: 15px 12px 10px; }
 .chat-settings-identity img {
   width: 60px; height: 60px; object-fit: cover; border-radius: 20px; background: var(--ui-raised);

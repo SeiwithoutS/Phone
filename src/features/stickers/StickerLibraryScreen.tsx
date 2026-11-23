@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon, IconButton } from '../../components/icons'
-import { PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
+import { HeaderSaveButton, PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 import { showCustomConfirm } from '../../legacy/dialogs/dialogs.js'
 import { runtime } from '../../legacy/runtime/state.js'
@@ -82,12 +82,15 @@ function StickerLibrary({ database, fromChat }: { database: LocalDatabase; fromC
   const alert = <>{error && <p className="phone-app-error" role="alert">{error}</p>}{status && <p className="phone-app-muted" role="status">{status}</p>}</>
 
   return <>
-    <PhoneFeatureHeader title={editing ? 'Edit sticker' : 'Stickers'} onBack={() => {
+    <PhoneFeatureHeader title={editing ? 'Edit sticker' : 'Stickers'} backDisabled={busy} actions={editing && <>
+      <IconButton icon="trash" label="Delete sticker" disabled={busy} onClick={() => void remove([editing.id])} />
+      <HeaderSaveButton form="sticker-edit-form" label="Save sticker" disabled={busy} />
+    </>} onBack={() => {
       if (editing) { setEditing(undefined); setError('') }
       else if (fromChat) void navigate(-1)
       else showScreen('home-screen')
     }} />
-    {editing ? <form className="phone-app-scroll phone-app-stack" onSubmit={event => {
+    {editing ? <form id="sticker-edit-form" className="phone-app-scroll phone-app-stack" onSubmit={event => {
       event.preventDefault()
       const name = editing.name.trim()
       const url = imageSource(editing.url)
@@ -122,14 +125,10 @@ function StickerLibrary({ database, fromChat }: { database: LocalDatabase; fromC
           </label>
         })}
       </fieldset>
-      <div className="phone-app-actions">
-        <button type="submit" className="phone-app-button primary" disabled={busy}>Save sticker</button>
-        <button type="button" className="phone-app-button danger" disabled={busy} onClick={() => void remove([editing.id])}>Delete sticker</button>
-      </div>
       {alert}
     </form> : <div className="phone-app-scroll phone-app-stack">
       <div className="phone-app-actions">
-        <IconButton icon="upload" label="Import sticker images" disabled={busy} onClick={() => upload.current?.click()} />
+        <IconButton icon="import" label="Import sticker images" disabled={busy} onClick={() => upload.current?.click()} />
         <button type="button" className="phone-app-button" disabled={busy || !stickers.length} aria-pressed={selecting} onClick={() => {
           setSelecting(!selecting)
           setSelected([])
@@ -158,7 +157,7 @@ function StickerLibrary({ database, fromChat }: { database: LocalDatabase; fromC
           })
         }}>
           <label>One name and URL per line<textarea name="links" required rows={3} placeholder="Happy: https://example.com/happy.gif" /></label>
-          <IconButton icon="upload" type="submit" label="Import sticker links" disabled={busy} />
+          <IconButton icon="import" type="submit" label="Import sticker links" disabled={busy} />
         </form>
       </details>
       <div className="phone-app-two">

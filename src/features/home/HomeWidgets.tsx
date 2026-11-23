@@ -1,7 +1,8 @@
 import { escapeHtml, fileDataUrl, imageSource } from '../../runtime/files'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { BackButton, ScreenHeader } from '../../components/phone'
+import { HeaderSaveButton, PhoneFeatureHeader } from '../../components/phone'
+import { showCustomConfirm } from '../../legacy/dialogs/dialogs.js'
 import { Icon, IconButton } from '../../components/icons'
 import type { StoredRow } from '../../../shared/storage'
 
@@ -183,8 +184,15 @@ export function WidgetEditor({ widget, template, nextOrder, close, save, remove 
   }
 
   return <div className="widget-editor phone-feature">
-    <ScreenHeader><BackButton onClick={close} /><span>{widget ? 'Edit widget' : 'Add widget'}</span><span /></ScreenHeader>
-    <form className="phone-app-scroll phone-app-stack" onSubmit={submit}>
+    <PhoneFeatureHeader title={widget ? 'Edit widget' : 'Add widget'} onBack={close} backDisabled={busy} actions={<>
+      {widget && <IconButton icon="trash" label="Delete widget" disabled={busy} onClick={async () => {
+        if (!await showCustomConfirm('Delete widget', 'Remove this widget from the home screen?', { confirmButtonClass: 'btn-danger' })) return
+        setBusy(true)
+        try { await remove(widget) } catch { setError('Widget could not be deleted.'); setBusy(false) }
+      }} />}
+      <HeaderSaveButton form="widget-edit-form" label="Save widget" disabled={busy || pendingImages > 0} />
+    </>} />
+    <form id="widget-edit-form" className="phone-app-scroll phone-app-stack" onSubmit={submit}>
       <div className="widget-preview"><WidgetPreview widget={draft} active /></div>
       <div className="phone-app-two">
         <label>Type<select value={draft.kind} onChange={event => set('kind', event.target.value as HomeWidget['kind'])}>
@@ -244,7 +252,7 @@ export function WidgetEditor({ widget, template, nextOrder, close, save, remove 
         <div className="settings-tools widget-css-tools">
           <label htmlFor="widget-css">Custom CSS</label>
           <label className="widget-upload ui-icon-button" title="Import widget CSS">
-            <Icon name="upload" />
+            <Icon name="import" />
             <input className="widget-file-picker" type="file" accept=".css,text/css" aria-label="Import widget CSS" onChange={async event => {
               const file = event.currentTarget.files?.[0]
               event.currentTarget.value = ''
@@ -258,13 +266,6 @@ export function WidgetEditor({ widget, template, nextOrder, close, save, remove 
         <small>Selectors available: .widget, .title, .text, .image, .value</small>
       </details>
       {error && <p className="phone-app-error" role="alert">{error}</p>}
-      <div className="phone-app-actions">
-        <button className="phone-app-button primary" type="submit" disabled={busy || pendingImages > 0}>Save widget</button>
-        {widget && <button className="phone-app-button danger" type="button" disabled={busy} onClick={async () => {
-          setBusy(true)
-          try { await remove(widget) } catch { setError('Widget could not be deleted.'); setBusy(false) }
-        }}>Delete widget</button>}
-      </div>
     </form>
   </div>
 }

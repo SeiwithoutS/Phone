@@ -38,7 +38,7 @@ import { bindQzoneInteractions } from '../qzone/interactions.js'
 import { bindReadingEvents } from '../reading/reading.js'
 import { bindShoppingEvents, bindShoppingVariations } from '../shopping/events.js'
 import { bindStickerEvents } from '../stickers/stickers.js'
-import { renderWorldBookScreen, bindWorldBookEditor, bindWorldBookCategories, bindWorldBookDeletion } from '../world-book/books.js'
+import { renderWorldBookScreen, bindWorldBookEditor, bindWorldBookRelatedEvents, bindWorldBookDeletion } from '../world-book/books.js'
 import { openLocalDatabase } from '../../storage/database'
 import { initializePhoneUi } from './startup.js'
 import { runtime } from './state.js'
@@ -481,7 +481,6 @@ runtime.charPlayerState = {
     currentLyricIndex: -1
 }
 
-runtime.editingPresetId = null
 
 runtime.DEFAULT_BUTTON_ORDER = [
     'transfer-btn', 'open-shopping-btn', 'propel-btn', 'send-poll-btn', 'share-location-btn',
@@ -536,7 +535,7 @@ async function initialize() {
   bindQzoneProfileEvents()
   bindChatSharing()
   bindAppearanceEditor()
-  bindWorldBookCategories()
+  bindWorldBookRelatedEvents()
   bindMemoryNavigation()
   bindGomokuEvents()
   bindCallEvents()

@@ -1,5 +1,8 @@
 import type { ComponentPropsWithoutRef } from 'react'
 
+const arrowIntoTray = 'M12 4v12m-4-4 4 4 4-4M4 16v4h16v-4'
+const arrowOutOfTray = 'M12 16V4m-4 4 4-4 4 4M4 15v5h16v-5'
+
 export const iconPaths = {
   back: 'm14 6-6 6 6 6',
   next: 'm10 6 6 6-6 6',
@@ -21,6 +24,8 @@ export const iconPaths = {
   bank: 'm3 9 9-5 9 5M4 20h16M6 11v6m6-6v6m6-6v6',
   gift: 'M3 9h18v4H3zm2 4v7h14v-7M12 9v11m0-11c-2-7-9-5-6-1 1 1 4 1 6 1 2 0 5 0 6-1 3-4-4-6-6 1Z',
   list: 'M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01',
+  grid: 'M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z',
+  drag: 'M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01',
   checklist: 'M9 6h12M9 12h12M9 18h12M3 6l1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2',
   pin: 'M19 10c0 5-7 10-7 10s-7-5-7-10a7 7 0 1 1 14 0Zm-5 0a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z',
   plus: 'M12 5v14M5 12h14',
@@ -43,8 +48,10 @@ export const iconPaths = {
   repost: 'm17 2 4 4-4 4m4-4H7a3 3 0 0 0-3 3v2m3 11-4-4 4-4m-4 4h14a3 3 0 0 0 3-3v-2',
   image: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm-1 12 5-5 4 4 2-2 5 5M15 8h.01',
   stack: 'M5 4h14v12H5ZM8 20h12a3 3 0 0 0 3-3V7',
-  upload: 'M12 16V4m-4 4 4-4 4 4M4 15v5h16v-5',
-  download: 'M12 4v12m-4-4 4 4 4-4M4 16v4h16v-4',
+  import: arrowIntoTray,
+  export: arrowOutOfTray,
+  upload: arrowOutOfTray,
+  download: arrowIntoTray,
   folder: 'M3 7V5h6l2 2h10v12H3Z',
   spark: 'M12 3c0 6 3 9 9 9-6 0-9 3-9 9 0-6-3-9-9-9 6 0 9-3 9-9Z',
   send: 'm3 4 18 8-18 8 3-8-3-8Zm3 8h15',

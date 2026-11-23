@@ -71,7 +71,7 @@ export function BackupScreen({ database }: { database?: LocalDatabase }) {
             setSelected(selected.length === groups.length ? [] : Object.keys(categories))}>
             {selected.length === groups.length ? 'Clear all' : 'Select all'}
           </button>
-          <IconButton icon="download" label="Download ZIP" disabled={busy || !selected.length} aria-busy={busy} onClick={() => void download()} />
+          <IconButton icon="export" label="Export backup ZIP" disabled={busy || !selected.length} aria-busy={busy} onClick={() => void download()} />
         </div></div>
         <div className="backup-options">
           {groups.map(([label, tables]) => <label key={label}>
@@ -82,7 +82,7 @@ export function BackupScreen({ database }: { database?: LocalDatabase }) {
         </div>
       </section>
       <section className="phone-app-card">
-        <div className="bank-row"><h2>Restore from ZIP or JSON</h2><IconButton icon="upload" label="Choose ZIP or JSON" disabled={busy} onClick={() => picker.current?.click()} /></div>
+        <div className="bank-row"><h2>Restore from ZIP or JSON</h2><IconButton icon="import" label="Choose ZIP or JSON" disabled={busy} onClick={() => picker.current?.click()} /></div>
         <input ref={picker} hidden type="file" accept=".zip,.json,application/zip,application/json" onChange={async event => {
           const file = event.currentTarget.files?.[0]
           event.currentTarget.value = ''

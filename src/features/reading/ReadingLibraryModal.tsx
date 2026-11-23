@@ -10,7 +10,7 @@ export function ReadingLibraryModal() {
           <span>My Library</span>
           <div className="header-actions">
             {" "}
-            <IconButton icon="upload" id="import-new-book-btn-header" label="Import Book" />
+            <IconButton icon="import" id="import-new-book-btn-header" label="Import Book" />
             {" "}
             <IconButton icon="close" id="close-reading-library-btn-header" label="Close" />
             {" "}

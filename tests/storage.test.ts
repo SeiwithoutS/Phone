@@ -6,7 +6,39 @@ import { test } from 'node:test'
 import JSZip from 'jszip'
 import { openLocalStore } from '../server/storage.js'
 import { normalizeWorldInfo } from '../src/features/world-book/model.js'
+import { promptSteps, readTavernPreset } from '../src/features/presets/prompt-order.js'
+import { buildContext, normalizeContext } from '../src/features/context/budget.js'
 import { decodePortable, encodePortable } from '../src/storage/portable.js'
+
+test('SillyTavern presets preserve ordering, roles, and disabled rows when assembling a prompt', () => {
+  const prompts = [
+    { identifier: 'skip', name: 'Disabled', content: 'Excluded' },
+    { identifier: 'before', name: 'Main prompt', content: 'Start' },
+    { identifier: 'after', name: 'Follow-up', content: 'Post-history', role: 'assistant' },
+  ]
+  const order = [
+    { identifier: 'skip', enabled: false },
+    { identifier: 'before', enabled: true },
+    { identifier: 'worldInfoBefore', enabled: true },
+    { identifier: 'worldInfoAfter', enabled: true },
+    { identifier: 'chatHistory', enabled: true },
+    { identifier: 'after', enabled: true },
+  ]
+  const entries = readTavernPreset({ prompts, prompt_order: [{ character_id: 100001, order }] })
+  assert.deepEqual(entries.map(entry => entry.identifier), order.map(item => item.identifier))
+  assert.equal(entries[0].enabled, false)
+  assert.deepEqual(readTavernPreset({ data: { prompts, prompt_order: order } }), entries)
+  const config = normalizeContext(undefined)
+  const history = { qq: [{ message: { role: 'assistant', content: 'Earlier reply' } }] }
+  const request = [{ role: 'user', content: 'Latest turn' }]
+  const plan = buildContext(config, 'Base instructions', { worldInfo: 'Lore' }, history, request, promptSteps(entries))
+  assert.deepEqual(plan.messages.map(message => message.content),
+    ['Base instructions', 'Start', '# World Info\nLore', 'Earlier reply', 'Post-history', 'Latest turn'])
+  assert.equal(plan.messages.at(-2)?.role, 'assistant')
+  entries[4].enabled = false
+  const withoutHistory = buildContext(config, '', {}, history, request, promptSteps(entries))
+  assert.deepEqual(withoutHistory.messages.map(message => message.content), ['Start', 'Post-history', 'Latest turn'])
+})
 
 test('competing writes commit once and reopening reads the winning revision', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'eephone-storage-'))

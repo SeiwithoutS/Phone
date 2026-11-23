@@ -14,7 +14,7 @@ export function AvatarFrameModal() {
             {" "}
             <button id="upload-custom-frame-btn" className="action-button" type="button">Upload</button>
             {" "}
-            <IconButton icon="upload" id="batch-import-frames-btn" label="Import avatar frames" />
+            <IconButton icon="import" id="batch-import-frames-btn" label="Import avatar frames" />
             {" "}
           </div>
         </div>

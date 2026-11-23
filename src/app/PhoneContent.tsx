@@ -42,7 +42,7 @@ import { TransferModal, WaimaiRequestModal, RedPacketModal, RedPacketDetailsModa
 import { CreateCountdownModal, CreatePollModal, AnnouncementBoardModal, AnnouncementActionsModal } from '../features/chat/GroupActivities'
 import { ChatListActionsModal, MessageActionsModal, MessageEditorModal, AiResponseEditorModal } from '../features/chat/MessageDialogs'
 import { ShareLinkModal, ShareTargetModal, SharedHistoryViewerModal } from '../features/chat/SharingDialogs'
-import { WorldBookCategoryManagerModal, DeleteWorldBooksModal } from '../features/world-book/WorldInfoDialogs'
+import { DeleteWorldBooksModal } from '../features/world-book/WorldInfoDialogs'
 import { AvatarFrameModal } from '../features/avatars/AvatarFrameModal'
 import { CharacterProfileModal } from '../features/character-phone/CharacterProfileModal'
 import { MusicSearchResultsModal } from '../features/music/MusicSearchResultsModal'
@@ -77,7 +77,7 @@ export function PhoneContent({ database }: { database?: LocalDatabase }) {
       <WorldBookEditorScreen database={database} />
       <PresetScreen />
       <TutorialScreen />
-      <PresetEditorScreen />
+      <PresetEditorScreen database={database} />
       <ApiSettingsScreen />
       <ChatListScreen database={database} />
       <AlbumScreen />
@@ -125,7 +125,6 @@ export function PhoneOverlays() {
       <CallTranscriptModal />
       <ShareTargetModal />
       <SharedHistoryViewerModal />
-      <WorldBookCategoryManagerModal />
       <AnnouncementBoardModal />
       <AnnouncementActionsModal />
       <GroupManagementModal />

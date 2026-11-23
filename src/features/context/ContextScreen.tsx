@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
+import { HeaderSaveButton, PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 import { runtime } from '../../legacy/runtime/state.js'
 import { characterPrompt } from '../characters/characters'
@@ -66,9 +66,10 @@ function ContextEditor({ database, fromChat }: { database: LocalDatabase; fromCh
   }
 
   return <>
-    <PhoneFeatureHeader title="Context" onBack={() => fromChat ? void navigate(-1) : showScreen('home-screen')} />
+    <PhoneFeatureHeader title="Context" onBack={() => fromChat ? void navigate(-1) : showScreen('home-screen')}
+      actions={<HeaderSaveButton form="context-settings-form" label="Save Context" disabled={busy} />} />
     <div className="phone-app-scroll phone-app-stack context-editor">
-      <form className="phone-app-stack" onSubmit={event => { event.preventDefault(); void save() }}>
+      <form id="context-settings-form" className="phone-app-stack" onSubmit={event => { event.preventDefault(); void save() }}>
         <div className="phone-app-two">
           <label>Context Size (tokens)<input type="number" min={1024} max={2000000} required value={config.size || ''}
             onChange={event => setConfig(current => ({ ...current, size: Number(event.target.value) }))} /></label>
@@ -90,10 +91,9 @@ function ContextEditor({ database, fromChat }: { database: LocalDatabase; fromCh
         </fieldset>
         <label>Prompt preset<select value={config.presetId ?? ''} disabled={!config.sources.preset.enabled}
           onChange={event => setConfig(current => ({ ...current, presetId: event.target.value || undefined }))}>
-          <option value="">Use the chat’s writing preset when active</option>
+          <option value="">Use the chat’s preset in Offline Mode</option>
           {(runtime.state.presets ?? []).map(preset => <option key={preset.id} value={String(preset.id)}>{preset.name}</option>)}
         </select></label>
-        <button className="phone-app-button primary compact" type="submit" disabled={busy}>Save Context</button>
       </form>
       {status && <p className="phone-app-muted" role="status">{status}</p>}
       {error && <p className="phone-app-error" role="alert">{error}</p>}
@@ -112,7 +112,7 @@ function ContextEditor({ database, fromChat }: { database: LocalDatabase; fromCh
       {plan && <>
         <p className="phone-app-muted">Estimated input {tokens(plan.used)} of {tokens(plan.inputLimit)}</p>
         {plan.error && <p className="phone-app-error" role="alert">{plan.error}</p>}
-        {plan.sections.map(section => <details key={section.id} className="phone-feature-panel">
+        {plan.sections.map((section, index) => <details key={section.id + '-' + index} className="phone-feature-panel">
           <summary>{section.id === 'instructions' ? 'Instructions and persona' : section.id === 'request' ? 'Current request' : sourceLabels[section.id]}
             {' · '}{section.messages.length}/{section.total}{' · '}{tokens(section.tokens)}{section.limit !== undefined && ' / ' + tokens(section.limit)}</summary>
           {section.messages.length ? section.messages.map((message, index) => <div className="context-message" key={index}>

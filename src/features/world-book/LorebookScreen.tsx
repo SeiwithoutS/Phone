@@ -1,5 +1,5 @@
 import { useContext, useRef, useState } from 'react'
-import { PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
+import { HeaderSaveButton, PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 import { getCharacters } from '../characters/characters'
 import { getLoreBooks, saveLoreBook } from './lore-storage'
@@ -7,6 +7,7 @@ import { makeLoreEntry, readLoreBook } from './lore'
 import { downloadJson, escapeHtml } from '../../runtime/files'
 import { showCustomConfirm } from '../../legacy/dialogs/dialogs.js'
 import { IconButton } from '../../components/icons'
+import { CollectionLayoutButton, PromptEntryList, movePromptEntry } from '../../components/PromptEntryList'
 import type { LoreBook, LoreEntry } from './lore'
 
 export function LorebookScreen({ ready }: { ready: boolean }) {
@@ -17,17 +18,19 @@ export function LorebookScreen({ ready }: { ready: boolean }) {
 function LorebookLibrary() {
   const [books, setBooks] = useState<LoreBook[]>(getLoreBooks)
   const [draft, setDraft] = useState<LoreBook>()
+  const [grid, setGrid] = useState(false)
+  const [newEntry, setNewEntry] = useState<string>()
   const [linked, setLinked] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
-  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
   const input = useRef<HTMLInputElement>(null)
   const characters = getCharacters()
+  const savedBook = books.find(book => book.id === draft?.id)
 
   function edit(book: LoreBook) {
     setError('')
-    setDeleting(false)
-    setDraft(book)
+    setNewEntry(undefined)
+    setDraft({ ...book, content: [...book.content].sort((left, right) => left.order - right.order) })
     setLinked(characters.filter(chat => chat.settings.linkedLoreBookIds?.includes(book.id)).map(chat => chat.id))
   }
 
@@ -58,7 +61,15 @@ function LorebookLibrary() {
     ({ ...book, content: book.content.map(entry => entry.id === id ? { ...entry, ...values } : entry) }))
 
   return <>
-    <PhoneFeatureHeader title={draft ? 'Edit lorebook' : 'World Info'} backDisabled={busy} onBack={() => {
+    <PhoneFeatureHeader title={draft ? 'Edit lorebook' : 'World Info'} backDisabled={busy} actions={draft ? <>
+      {savedBook && <IconButton icon="trash" label="Delete lorebook" disabled={busy} onClick={() => void deleteBook(savedBook)} />}
+      <HeaderSaveButton label="Save lorebook" form="lorebook-form" disabled={busy || !draft.name.trim()} />
+    </> : <>
+      <CollectionLayoutButton grid={grid} change={() => setGrid(!grid)} />
+      <IconButton icon="import" label="Import World Info JSON" disabled={busy} onClick={() => input.current?.click()} />
+      <IconButton icon="plus" label="New lorebook" disabled={busy} onClick={() =>
+        edit({ id: crypto.randomUUID(), name: '', scanDepth: 5, content: [] })} />
+    </>} onBack={() => {
       if (draft) { setDraft(undefined); setError('') } else showScreen('home-screen')
     }} />
     <input type="file" hidden ref={input} accept=".json,application/json" onChange={async event => {
@@ -71,7 +82,7 @@ function LorebookLibrary() {
         edit(book)
       } catch (error) { setError(error instanceof Error ? error.message : 'Could not import lorebook.') }
     }} />
-    {draft ? <form className="phone-app-scroll phone-app-stack" onSubmit={event => { event.preventDefault(); void commit(draft) }}>
+    {draft ? <form id="lorebook-form" className="phone-app-scroll phone-app-stack" onSubmit={event => { event.preventDefault(); void commit(draft) }}>
       <div className="phone-app-two">
         <label>Lorebook name<input required value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} /></label>
         <label>Messages to scan<input type="number" min={1} max={100} required value={draft.scanDepth || ''} onChange={event =>
@@ -84,9 +95,16 @@ function LorebookLibrary() {
             ? [...linked, chat.id] : linked.filter(id => id !== chat.id))} /> {chat.name}
         </label>)}
       </fieldset>}
-      {draft.content.map((entry, index) => <details key={entry.id} className="phone-feature-panel">
-        <summary>{entry.comment || 'Entry ' + (index + 1)}{entry.enabled ? '' : ' (disabled)'}</summary>
-        <div className="phone-app-stack lore-entry">
+      <PromptEntryList rows={draft.content.map((entry, index) => ({ id: entry.id, title: entry.comment || entry.keys[0] || 'Entry ' + (index + 1),
+        enabled: entry.enabled }))}
+        openNew={newEntry}
+        move={(from, to) => setDraft(current => current && { ...current,
+          content: movePromptEntry(current.content, from, to).map((entry, order) => ({ ...entry, order })) })}
+        toggle={id => setDraft(current => current && { ...current, content: current.content.map(entry =>
+          entry.id === id ? { ...entry, enabled: !entry.enabled } : entry) })}
+        fields={id => {
+          const entry = draft.content.find(row => row.id === id)!
+          return <>
           <label>Title<input value={entry.comment} onChange={event => updateEntry(entry.id, { comment: event.target.value })} /></label>
           <KeywordField label="Keywords (comma-separated)" value={entry.keys} change={keys => updateEntry(entry.id, { keys })} />
           <KeywordField label="Secondary keywords" value={entry.secondaryKeys} change={secondaryKeys => updateEntry(entry.id, { secondaryKeys })} />
@@ -96,47 +114,35 @@ function LorebookLibrary() {
           </select></label>}
           <label>Content<textarea rows={4} value={entry.content} onChange={event => updateEntry(entry.id, { content: event.target.value })} /></label>
           <div className="phone-app-two">
-            <label className="phone-app-check"><input type="checkbox" checked={entry.enabled} onChange={event => updateEntry(entry.id, { enabled: event.target.checked })} /> Enabled</label>
             <label className="phone-app-check"><input type="checkbox" checked={entry.constant} onChange={event => updateEntry(entry.id, { constant: event.target.checked })} /> Always include</label>
             <label className="phone-app-check"><input type="checkbox" checked={entry.wholeWords} onChange={event => updateEntry(entry.id, { wholeWords: event.target.checked })} /> Whole words</label>
             <label className="phone-app-check"><input type="checkbox" checked={entry.caseSensitive} onChange={event => updateEntry(entry.id, { caseSensitive: event.target.checked })} /> Match case</label>
           </div>
-          <button type="button" className="phone-app-button danger compact" onClick={() =>
-            setDraft({ ...draft, content: draft.content.filter(item => item.id !== entry.id) })}>Remove entry</button>
-        </div>
-      </details>)}
+          <IconButton icon="trash" label="Remove entry" onClick={() =>
+            setDraft({ ...draft, content: draft.content.filter(item => item.id !== entry.id) })} />
+        </>
+      }} />
       <button type="button" className="phone-app-button compact" onClick={() => {
-        const entry = makeLoreEntry({}, draft.content.length)
+        const entry = makeLoreEntry({}, (draft.content.at(-1)?.order ?? -1) + 1)
         setDraft({ ...draft, content: [...draft.content, entry] })
-        requestAnimationFrame(() => {
-          const last = document.querySelector<HTMLDetailsElement>('#lorebook-screen details:last-of-type')
-          if (last) { last.open = true; last.querySelector('input')?.focus() }
-        })
+        setNewEntry(entry.id)
       }}>+ Entry</button>
       {error && <p className="phone-app-error" role="alert">{error}</p>}
-      <div className="phone-app-actions">
-        <button type="submit" className="phone-app-button primary" disabled={busy}>Save lorebook</button>
-        {books.some(book => book.id === draft.id) && <button type="button" className="phone-app-button danger" disabled={busy} onClick={() =>
-          deleting ? void commit(draft, true) : setDeleting(true)}>{deleting ? 'Confirm delete' : 'Delete lorebook'}</button>}
-      </div>
     </form> : <div className="phone-app-scroll phone-app-stack">
-      <div className="phone-app-actions">
-        <button type="button" className="phone-app-button primary" onClick={() =>
-          edit({ id: crypto.randomUUID(), name: '', scanDepth: 5, content: [] })}>New lorebook</button>
-        <IconButton icon="upload" label="Import World Info JSON" onClick={() => input.current?.click()} />
-      </div>
       {error && <p className="phone-app-error" role="alert">{error}</p>}
       {books.length === 0 && <p className="phone-app-muted">Lorebooks from imported character cards appear here.</p>}
+      <div className="prompt-collection-cards" data-grid={grid}>
       {books.map(book => <article className="phone-app-card collection-card" key={book.id}>
         <button type="button" className="collection-open" onClick={() => edit(book)}>
           <strong>{book.name}</strong><small>{book.content.length} {book.content.length === 1 ? 'entry' : 'entries'}</small>
           {book.sourceCharacterId && <small>{characters.find(chat => chat.id === book.sourceCharacterId)?.name}</small>}
         </button>
         <div className="collection-actions">
-          <IconButton icon="download" label={'Export ' + book.name} onClick={() => exportBook(book)} disabled={busy} />
+          <IconButton icon="export" label={'Export ' + book.name} onClick={() => exportBook(book)} disabled={busy} />
           <IconButton icon="trash" label={'Delete ' + book.name} className="collection-delete" onClick={() => void deleteBook(book)} disabled={busy} />
         </div>
       </article>)}
+      </div>
     </div>}
   </>
 }

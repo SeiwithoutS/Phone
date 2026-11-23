@@ -23,6 +23,7 @@
 @import "./phone-refresh.css";
 @import "./market.css";
 @import "./appearance-controls.css";
+@import "./prompts.css";
 
 @source "../";
 @source "../../index.html";

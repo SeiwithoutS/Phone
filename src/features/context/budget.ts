@@ -1,3 +1,5 @@
+import type { PromptStep } from '../presets/prompt-order.js'
+
 export const sourceLabels = {
   qq: 'QQ chat', posts: 'Social posts', comments: 'Social comments', npcs: 'NPC and character profiles',
   memory: 'Saved memories', activity: 'App activity',
@@ -59,7 +61,8 @@ export function promptText(message: PromptMessage) {
   return typeof message.content === 'string' ? message.content : ''
 }
 
-export function buildContext(config: ContextConfig, base: string, fixed: ContextFull, items: ContextItems, request: PromptMessage[] = []): ContextPlan {
+export function buildContext(config: ContextConfig, base: string, fixed: ContextFull, items: ContextItems,
+  request: PromptMessage[] = [], steps?: PromptStep[]): ContextPlan {
   const inputLimit = config.size - config.response
   const required = (id: ContextSection['id'], messages: PromptMessage[], total = messages.length): ContextSection =>
     ({ id, messages, total, tokens: messages.reduce((sum, message) => sum + messageTokens(message), 0) })
@@ -68,13 +71,18 @@ export function buildContext(config: ContextConfig, base: string, fixed: Context
   const instructionsText = [base.trim(), dataGuide].filter(Boolean).join('\n\n')
   const instructions = required('instructions', instructionsText ? [{ role: 'system', content: instructionsText }] : [])
   const requestSection = required('request', request)
-  const full = wholeSources.map(id => required(id, config.sources[id].enabled && fixed[id]?.trim()
+  const managed = new Set<string>(steps?.flatMap(step => 'slot' in step ? [step.slot] : []))
+  const disabled = (id: Source) => !config.sources[id].enabled ||
+    (managed.has(id) && !steps?.some(step => 'slot' in step && step.slot === id && step.enabled))
+  const full = wholeSources.map(id => required(id, !disabled(id) && fixed[id]?.trim()
     ? [{ role: 'system', content: '# ' + sourceLabels[id] + '\n' + fixed[id]!.trim() }] : [], fixed[id]?.trim() ? 1 : 0))
-  let remaining = inputLimit - 3 - instructions.tokens - requestSection.tokens - full.reduce((sum, source) => sum + source.tokens, 0)
+  const promptSections = new Map(steps?.flatMap(step => 'message' in step ? [[step, required('preset', [step.message])] as const] : []))
+  const fixedTokens = [...full, ...promptSections.values()].reduce((sum, section) => sum + section.tokens, 0)
+  let remaining = inputLimit - 3 - instructions.tokens - requestSection.tokens - fixedTokens
   const relatedActors = new Set<string>()
   const sections = budgetSources.map(id => {
     const available = items[id] ?? []
-    const limit = config.sources[id].enabled ? Math.floor(config.size * config.sources[id].percent / 100) : 0
+    const limit = !disabled(id) ? Math.floor(config.size * config.sources[id].percent / 100) : 0
     const allowance = Math.min(limit, remaining)
     const picked: PromptMessage[] = []
     let tokens = 0
@@ -90,7 +98,24 @@ export function buildContext(config: ContextConfig, base: string, fixed: Context
     remaining -= tokens
     return { id, limit, tokens, messages: picked.reverse(), total: available.length }
   })
-  const ordered = [instructions, ...full, ...sections.filter(section => section.id !== 'qq'), sections[0]!, requestSection]
+  const ordered = [instructions, ...full.filter(section => !managed.has(section.id) &&
+    !(steps && section.id === 'preset'))]
+  if (steps) {
+    ordered.push(...sections.slice(1))
+    const used = new Set<string>()
+    for (const step of steps) {
+      if ('message' in step) {
+        const section = promptSections.get(step)
+        if (section) ordered.push(section)
+      } else if (step.enabled && !used.has(step.slot)) {
+        const section = [...full, sections[0]!].find(section => section.id === step.slot)
+        if (section) ordered.push(section)
+        used.add(step.slot)
+      }
+    }
+  } else ordered.push(...sections.slice(1))
+  if (!managed.has('qq')) ordered.push(sections[0]!)
+  ordered.push(requestSection)
   const messages = ordered.flatMap(section => section.messages)
   return { messages, sections: ordered, inputLimit, used: inputLimit - remaining,
     error: remaining < 0 ? 'The full prompts and current request exceed the input budget. Increase Context Size, lower Max Response Length, or turn off a whole source.' : undefined }

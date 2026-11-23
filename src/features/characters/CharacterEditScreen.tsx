@@ -2,7 +2,7 @@ import { IconButton } from '../../components/icons'
 import { useContext, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { PhoneAvatar, PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
+import { PhoneAvatar, HeaderSaveButton, PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 import { fileDataUrl, imageSource } from '../../runtime/files'
 import { blankCharacter, readCharacterCard } from './card'
@@ -71,7 +71,9 @@ function Editor({ path }: { path: string }) {
   }
 
   return <>
-    <PhoneFeatureHeader title={draft ? (draft.id ? 'Edit character' : 'New character') : 'Edit'} onBack={() => {
+    <PhoneFeatureHeader title={draft ? (draft.id ? 'Edit character' : 'New character') : 'Edit'} backDisabled={busy}
+      actions={draft && <HeaderSaveButton form="character-edit-form" label="Save character" disabled={busy} />}
+      onBack={() => {
       if (selected) void navigate('/edit')
       else if (draft) { setDraft(undefined); setError('') }
       else showScreen('home-screen')
@@ -81,7 +83,7 @@ function Editor({ path }: { path: string }) {
       if (input.files?.[0]) void pickCard(input.files[0])
       input.value = ''
     }} />
-    {draft ? <form className="phone-app-scroll phone-app-stack" onSubmit={save}>
+    {draft ? <form id="character-edit-form" className="phone-app-scroll phone-app-stack" onSubmit={save}>
       <div className="phone-app-profile">
         <PhoneAvatar source={draft.avatar} name={draft.name} />
         <div>
@@ -117,17 +119,16 @@ function Editor({ path }: { path: string }) {
         </div>
       </details>
       {draft.lorebook && <p className="phone-app-muted">World Info · {draft.lorebook.name} ({draft.lorebook.content.length} entries)</p>}
-      <div className="phone-app-actions">
-        <button type="submit" className="phone-app-button primary" disabled={busy}>Save character</button>
-        {draft.id && <button type="button" className="phone-app-button" onClick={() => showScreen('chat-list-screen')}>Open QQ</button>}
-        {draft.id && <button type="button" className="phone-app-button" onClick={() =>
-          showScreen('social-screen', { socialActorId: 'character:' + draft.id })}>Social profile</button>}
-      </div>
+      {draft.id && <div className="phone-app-actions">
+        <button type="button" className="phone-app-button" onClick={() => showScreen('chat-list-screen')}>Open QQ</button>
+        <button type="button" className="phone-app-button" onClick={() =>
+          showScreen('social-screen', { socialActorId: 'character:' + draft.id })}>Social profile</button>
+      </div>}
       {error && <p role="status" className={error.startsWith('Saved') ? 'phone-app-muted' : 'phone-app-error'}>{error}</p>}
     </form> : <div className="phone-app-scroll phone-app-stack">
       <div className="phone-app-actions">
         <button type="button" className="phone-app-button primary" disabled={busy} onClick={() => { setDraft(blankCharacter()); setError('') }}>New character</button>
-        <IconButton icon="upload" label="Import character card" disabled={busy} onClick={() => importInput.current?.click()} />
+        <IconButton icon="import" label="Import character card" disabled={busy} onClick={() => importInput.current?.click()} />
       </div>
       <small>PNG, JSON or CHARX</small>
       {error && <p className="phone-app-error" role="alert">{error}</p>}

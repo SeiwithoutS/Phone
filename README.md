@@ -44,6 +44,7 @@ Open <http://127.0.0.1:8017> in the phone's browser and leave Termux running. Th
 - Use **Edit** to create a character or import a SillyTavern PNG, JSON, or CHARX card. **Avatar Gallery** rotates the QQ avatar by time or by connected call count.
 - In QQ, open the three-line **Chat actions** menu to start a chat, manage chat files, regenerate the latest reply, or delete messages from a selected point. Use the controls below a reply to edit it, generate an alternate, or return to an earlier version. The branch button opens a separate chat through the selected message and keeps the original in **Manage chat files**.
 - **Mini Prompts** stores prompts you can attach to chats. **World Info** manages lorebook entries and their activation keywords. Embedded card lorebooks appear here after you save the character.
+- Choose a **Preset** in **Chat Settings** for use in Offline Mode, or choose a shared preset in **Context**. Offline Mode still uses the configured AI provider. Presets, World Info and Mini Prompts support compact list and grid views. Open a collection to drag entries by their handles, switch their inclusion on or off, and edit their contents.
 - **Social** offers a local timeline, editable profile, photo posts, replies, likes, reposts, bookmarks and search. Use the plus icon to compose a post with up to four photos. In **Social settings**, you can enable **Auto AI comment** and choose which character or NPC replies using your configured API.
 - **Marketplace** records purchases under **Orders**. Open an order to see its estimated arrival and simulated delivery timeline. Choose a chat at checkout to send a gift card immediately, send it later by hand, or schedule it to appear in chat on delivery. Automatic delivery is checked while EPhone is open and catches up the next time it opens.
 - See [Hướng dẫn tùy chỉnh CSS](HUONG-DAN-CSS.md) for widget imports and selectors for chat and other screens.
@@ -52,7 +53,7 @@ Open <http://127.0.0.1:8017> in the phone's browser and leave Termux running. Th
 
 - The server creates `data/eephone.json` in the project folder on the first write. Set `EEPHONE_DATA_DIR` to use another data folder.
 - Chats, personas, World Info, preferences, API configuration, and local media are saved to disk. Reloading the browser or restarting the server preserves that file.
-- Open **Backup** and use the download icon to export a full or selective ZIP. Restore a selected set using the upload icon in **Backup**. For a full replacement, stop EPhone, extract `eephone.json` to the local data folder, then restart.
+- Open **Backup** and use the export icon to export a full or selective ZIP. Restore a selected set using the import icon in **Backup**. For a full replacement, stop EPhone, extract `eephone.json` to the local data folder, then restart.
 - EPhone can migrate the earlier browser database on its first run if both versions use the same browser origin. The **Data maintenance** section also supports legacy JSON backups.
 - Configure your own AI providers in **API Connections**. You can enter a model ID directly or use **Fetch Models**. External AI, music, and remote images still need access to their respective services.
 
