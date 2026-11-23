@@ -1,3 +1,6 @@
+import { loreContext } from '../../features/world-book/lore-storage'
+import { characterPrompt } from '../../features/characters/characters'
+import { characterAvatar, registerAvatarCall } from '../../features/characters/gallery'
 import { openAiUrl } from '../../features/api/endpoints'
 import { parseAiResponse, toGeminiRequestData } from '../api/client.js'
 import { triggerAiResponse } from '../chat/ai.js'
@@ -24,7 +27,7 @@ export async function handleInitiateCall() {
                 document.getElementById('outgoing-call-avatar').src = chat.settings.myAvatar || runtime.defaultMyGroupAvatar;
                 document.getElementById('outgoing-call-name').textContent = chat.settings.myNickname || "Me";
             } else {
-                document.getElementById('outgoing-call-avatar').src = chat.settings.aiAvatar || runtime.defaultAvatar;
+                document.getElementById('outgoing-call-avatar').src = characterAvatar(chat);
                 document.getElementById('outgoing-call-name').textContent = chat.name;
             }
             document.querySelector('#outgoing-call-screen .caller-text').textContent = chat.isGroup ? "Calling group members…" : "Calling…";
@@ -48,7 +51,7 @@ export async function handleInitiateCall() {
 
 export function startVideoCall() {
             const chat = runtime.state.chats[runtime.videoCallState.activeChatId];
-            if (!chat) return;
+            if (!chat || runtime.videoCallState.isActive) return;
         
             runtime.videoCallState.isActive = true;
             runtime.videoCallState.isAwaitingResponse = false;
@@ -64,6 +67,11 @@ export function startVideoCall() {
             
         
             updateParticipantAvatars(); 
+            if (!chat.isGroup) {
+                void registerAvatarCall(chat).then(() => {
+                    if (runtime.videoCallState.isActive && runtime.videoCallState.activeChatId === chat.id) updateParticipantAvatars();
+                }).catch(() => {});
+            }
             
             document.getElementById('video-call-main').innerHTML = `<em>${runtime.videoCallState.isGroupCall ? '群聊已建立...' : '正在接通...'}</em>`;
             showScreen('video-call-screen');
@@ -79,13 +87,15 @@ export function startVideoCall() {
         }
 
 export async function endVideoCall() {
-    if (!runtime.videoCallState.isActive) return;
+    if (!runtime.videoCallState.isActive || runtime.videoCallState.isEnding) return;
+    runtime.videoCallState.isEnding = true;
 
     const duration = Math.floor((Date.now() - runtime.videoCallState.startTime) / 1000);
     const durationText = `${Math.floor(duration / 60)}分${duration % 60}秒`;
     const endCallText = `通话结束，时长 ${durationText}`;
 
     const chat = runtime.state.chats[runtime.videoCallState.activeChatId];
+    let transcript = '';
     if (chat) {
         
         const participantsData = [];
@@ -95,7 +105,7 @@ export async function endVideoCall() {
                 participantsData.unshift({ name: chat.settings.myNickname || '我', avatar: chat.settings.myAvatar || runtime.defaultMyGroupAvatar });
             }
         } else {
-            participantsData.push({ name: chat.name, avatar: chat.settings.aiAvatar || runtime.defaultAvatar });
+            participantsData.push({ name: chat.name, avatar: characterAvatar(chat) });
             participantsData.unshift({ name: '我', avatar: chat.settings.myAvatar || runtime.defaultAvatar });
         }
 
@@ -106,8 +116,6 @@ export async function endVideoCall() {
             participants: participantsData,
             transcript: [...runtime.videoCallState.callHistory]
         };
-        await runtime.db.callRecords.add(callRecord);
-        console.log("通话记录已保存:", callRecord);
         
         
         let summaryMessage = {
@@ -118,21 +126,19 @@ export async function endVideoCall() {
         if (chat.isGroup && summaryMessage.role === 'assistant') {
             summaryMessage.senderName = runtime.videoCallState.callRequester || chat.members[0]?.originalName || chat.name;
         }
-        chat.history.push(summaryMessage);
 
         
         
         
         
         
-        const callTranscriptForAI = runtime.videoCallState.callHistory.map(h => {
+        transcript = runtime.videoCallState.callHistory.map(h => {
             const sender = h.role === 'user' ? (chat.settings.myNickname || '我') : h.senderName;
             return `${sender}: ${h.content}`;
         }).join('\n');
         
         
         
-        summarizeCallTranscript(chat.id, callTranscriptForAI);
 
         
         const hiddenReactionInstruction = {
@@ -141,10 +147,19 @@ export async function endVideoCall() {
             timestamp: Date.now() + 1, 
             isHidden: true 
         };
-        chat.history.push(hiddenReactionInstruction);
-
-        
-        await runtime.db.chats.put(chat);
+        const db = runtime.db;
+        const history = [...chat.history, summaryMessage, hiddenReactionInstruction];
+        try {
+            await db.transaction('rw', db.chats, db.callRecords, async tx => {
+                const updated = await tx.chats.update(chat.id, { history });
+                if (!updated) throw new Error('This chat was deleted.');
+                await tx.callRecords.add(callRecord);
+            });
+            chat.history = history;
+        } catch {
+            runtime.videoCallState.isEnding = false;
+            return;
+        }
     }
     
     
@@ -154,8 +169,11 @@ export async function endVideoCall() {
     
     
     if (chat) {
-        openChat(chat.id);
-        triggerAiResponse();
+        await openChat(chat.id);
+        void summarizeCallTranscript(chat.id, transcript).catch(error => {
+            console.warn('Could not summarize the saved call.', error.message);
+        });
+        void triggerAiResponse();
     }
 }
 
@@ -184,7 +202,7 @@ export function updateParticipantAvatars() {
                 participantsToRender.push({
                     id: 'ai',
                     name: chat.name,
-                    avatar: chat.settings.aiAvatar || runtime.defaultAvatar
+                    avatar: characterAvatar(chat)
                 });
             }
             
@@ -307,7 +325,7 @@ ${linkedContents}
         ${runtime.videoCallState.preCallContext}
         **当前参与者**: ${participantNames.join('、 ')}。
         **通话刚刚开始...**
-        ${worldBookContent} // <-- 【核心】注入世界书
+        ${worldBookContent}${loreContext(chat, runtime.videoCallState.callHistory)} // <-- 【核心】注入世界书
         现在，请根据【通话前摘要】和下面的【通话实时记录】，继续进行对话。
         `;
             } else { 
@@ -316,7 +334,7 @@ ${linkedContents}
                     : `用户刚刚接听了你主动发起的视频通话。`;
                 inCallPrompt = `
         # 你的任务
-        你现在是一个场景描述引擎。你的任务是扮演 ${chat.name} (${chat.settings.aiPersona})，并以【第三人称旁观视角】来描述TA在视频通话中的所有动作和语言。
+        你现在是一个场景描述引擎。你的任务是扮演 ${chat.name} (${characterPrompt(chat)})，并以【第三人称旁观视角】来描述TA在视频通话中的所有动作和语言。
         # 核心规则
         1.  **【【【视角铁律】】】**: 你的回复【绝对不能】使用第一人称“我”。必须使用第三人称，如“他”、“她”、或直接使用角色名“${chat.name}”。
         2.  **格式**: 你的回复【必须】是一段描述性的文本。

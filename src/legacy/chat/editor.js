@@ -6,7 +6,7 @@ import { showCustomAlert, showCustomPrompt } from '../dialogs/dialogs.js'
 import { handleAiGomokuMove } from '../gomoku/gomoku.js'
 import { updateSettingsPreview } from '../appearance/theme.js'
 import { endVideoCall, handleInitiateCall, handleUserJoinCall, hideIncomingCallModal, startVideoCall, triggerAiInCallAction } from '../calls/calls.js'
-import { triggerAiResponse } from './ai.js'
+import { handleSpectatorReroll, triggerAiResponse } from './ai.js'
 import { handleUserTransferResponse, hideTransferActionModal, showTransferActionModal } from './attachments.js'
 import { addNewGroup, createNewMemberInGroup, deleteGroup, handleAddMembersToGroup, openContactPickerForAddMember, openGroupManager, openMemberManagementScreen, removeMemberFromGroup, updateContactPickerConfirmButton } from './groups.js'
 import { startBackgroundSimulation } from '../npc/simulation.js'
@@ -864,6 +864,10 @@ export function openAiResponseEditor() {
         }
 
 export function bindChatEditorEvents() {
+  document.getElementById('chat-lock-overlay').addEventListener('click', event => {
+    if (event.target.closest('#spectator-reroll-btn')) void handleSpectatorReroll()
+    else if (event.target.closest('#spectator-edit-btn')) openAiResponseEditor()
+  })
   if (runtime.state.globalSettings.enableBackgroundActivity) {
             startBackgroundSimulation();
             console.log("后台活动模拟已自动启动。");

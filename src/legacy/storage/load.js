@@ -2,14 +2,14 @@ import { runtime } from '../runtime/state.js'
 
 export async function loadAllDataFromDB() {
     const [
-        chatsArr, apiConfig, loadedGlobalSettings, userStickers, worldBooks,
+        chatsArr, apiConfig, loadedGlobalSettings, userStickers, worldBooks, lorebooks,
         musicLib, personaPresets, qzoneSettings, initialFavorites,
         allMemories,
         
         allPresets
     ] = await Promise.all([
         runtime.db.chats.toArray(), runtime.db.apiConfig.get('main'), runtime.db.globalSettings.get('main'),
-        runtime.db.userStickers.toArray(), runtime.db.worldBooks.toArray(), runtime.db.musicLibrary.get('main'),
+        runtime.db.userStickers.toArray(), runtime.db.worldBooks.toArray(), runtime.db.lorebooks.toArray(), runtime.db.musicLibrary.get('main'),
         runtime.db.personaPresets.toArray(), runtime.db.qzoneSettings.get('main'), runtime.db.favorites.orderBy('timestamp').reverse().toArray(),
         runtime.db.memories.toArray(),
         
@@ -34,7 +34,6 @@ export async function loadAllDataFromDB() {
         cphoneAppIcons: { ...runtime.DEFAULT_CPHONE_ICONS },
         globalCss: '',
         notificationSoundUrl: '',
-        widgetData: {},
         globalChatBackground: '',
         enableAiDrawing: true,
     chatActionButtonsOrder: null,
@@ -47,6 +46,8 @@ export async function loadAllDataFromDB() {
     runtime.state.globalSettings.cphoneAppIcons = { ...defaultGlobalSettings.cphoneAppIcons, ...(runtime.state.globalSettings.cphoneAppIcons || {}) };
 
     chatsArr.forEach(chat => {
+        chat.settings ||= {};
+        chat.history ??= [];
             if (typeof chat.settings.enableTimePerception === 'undefined') {
                 chat.settings.enableTimePerception = true;
             }
@@ -76,7 +77,6 @@ export async function loadAllDataFromDB() {
                 });
             }
         }
-        if (!chat.settings) chat.settings = {};
         if (typeof chat.settings.actionCooldownMinutes === 'undefined') {
             chat.settings.actionCooldownMinutes = 10;
         }
@@ -175,6 +175,7 @@ if (typeof chat.settings.stickerCategoryIds === 'undefined') {
     runtime.state.apiConfig = apiConfig || { id: 'main', proxyUrl: '', apiKey: '', model: '', secondaryProxyUrl: '', secondaryApiKey: '', secondaryModel: '', minimaxGroupId: '', minimaxApiKey: '', minimaxModel: 'speech-01' };
     runtime.state.userStickers = userStickers || [];
     runtime.state.worldBooks = worldBooks || [];
+    runtime.state.lorebooks = lorebooks || [];
     runtime.musicState.playlist = musicLib?.playlist || [];
     runtime.state.personaPresets = personaPresets || [];
     runtime.state.qzoneSettings = qzoneSettings || { id: 'main', nickname: '{{user}}', avatar: 'https://files.catbox.moe/q6z5fc.jpeg', banner: 'https://files.catbox.moe/r5heyt.gif' };

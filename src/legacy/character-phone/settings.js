@@ -57,13 +57,14 @@ export function renderIconSettings() {
         
     const appLabels = {
        'qq': 'QQ',
-       'world-book': '世界书',
+       'edit': 'Edit',
+       'world-info': 'World Info',
+       'social': 'Social',
+       'world-book': 'Mini Prompts',
        'wallpaper': '外观设置',
-       'renderer': '渲染器',
        'api-settings': 'API设置',
        'font': '字体',
        'char-phone': 'Cphone',
-       'douban': '豆瓣小组',
        
        'preset': '预设',
              

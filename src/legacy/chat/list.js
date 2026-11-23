@@ -1,12 +1,13 @@
 import { handleUserPat } from './attachments.js'
+import { characterAvatar } from '../../features/characters/gallery'
+import { escapeHtml } from '../../runtime/files'
 import { openChat } from './conversation.js'
 import { getDisplayNameInGroup, openContactPickerForGroupCreate } from './groups.js'
-import { addLongPressListener, showCustomConfirm, showChoiceModal, showCustomPrompt } from '../dialogs/dialogs.js'
+import { addLongPressListener, showCustomConfirm } from '../dialogs/dialogs.js'
 import { hideLoader, showLoader } from '../dialogs/dialogs.js'
 import { endListenTogetherSession } from '../music/player.js'
 import { runtime } from '../runtime/state.js'
 import { applyScopedCss } from '../appearance/theme.js'
-import { handleCardImport } from './import.js'
 import { exitSelectionMode } from './messages.js'
 import { showScreen } from '../../app/routes'
 import { controls } from '../runtime/state.js'
@@ -210,13 +211,14 @@ export function createChatListItem(chat) {
             item.classList.add('pinned');
         }
 
-        const avatar = chat.isGroup ? chat.settings.groupAvatar : chat.settings.aiAvatar;
+        const avatar = escapeHtml(String((chat.isGroup ? chat.settings.groupAvatar : characterAvatar(chat)) || runtime.defaultAvatar));
+        const avatarTag = chat.isGroup ? '' : ` data-qq-character-avatar="${escapeHtml(String(chat.id))}"`;
         const avatarFrameSrc = chat.isGroup ? '' : (chat.settings.aiAvatarFrame || '');
         let avatarHtml;
         if (avatarFrameSrc) {
-            avatarHtml = `<div class="avatar-with-frame"><img src="${avatar || runtime.defaultAvatar}" class="avatar-img"><img src="${avatarFrameSrc}" class="avatar-frame"></div>`;
+            avatarHtml = `<div class="avatar-with-frame"><img src="${avatar}" class="avatar-img"${avatarTag}><img src="${escapeHtml(String(avatarFrameSrc))}" class="avatar-frame"></div>`;
         } else {
-            avatarHtml = `<img src="${avatar || runtime.defaultAvatar}" class="avatar">`;
+            avatarHtml = `<img src="${avatar}" class="avatar"${avatarTag}>`;
         }
         const hasFrameClass = avatarFrameSrc ? 'has-frame' : '';
         const avatarGroupHtml = `<div class="avatar-group ${hasFrameClass}">${avatarHtml}</div>`;
@@ -320,80 +322,14 @@ export function showChatListActions(chat) {
         }
 
 export function bindChatListActions() {
-  document.getElementById('import-card-input').addEventListener('change', handleCardImport);
 
 document.getElementById('back-to-list-btn').addEventListener('click', () => { 
-               runtime.ruleCache = {};
             
             applyScopedCss('', '#chat-messages', 'custom-bubble-style'); 
             applyScopedCss('', '#settings-preview-area', 'preview-bubble-style'); 
               
         
         exitSelectionMode(); runtime.state.activeChatId = null; showScreen('chat-list-screen'); });
-
-document.getElementById('add-chat-btn').addEventListener('click', async () => {
-            
-            const choice = await showChoiceModal('创建新聊天', [
-                { text: "Create Manually", value: 'manual' },
-                { text: "Import Character Card (.json or .png)", value: 'import_card' }
-            ]);
-        
-            if (choice === 'manual') {
-                
-                const remarkName = await showCustomPrompt("Create Character (1 of 2)", "Enter a display name");
-                if (!remarkName || !remarkName.trim()) return;
-        
-                const originalName = await showCustomPrompt("Create Character (2 of 2)", "Enter the character’s name used by the AI");
-                if (!originalName || !originalName.trim()) return;
-        
-
-const newChatId = 'chat_' + Date.now();
-const newChat = {
-    id: newChatId,
-    name: remarkName.trim(),
-    originalName: originalName.trim(),
-    isGroup: false,
-    isPinned: false, 
-    unreadCount: 0,  
-    relationship: { status: 'friend', blockedTimestamp: null, applicationReason: '' },
-    status: { text: 'Online', lastUpdate: Date.now(), isBusy: false },
-    settings: {
-        aiPersona: '',
-        myPersona: '',
-        myNickname: 'Me',
-        maxMemory: 10,
-        aiAvatar: runtime.defaultAvatar,
-        myAvatar: runtime.defaultAvatar,
-        background: '',
-        theme: 'default',
-        fontSize: 13,
-        customCss: '',
-        linkedWorldBookIds: [],
-        aiAvatarLibrary: [],
-        myAvatarLibrary: [],
-        enableBackgroundActivity: true, 
-        actionCooldownMinutes: 15,    
-        enableTimePerception: true,     
-        isOfflineMode: false,           
-        offlineMinLength: 100,
-        offlineMaxLength: 300,
-        offlinePresetId: null,
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone       
-    },
-    history: [],
-    musicData: { totalTime: 0 },
-    longTermMemory: [],
-    thoughtsHistory: [] 
-};
-                await runtime.db.chats.put(newChat);
-                runtime.state.chats[newChatId] = newChat;
-                renderChatList();
-                
-            } else if (choice === 'import_card') {
-                
-                document.getElementById('import-card-input').click();
-            }
-        });
 
 document.getElementById('add-group-chat-btn').addEventListener('click', openContactPickerForGroupCreate);
 }

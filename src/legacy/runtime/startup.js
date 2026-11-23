@@ -10,13 +10,12 @@ import { setupCharPlayerControls } from '../character-phone/music.js'
 import { openCharWallet } from '../character-phone/simulation.js'
 import { renderChatList } from '../chat/list.js'
 import { initBatteryManager, updateClock } from '../home/status.js'
-import { applyWidgetData } from '../home/widgets.js'
+import { refreshCharacterAvatars } from '../../features/characters/gallery'
 import { applyStatusBarVisibility, handleListenTogetherClick } from '../music/player.js'
 import { openNpcEditor } from '../npc/npcs.js'
 import { simulateBackgroundActivity } from '../npc/simulation.js'
 import { updateUnreadIndicator } from '../qzone/feed.js'
 import { migrateOldRedPacketData } from '../rendering/markup.js'
-import { openRenderingRulesScreen } from '../rendering/rules.js'
 import { renderWorldBookScreen } from '../world-book/books.js'
 import { showScreen } from '../../app/routes'
 import { controls } from './state.js'
@@ -40,7 +39,6 @@ setupCharPlayerControls();
 
 window.showScreen = showScreen;
 
-window.openRenderingRulesScreen = openRenderingRulesScreen;
 
 window.handleListenTogetherClick = handleListenTogetherClick;
 
@@ -88,7 +86,6 @@ applyScopedCss('', '#chat-messages', 'custom-bubble-style');
 
 applyScopedCss('', '#settings-preview-area', 'preview-bubble-style');
 
-window.openRenderingRulesScreen = openRenderingRulesScreen;
 
 window.showScreen = showScreen;
 
@@ -125,6 +122,6 @@ applyGlobalWallpaper();
 initBatteryManager();
 
 applyAppIcons();
+setInterval(refreshCharacterAvatars, 5000);
 
-applyWidgetData();
 }

@@ -369,65 +369,65 @@
             z-index: 1;
         }
 
-#chat-messages[data-theme="pink_blue"] .message-bubble.user .content { background-color: #fff0f6; color: #432531; }
+:is(#chat-messages, #settings-preview-area)[data-theme="pink_blue"] .message-bubble.user .content { background-color: #fff0f6; color: #432531; }
 
-#chat-messages[data-theme="pink_blue"] .message-bubble.ai .content { background-color: #eff7ff; color: #263a4e; }
+:is(#chat-messages, #settings-preview-area)[data-theme="pink_blue"] .message-bubble.ai .content { background-color: #eff7ff; color: #263a4e; }
 
-#chat-messages[data-theme="blue_white"] .message-bubble.user .content { background-color: #eff7ff; color: #263a4e; }
+:is(#chat-messages, #settings-preview-area)[data-theme="blue_white"] .message-bubble.user .content { background-color: #eff7ff; color: #263a4e; }
 
-#chat-messages[data-theme="blue_white"] .message-bubble.ai .content { background-color: #f8f9fa; color: #383d41; }
+:is(#chat-messages, #settings-preview-area)[data-theme="blue_white"] .message-bubble.ai .content { background-color: #f8f9fa; color: #383d41; }
 
-#chat-messages[data-theme="purple_yellow"] .message-bubble.user .content { background-color: #faf7ff; color: #827693; }
+:is(#chat-messages, #settings-preview-area)[data-theme="purple_yellow"] .message-bubble.user .content { background-color: #faf7ff; color: #827693; }
 
-#chat-messages[data-theme="purple_yellow"] .message-bubble.ai .content { background-color: #fffde4; color: #5C4033; }
+:is(#chat-messages, #settings-preview-area)[data-theme="purple_yellow"] .message-bubble.ai .content { background-color: #fffde4; color: #5C4033; }
 
-#chat-messages[data-theme="black_white"] .message-bubble.user .content { background-color: #343a40; color: #f8f9fa; }
+:is(#chat-messages, #settings-preview-area)[data-theme="black_white"] .message-bubble.user .content { background-color: #343a40; color: #f8f9fa; }
 
-#chat-messages[data-theme="black_white"] .message-bubble.ai .content { background-color: #f8f9fa; color: #343a40; }
+:is(#chat-messages, #settings-preview-area)[data-theme="black_white"] .message-bubble.ai .content { background-color: #f8f9fa; color: #343a40; }
 
-#chat-messages[data-theme="yellow_white"] .message-bubble.user .content { background-color: #FFEB3B; color: #5D4037; }
+:is(#chat-messages, #settings-preview-area)[data-theme="yellow_white"] .message-bubble.user .content { background-color: #FFEB3B; color: #5D4037; }
 
-#chat-messages[data-theme="yellow_white"] .message-bubble.ai .content { background-color: #f8f9fa; color: #383d41; }
+:is(#chat-messages, #settings-preview-area)[data-theme="yellow_white"] .message-bubble.ai .content { background-color: #f8f9fa; color: #383d41; }
 
-#chat-messages[data-theme="red_black"] .message-bubble.user .content { background-color: #C62828; color: #FFFFFF; }
+:is(#chat-messages, #settings-preview-area)[data-theme="red_black"] .message-bubble.user .content { background-color: #C62828; color: #FFFFFF; }
 
-#chat-messages[data-theme="red_black"] .message-bubble.ai .content { background-color: #212121; color: #FFFFFF; }
+:is(#chat-messages, #settings-preview-area)[data-theme="red_black"] .message-bubble.ai .content { background-color: #212121; color: #FFFFFF; }
 
-#chat-messages[data-theme="blue_yellow"] .message-bubble.user .content { background-color: #A0D2EB; color: #153243; }
+:is(#chat-messages, #settings-preview-area)[data-theme="blue_yellow"] .message-bubble.user .content { background-color: #A0D2EB; color: #153243; }
 
-#chat-messages[data-theme="blue_yellow"] .message-bubble.ai .content { background-color: #FEF9E7; color: #5D4037; }
+:is(#chat-messages, #settings-preview-area)[data-theme="blue_yellow"] .message-bubble.ai .content { background-color: #FEF9E7; color: #5D4037; }
 
-#chat-messages[data-theme="pink_yellow"] .message-bubble.user .content { background-color: #fff0f6; color: #432531; }
+:is(#chat-messages, #settings-preview-area)[data-theme="pink_yellow"] .message-bubble.user .content { background-color: #fff0f6; color: #432531; }
 
-#chat-messages[data-theme="pink_yellow"] .message-bubble.ai .content { background-color: #FEF9E7; color: #5D4037; }
+:is(#chat-messages, #settings-preview-area)[data-theme="pink_yellow"] .message-bubble.ai .content { background-color: #FEF9E7; color: #5D4037; }
 
-#chat-messages[data-theme="pink_purple"] .message-bubble.user .content { background-color: #fff0f6; color: #a78396; }
+:is(#chat-messages, #settings-preview-area)[data-theme="pink_purple"] .message-bubble.user .content { background-color: #fff0f6; color: #a78396; }
 
-#chat-messages[data-theme="pink_purple"] .message-bubble.ai .content { background-color: #faf7ff; color: #827693; }
+:is(#chat-messages, #settings-preview-area)[data-theme="pink_purple"] .message-bubble.ai .content { background-color: #faf7ff; color: #827693; }
 
-#chat-messages[data-theme="gray_white"] .message-bubble.user .content { background-color: #e9ecef; color: #495057; }
+:is(#chat-messages, #settings-preview-area)[data-theme="gray_white"] .message-bubble.user .content { background-color: #e9ecef; color: #495057; }
 
-#chat-messages[data-theme="gray_white"] .message-bubble.ai .content { background-color: #f8f9fa; color: #383d41; }
+:is(#chat-messages, #settings-preview-area)[data-theme="gray_white"] .message-bubble.ai .content { background-color: #f8f9fa; color: #383d41; }
 
-#chat-messages[data-theme="blue_green"] .message-bubble.user .content { background-color: #d1ecf1; color: #0c5460; }
+:is(#chat-messages, #settings-preview-area)[data-theme="blue_green"] .message-bubble.user .content { background-color: #d1ecf1; color: #0c5460; }
 
-#chat-messages[data-theme="blue_green"] .message-bubble.ai .content { background-color: #d4edda; color: #155724; }
+:is(#chat-messages, #settings-preview-area)[data-theme="blue_green"] .message-bubble.ai .content { background-color: #d4edda; color: #155724; }
 
-#chat-messages[data-theme="pink_white"] .message-bubble.user .content { background-color: #fff0f6; color: #a78396; }
+:is(#chat-messages, #settings-preview-area)[data-theme="pink_white"] .message-bubble.user .content { background-color: #fff0f6; color: #a78396; }
 
-#chat-messages[data-theme="pink_white"] .message-bubble.ai .content { background-color: #f8f9fa; color: #383d41; }
+:is(#chat-messages, #settings-preview-area)[data-theme="pink_white"] .message-bubble.ai .content { background-color: #f8f9fa; color: #383d41; }
 
-#chat-messages[data-theme="pink_black"] .message-bubble.user .content { background-color: #F8BBD0; color: #5B2C6F; }
+:is(#chat-messages, #settings-preview-area)[data-theme="pink_black"] .message-bubble.user .content { background-color: #F8BBD0; color: #5B2C6F; }
 
-#chat-messages[data-theme="pink_black"] .message-bubble.ai .content { background-color: #343a40; color: #f8f9fa; }
+:is(#chat-messages, #settings-preview-area)[data-theme="pink_black"] .message-bubble.ai .content { background-color: #343a40; color: #f8f9fa; }
 
-#chat-messages[data-theme="pink_green"] .message-bubble.user .content { background-color: #F8BBD0; color: #5B2C6F; }
+:is(#chat-messages, #settings-preview-area)[data-theme="pink_green"] .message-bubble.user .content { background-color: #F8BBD0; color: #5B2C6F; }
 
-#chat-messages[data-theme="pink_green"] .message-bubble.ai .content { background-color: #C8E6C9; color: #1B5E20; }
+:is(#chat-messages, #settings-preview-area)[data-theme="pink_green"] .message-bubble.ai .content { background-color: #C8E6C9; color: #1B5E20; }
 
-#chat-messages[data-theme="green_black"] .message-bubble.user .content { background-color: #d4edda; color: #155724; }
+:is(#chat-messages, #settings-preview-area)[data-theme="green_black"] .message-bubble.user .content { background-color: #d4edda; color: #155724; }
 
-#chat-messages[data-theme="green_black"] .message-bubble.ai .content { background-color: #343a40; color: #f8f9fa; }
+:is(#chat-messages, #settings-preview-area)[data-theme="green_black"] .message-bubble.ai .content { background-color: #343a40; color: #f8f9fa; }
 
 #transfer-btn { font-weight: bold; }
 

@@ -1,8 +1,13 @@
 import { addSongFromLocal, addSongFromURL, changePlayMode, deleteTrack, endListenTogetherSession, handleChangeAlbumArt, handleChangeBackground, handleListenTogetherClick, playNext, playPrev, returnToChat, togglePlayPause, updatePlaylistUI } from './player.js'
 import { handleManualLrcImport } from './search.js'
 import { runtime } from '../runtime/state.js'
+import { addLongPressListener } from '../dialogs/dialogs.js'
 
 export function bindMusicPlaybackEvents() {
+  addLongPressListener(document.getElementById('music-visual-container'), () => {
+    const index = runtime.musicState.currentIndex
+    if (index > -1) handleChangeAlbumArt(index)
+  })
   document.getElementById('listen-together-btn').addEventListener('click', handleListenTogetherClick);
 
 document.getElementById('music-exit-btn').addEventListener('click', () => endListenTogetherSession(true));

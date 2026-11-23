@@ -1,8 +1,7 @@
+import { launcherIcons } from '../../features/home/HomeScreen'
 import { bindAlbumEvents } from '../album/album.js'
-import { bindApiSettingsEvents } from '../api/events.js'
-import { renderApiSettings } from '../api/settings.js'
+import { bindApiSettingsEvents, renderApiSettings } from '../api/settings.js'
 import { bindAppearanceEditor, bindAppearanceAssets } from '../appearance/events.js'
-import { saveDoubanCastSelection, openDoubanCastSelector } from '../douban/forum.js'
 import { bindGlobalBackgroundEvents, bindWallpaperUpload, renderWallpaperScreen } from '../appearance/wallpaper.js'
 import { bindAvatarFrameEvents } from '../avatars/frames.js'
 import { bindAvatarLibraryEvents } from '../avatars/libraries.js'
@@ -16,8 +15,7 @@ import { bindAnnouncementEvents } from '../chat/announcement-events.js'
 import { bindChatAttachmentEvents, bindGroupAttachments } from '../chat/attachment-events.js'
 import { handlePacketClick } from '../chat/attachments.js'
 import { bindChatButtonOrder } from '../chat/button-order.js'
-import { bindChatMentions } from '../chat/composer-events.js'
-import { bindChatComposer } from '../chat/conversation-events.js'
+import { bindChatComposer } from '../chat/composer.js'
 import { bindChatEditorEvents } from '../chat/editor.js'
 import { bindChatListScrolling, bindChatListActions } from '../chat/list.js'
 import { bindChatMediaEvents } from '../chat/media-events.js'
@@ -27,19 +25,17 @@ import { bindChatSettingsEditor, bindChatAppearanceControls } from '../chat/sett
 import { bindChatSharing } from '../chat/sharing.js'
 import { bindTransferEvents } from '../chat/attachments.js'
 import { bindGomokuEvents } from '../gomoku/gomoku.js'
-import { bindHomeWidgets, bindHomeTimeZoneEvents } from '../home/events.js'
-import { handleWidgetImageChange } from '../home/widgets.js'
+import { bindPhonePreferences, bindHomeTimeZoneEvents } from '../home/events.js'
 import { bindMemoryEditorEvents, bindMemoryNavigation } from '../memories/events.js'
 import { bindMusicPlaybackEvents } from '../music/events.js'
 import { togglePlayerFullscreen, updateListenTogetherIcon } from '../music/player.js'
 import { bindNovelAiEvents } from '../novelai/events.js'
-import { bindNpcEvents } from '../npc/events.js'
+import { bindNpcEvents } from '../npc/npcs.js'
 import { bindPresetEvents } from '../presets/presets.js'
 import { bindQzonePostEditor, bindQzoneTabEvents, bindQzoneProfileEvents } from '../qzone/events.js'
 import { renderQzoneScreen } from '../qzone/feed.js'
 import { bindQzoneInteractions } from '../qzone/interactions.js'
 import { bindReadingEvents } from '../reading/reading.js'
-import { bindRenderingEvents } from '../rendering/rules.js'
 import { bindShoppingEvents, bindShoppingVariations } from '../shopping/events.js'
 import { bindStickerEvents, calculateCurrentContextTokens } from '../stickers/stickers.js'
 import { renderWorldBookScreen, bindWorldBookEditor, bindWorldBookCategories, bindWorldBookDeletion } from '../world-book/books.js'
@@ -292,7 +288,6 @@ runtime.currentQzoneReplyContext = null
 
 runtime.activePostId = null
 
-runtime.activeDoubanPostId = null
 
 runtime.photoViewerState = {
                     isOpen: false,
@@ -318,7 +313,6 @@ runtime.defaultGroupAvatar = 'https://i.postimg.cc/gc3QYCDy/1-NINE7-Five.jpg'
 
 runtime.notificationTimeout = undefined
 
-runtime.ruleCache = {}
 
 runtime.DEFAULT_NOTIFICATION_SOUND = 'https://www.myinstants.com/media/sounds/notification-sound-2.mp3'
 
@@ -328,24 +322,7 @@ runtime.readingState = {}
 
 runtime.originalChatMessagesPaddingTop = null
 
-runtime.DEFAULT_APP_ICONS = {
-            'qq': 'https://i.postimg.cc/MTC3Tkw8/IMG-6436.jpg',
-            'world-book': 'https://i.postimg.cc/HWf1JKzn/IMG-6435.jpg',
-            'wallpaper': 'https://i.postimg.cc/T1j03pQr/IMG-6440.jpg',
-            'renderer': 'https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1756312261242_qdqqd_g0eriz.jpeg',
-            'api-settings': 'https://i.postimg.cc/MK8rJ8t7/IMG-6438.jpg',
-            'font': 'https://i.postimg.cc/pXxk1JXk/IMG-6442.jpg',
-
-            'char-phone': 'https://i.postimg.cc/pXj9h20L/IMG-7275.jpg',
-            'douban': 'https://i.postimg.cc/Pq2xJN1g/IMG-7301.jpg',
-  
-    'preset': 'https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1758510900942_qdqqd_djw0z2.jpeg',
- 
-            'tutorial': 'https://i.postimg.cc/d10GjC4g/IMG-7302.jpg',
-
-
-
-        }
+runtime.DEFAULT_APP_ICONS = launcherIcons
 
 runtime.DEFAULT_CPHONE_ICONS = {
             'qq': 'https://i.postimg.cc/MTC3Tkw8/IMG-6436.jpg',
@@ -510,28 +487,6 @@ runtime.charPlayerState = {
     currentLyricIndex: -1
 }
 
-document.getElementById('douban-cast-select-btn').addEventListener('click', openDoubanCastSelector);
-
-document.getElementById('cancel-douban-cast-btn').addEventListener('click', () => {
-    document.getElementById('douban-cast-modal').classList.remove('visible');
-});
-
-document.getElementById('save-douban-cast-btn').addEventListener('click', saveDoubanCastSelection);
-
-document.getElementById('douban-cast-list').addEventListener('click', (e) => {
-    const item = e.target.closest('.contact-picker-item');
-    if (item) {
-        const checkbox = item.querySelector('.douban-cast-checkbox');
-        if (checkbox && e.target !== checkbox) {
-            checkbox.checked = !checkbox.checked;
-        }
-    }
-});
-
-runtime.currentPage = 0
-
-runtime.totalPages = 2
-
 runtime.editingPresetId = null
 
 runtime.DEFAULT_BUTTON_ORDER = [
@@ -550,7 +505,6 @@ runtime.selectedCharsForClear = []
 
 runtime.selectedTypesForClear = []
 
-window.handleWidgetImageChange = handleWidgetImageChange;
 
 runtime.updateTokenCountDisplay = debounce(async () => {
     const displayEl = document.getElementById('token-count-display');
@@ -588,7 +542,6 @@ async function initialize() {
   runtime.db = database
   prepareRuntime()
   await initializePhoneUi()
-  bindRenderingEvents()
   bindAnnouncementEvents()
   bindBackupSettingsEvents()
   bindChatListActions()
@@ -617,7 +570,6 @@ async function initialize() {
   bindChatSharing()
   bindAppearanceEditor()
   bindWorldBookCategories()
-  bindChatMentions()
   bindMemoryNavigation()
   bindGomokuEvents()
   bindCallEvents()
@@ -626,7 +578,7 @@ async function initialize() {
   bindMusicSearchEvents()
   bindGlobalBackgroundEvents()
   bindCharacterPhoneEvents()
-  bindHomeWidgets()
+  bindPhonePreferences()
   bindPresetEvents()
   bindChatButtonOrder()
   bindDataClearEvents()

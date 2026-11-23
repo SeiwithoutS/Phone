@@ -6,7 +6,6 @@ import { handleGenerateSimulatedDiaries, handleWriteNewDiaryEntry, openMemoEdito
 import { handleContinueRealConversationFromCPhone, handleGenerateAmapHistory, handleGenerateAppUsage, handleGenerateBrowserHistory, handleGenerateSimulatedAlbum, handleGenerateSimulatedMemos, handleGenerateSimulatedMusic, handleGenerateSimulatedQQ, handleGenerateTaobaoHistory, loadMoreMirroredMessages, openCharSimulatedConversation, openCharWallet, toggleBrowserArticleFavorite } from './simulation.js'
 import { importSingleChat } from '../chat/import.js'
 import { showCustomAlert } from '../dialogs/dialogs.js'
-import { handleDoubanWaitReply, handleGenerateDoubanPosts, handleSendDoubanComment } from '../douban/forum.js'
 import { showScreen } from '../../app/routes'
 import { controls } from '../runtime/state.js'
 import { runtime } from '../runtime/state.js'
@@ -135,15 +134,10 @@ document.getElementById('regenerate-char-music-btn').addEventListener('click', h
 
 document.getElementById('close-char-music-player-btn').addEventListener('click', closeCharMusicPlayer);
 
-document.getElementById('regenerate-douban-btn').addEventListener('click', handleGenerateDoubanPosts);
 
-document.getElementById('regenerate-douban-btn').addEventListener('click', handleGenerateDoubanPosts);
 
-document.getElementById('douban-detail-back-btn').addEventListener('click', () => showScreen('douban-screen'));
 
-document.getElementById('douban-send-comment-btn').addEventListener('click', handleSendDoubanComment);
 
-document.getElementById('douban-wait-reply-btn').addEventListener('click', handleDoubanWaitReply);
 
 document.getElementById('cphone-wallpaper-upload-input').addEventListener('change', async (event) => {
             const file = event.target.files[0];

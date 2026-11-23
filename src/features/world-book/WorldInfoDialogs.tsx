@@ -6,7 +6,7 @@ export function DeleteWorldBooksModal() {
       <div className="modal-content" style={{ height: "70%" }}>
         <div className="modal-header">
           {" "}
-          <span>Select World Info to Delete</span>
+          <span>Select Mini Prompts to Delete</span>
           {" "}
           <label style={{ fontSize: "14px", fontWeight: "normal", display: "flex", alignItems: "center", gap: "5px" }}>
             {" "}
@@ -34,7 +34,7 @@ export function WorldBookCategoryManagerModal() {
       <div className="modal-content" style={{ height: "60%" }}>
         <div className="modal-header">
           {" "}
-          <span>Manage World Info Categories</span>
+          <span>Manage Mini Prompts Categories</span>
           {" "}
         </div>
         <div className="modal-body">

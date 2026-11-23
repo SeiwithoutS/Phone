@@ -1,0 +1,98 @@
+#home-screen { align-items: stretch; padding: 0; }
+.home-desktop {
+  --home-icon: clamp(38px, 12vw, 56px);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top);
+}
+.home-desktop[hidden] { display: none; }
+.status-bar-visible .home-desktop { padding-top: calc(38px + env(safe-area-inset-top)); }
+.home-tools, .home-arrange, .home-error { box-sizing: border-box; width: min(calc(100% - 24px), 35rem); }
+.home-tools { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; }
+.home-tool {
+  min-height: 36px;
+  border: 1px solid #ffffff70;
+  border-radius: 18px;
+  color: #17253d;
+  background: #f0f5ffed;
+  padding: 4px 13px;
+  font: 650 .8rem/1.3 system-ui, sans-serif;
+}
+.home-tool:disabled { opacity: .55; }
+.home-arrange { padding: 6px 9px; color: #17253d; background: #e6eeffed; border-radius: 11px; }
+.home-arrange p { margin: 0 0 5px; font-size: .78rem; }
+.home-arrange > div { display: flex; gap: 4px; flex-wrap: wrap; }
+.home-arrange .home-tool { padding-inline: 8px; }
+.home-error { margin: 3px 0; padding: 4px 8px; border-radius: 8px; background: #fff2ee; color: #7d1e12; }
+#home-screen-pages-container { flex: 1; width: 100%; min-height: 0; overflow: hidden; }
+#home-screen-pages { display: flex; width: 100%; height: 100%; transition: transform 220ms ease; }
+.home-screen-page { flex: 0 0 100%; height: 100%; min-width: 0; overflow: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.home-tiles, #desktop-dock {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px;
+}
+.home-tiles { width: min(calc(100% - 24px), 35rem); margin: auto; padding: 10px 0; }
+#home-screen .home-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  justify-self: stretch;
+  min-width: 0;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  padding: 4px 0;
+  color: white;
+  text-shadow: 0 1px 5px #0b205d, 0 0 3px #0b205d;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.home-icon-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--home-icon);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 18%;
+  background: linear-gradient(150deg, #a9e4f4, #5283ce);
+  box-shadow: 0 2px 6px #08223f40;
+  font: 750 18px/1 system-ui, sans-serif;
+}
+.home-icon-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.home-icon-art img[hidden] { display: none; }
+.home-app-label { max-width: 100%; margin-top: 4px; font: 650 clamp(.6rem, 2.7vw, .78rem)/1.15 system-ui, sans-serif; text-align: center; overflow-wrap: anywhere; }
+#home-screen .home-widget-tile { min-height: 100px; padding: 0; overflow: hidden; }
+.home-widget-tile.half { grid-column: span 2; }
+.home-widget-tile.full { grid-column: 1 / -1; min-height: 115px; }
+.home-widget-tile iframe { border: none; width: 100%; height: 100%; position: absolute; inset: 0; pointer-events: none; }
+.home-desktop.arranging .home-tile { cursor: grab; touch-action: none; border-style: dashed !important; border-color: #ffffff9c !important; }
+.home-desktop.arranging .home-tile[aria-pressed=true] { border-color: #fff !important; background: #18397688 !important; }
+.home-desktop.arranging .home-tile.drop-target { background: #ffffff55 !important; }
+#home-screen-pagination { display: flex; justify-content: center; align-items: center; gap: 1px; min-height: 26px; color: white; font-size: .8rem; }
+#home-screen-pagination .pagination-dot { display: grid; place-items: center; width: 30px; height: 26px; }
+#home-screen-pagination .pagination-dot::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #ffffff80; }
+#home-screen-pagination .pagination-dot[aria-current=page]::before { background: white; width: 10px; height: 10px; }
+#desktop-dock {
+  box-sizing: border-box;
+  justify-content: center;
+  width: min(calc(100% - 24px), 35rem);
+  min-height: calc(var(--home-icon) + 23px);
+  padding: 5px 8px;
+  margin-bottom: max(8px, env(safe-area-inset-bottom));
+  border-radius: 20px;
+  background: #14284359;
+  backdrop-filter: blur(12px);
+}
+@media (prefers-reduced-motion: reduce) { #home-screen-pages { transition: none; } }
+@media (max-height: 480px) {
+  .home-desktop { --home-icon: 38px; }
+  .home-tiles { padding-top: 5px; }
+}

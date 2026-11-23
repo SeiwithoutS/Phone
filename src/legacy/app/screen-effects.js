@@ -7,7 +7,6 @@ import { loadFontPresetsDropdown } from '../appearance/presets.js'
 import { renderWallpaperScreen } from '../appearance/wallpaper.js'
 import { renderApiSettings } from '../api/settings.js'
 import { renderChatList } from '../chat/list.js'
-import { renderDoubanScreen } from '../douban/forum.js'
 import { updateListenTogetherIcon } from '../music/player.js'
 import { renderWorldBookScreen } from '../world-book/books.js'
 
@@ -20,7 +19,6 @@ export function enterScreen(screenId) {
     if (screenId === 'api-settings-screen') void renderApiSettings();
     if (screenId === 'wallpaper-screen') void renderWallpaperScreen();
     if (screenId === 'world-book-screen') void renderWorldBookScreen();
-    if (screenId === 'douban-screen') void renderDoubanScreen();
     if (screenId === 'chat-interface-screen') updateListenTogetherIcon(runtime.state.activeChatId);
     if (screenId === 'font-settings-screen') {
         void loadFontPresetsDropdown();

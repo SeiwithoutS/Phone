@@ -20,7 +20,7 @@ export function ChatListScreen() {
             </svg>
           </span>
           {" "}
-          <span className="action-btn" id="add-chat-btn">+</span>
+          <button type="button" className="phone-button action-btn" aria-label="Create or import character" onClick={() => showScreen("character-edit-screen")}>+</button>
           {" "}
         </div>
       </ScreenHeader>

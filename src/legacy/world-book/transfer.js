@@ -34,8 +34,8 @@ export async function importTavernWorldBook(tavernData, fileName) {
             const bookNameSuggestion = fileName.replace(/\.json$/i, ''); 
         
             const newBookName = await showCustomPrompt(
-                "Import SillyTavern World Info", 
-                "Enter a name for this World Info book",
+                "Import as Mini Prompts",
+                "Enter a name for this Mini Prompts book",
                 bookNameSuggestion
             );
         
@@ -79,7 +79,7 @@ export async function exportWorldBooks() {
                 const categories = await runtime.db.worldBookCategories.toArray();
         
                 if (books.length === 0 && categories.length === 0) {
-                    alert("There are no World Info books to export.");
+                    alert("There are no Mini Prompts books to export.");
                     return;
                 }
         
@@ -102,7 +102,7 @@ export async function exportWorldBooks() {
                 link.click();
                 URL.revokeObjectURL(url);
                 
-                await showCustomAlert("Export Complete", "World Info exported.");
+                await showCustomAlert("Export Complete", "Mini Prompts exported.");
         
             } catch (error) {
                 console.error("导出世界书时出错:", error);
@@ -118,8 +118,8 @@ export async function importWorldBooks(data) {
                 }
         
                 const confirmed = await showCustomConfirm(
-                    "Import World Info",
-                    "Replace your current World Info books and categories with this file?",
+                    "Import Mini Prompts",
+                    "Replace your current Mini Prompts books and categories with this file?",
                     { confirmButtonClass: 'btn-danger', confirmText: '确认覆盖' }
                 );
         
@@ -141,7 +141,7 @@ export async function importWorldBooks(data) {
                 runtime.state.worldBooks = await runtime.db.worldBooks.toArray();
                 await renderWorldBookScreen();
         
-                await showCustomAlert("Import Complete", "World Info restored.");
+                await showCustomAlert("Import Complete", "Mini Prompts restored.");
         
             } catch (error) {
                 console.error("导入世界书时出错:", error);

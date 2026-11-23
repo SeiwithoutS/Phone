@@ -2,7 +2,6 @@ import { summarizeExistingLongTermMemory } from '../api/client.js'
 import { deleteApiPreset, handlePresetSelectionChange, saveApiPreset } from '../api/settings.js'
 import { openLongTermMemoryScreen } from '../appearance/theme.js'
 import { hideThoughtsHistory, loadMoreThoughts, showThoughtsHistory } from '../character-phone/profile.js'
-import { handleSwitchGreeting } from '../chat/import.js'
 import { handleAddManualMemory, handleDeleteMemory, handleEditMemory, handleManualSummary } from './memories.js'
 import { loadMoreQzonePosts } from '../qzone/feed.js'
 import { handlePostClick } from '../qzone/gestures.js'
@@ -39,7 +38,6 @@ document.getElementById('delete-api-preset-btn').addEventListener('click', delet
 
 
 
-document.getElementById('switch-greeting-btn').addEventListener('click', handleSwitchGreeting);
 
 document.getElementById('thoughts-history-list').addEventListener('click', (e) => {
             if (e.target && e.target.id === 'load-more-thoughts-btn') {

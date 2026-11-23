@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { BackButton, FormField, Screen, ScreenHeader } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 
@@ -239,16 +240,65 @@ export function ApiSettingsScreen() {
         {" "}
         <button className="form-button" id="save-api-settings-btn" style={{ marginTop: "20px" }} type="button">Save All Settings</button>
         {" "}
-        <button className="form-button" id="export-data-btn" type="button">Export Data</button>
-        {" "}
-        <button className="form-button" id="import-btn" type="button">Import Backup</button>
+        <UserDataBackup />
+        <details className="settings-disclosure">
+        <summary>Data maintenance</summary>
+        <button className="form-button" id="import-btn" type="button">Import Legacy JSON Backup</button>
         <button className="form-button form-button-secondary" id="cleanup-data-btn" style={{ backgroundColor: "#ffebee", color: "#c62828", borderColor: "#ef9a9a", marginTop: "10px" }} type="button">Clean Up Unused Data</button>
         <button className="form-button form-button-secondary" id="delete-world-books-btn" style={{ backgroundColor: "#ffebee", color: "#c62828", borderColor: "#ef9a9a", marginTop: "10px" }} type="button">Delete World Info</button>
         <button className="form-button form-button-secondary" id="clear-specific-data-btn" style={{ backgroundColor: "#ffcdd2", color: "#b71c1c", borderColor: "#ef9a9a", marginTop: "10px" }} type="button">Advanced Data Cleanup</button>
         <button className="form-button form-button-secondary" id="check-and-fix-data-btn" style={{ backgroundColor: "#e3f2fd", color: "#0d47a1", borderColor: "#bbdefb", marginTop: "10px" }} type="button">Check and Repair Data</button>
         {" "}
         <input id="import-data-input" type="file" accept="application/json" hidden />
+        </details>
       </div>
     </Screen>
   )
+}
+
+function UserDataBackup() {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function download() {
+    setBusy(true)
+    setError('')
+    try {
+      const response = await fetch('/api/backup.zip', { cache: 'no-store' })
+      if (!response.ok || !response.headers.get('content-type')?.includes('application/zip')) {
+        throw new Error('The local backup could not be read.')
+      }
+      const url = URL.createObjectURL(await response.blob())
+      const link = document.createElement('a')
+      link.href = url
+      link.download = response.headers.get('content-disposition')?.match(/filename="([^"]+\.zip)"/)?.[1] ||
+        'EPhone-User-Data-' + new Date().toISOString().slice(0, 10) + '.zip'
+      document.body.append(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 2000)
+    } catch {
+      setError('Could not download the ZIP. Check that the EPhone server is running and try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return <section className="local-backup">
+    <h2>User Data</h2>
+    <button type="button" className="phone-app-button" id="export-data-btn" disabled={busy} onClick={() => void download()}>
+      {busy ? 'Preparing ZIP…' : 'Export User Data ZIP'}
+    </button>
+    {error && <p role="alert">{error}</p>}
+    <details className="settings-disclosure">
+      <summary>How to restore</summary>
+      <ol>
+        <li>Stop EPhone and close its browser tabs.</li>
+        <li>Extract the ZIP. Keep a copy of your current <code>data/eephone.json</code>.</li>
+        <li>Copy the extracted <code>eephone.json</code> into the <code>data</code> folder or the folder set by <code>EEPHONE_DATA_DIR</code>.</li>
+        <li>Start EPhone and open it again.</li>
+      </ol>
+      <p>The ZIP includes API keys. Keep it private.</p>
+    </details>
+  </section>
 }

@@ -8,7 +8,7 @@ export function updateWorldBookSelectionDisplay() {
             if (checkedBoxes.length === 0) {
                 displayText.textContent = "Select entries";
             } else if (checkedBoxes.length > 2) {
-                displayText.textContent = `${checkedBoxes.length} World Info books selected`;
+                displayText.textContent = `${checkedBoxes.length} Mini Prompts books selected`;
             } else {
                 const displayItems = Array.from(checkedBoxes).map(cb => {
                     return cb.parentElement.textContent.trim();

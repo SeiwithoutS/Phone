@@ -1,3 +1,4 @@
+import { withConversationRequest } from '../../features/chat/sessions'
 import { openAiUrl } from '../../features/api/endpoints'
 import { getGeminiResponseText, toGeminiRequestData } from '../api/client.js'
 import { showChoiceModal, showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
@@ -398,7 +399,11 @@ export function generateSummaryForTimeframe(chat, duration, unit) {
     return `\n- **${title}**: 关于 **${sortedKeywords.slice(0, 3).join('、 ')}**。`;
 }
 
-export async function triggerAutoSummary(chatId, force = false) {
+export function triggerAutoSummary(chatId, force = false) {
+    return withConversationRequest(chatId, () => summarizeConversation(chatId, force));
+}
+
+async function summarizeConversation(chatId, force) {
     const chat = runtime.state.chats[chatId];
     if (!chat) return;
 

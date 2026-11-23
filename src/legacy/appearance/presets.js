@@ -5,7 +5,6 @@ import { applyGlobalCss, applyTheme, updateSettingsPreview } from './theme.js'
 import { applyGlobalWallpaper, renderWallpaperScreen } from './wallpaper.js'
 import { applyCPhoneAppIcons, applyCPhoneWallpaper } from '../character-phone/settings.js'
 import { showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
-import { applyWidgetData } from '../home/widgets.js'
 import { applyStatusBarVisibility } from '../music/player.js'
 import { runtime } from '../runtime/state.js'
 
@@ -178,7 +177,7 @@ export async function loadAppearancePresetsDropdown() {
         theme: preferences.getItem('ephone-theme') || 'light',
         showStatusBar: runtime.state.globalSettings.showStatusBar,
         notificationSoundUrl: runtime.state.globalSettings.notificationSoundUrl,
-        widgetData: runtime.state.globalSettings.widgetData
+        widgetData: runtime.state.globalSettings.widgetData,
     };
 
     let matchingPresetId = null;
@@ -226,7 +225,6 @@ export async function handleAppearancePresetSelectionChange() {
         applyAppIcons();
         applyCPhoneAppIcons();
         applyStatusBarVisibility();
-        applyWidgetData();
         
         
         renderWallpaperScreen();
@@ -250,7 +248,7 @@ export async function saveAppearancePreset() {
         theme: preferences.getItem('ephone-theme') || 'light',
         showStatusBar: runtime.state.globalSettings.showStatusBar,
         notificationSoundUrl: runtime.state.globalSettings.notificationSoundUrl,
-        widgetData: runtime.state.globalSettings.widgetData
+        widgetData: runtime.state.globalSettings.widgetData,
     };
 
     
@@ -454,7 +452,6 @@ export async function importAppearanceSettings(file) {
         applyGlobalCss(runtime.state.globalSettings.globalCss);
         applyCustomFont(runtime.state.globalSettings.fontUrl);
         applyStatusBarVisibility();
-        applyWidgetData();
 
         
         renderWallpaperScreen();

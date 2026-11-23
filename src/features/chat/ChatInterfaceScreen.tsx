@@ -1,3 +1,4 @@
+import { ChatSessions } from './ChatSessions'
 import { useNavigate } from 'react-router-dom'
 import { screenPaths } from '../../app/routes'
 import { runtime } from '../../legacy/runtime/state.js'
@@ -104,6 +105,7 @@ export function ChatInterfaceScreen() {
               <img src="https://i.postimg.cc/dV8sdNcx/210-20250618115221.png" alt="Listen Together" />
             </span>
             {" "}
+            <ChatSessions />
             <span className="action-btn" id="chat-settings-btn" title="Chat Settings">
               <img src="https://i.postimg.cc/bvPq64cv/CCA834-BA-5-A90-408-D-94-FA-7-EE156-B6-A765.png" alt="Settings" />
             </span>

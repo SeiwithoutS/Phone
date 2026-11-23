@@ -1,7 +1,6 @@
 import { addLongPressListener, showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
 import { showScreen } from '../../app/routes'
 import { runtime } from '../runtime/state.js'
-import { setupHomeScreenPagination } from '../home/widgets.js'
 
 export async function openPresetScreen() {
     await renderPresetScreen();
@@ -437,7 +436,6 @@ export async function renderOfflinePresetSelector(chat) {
 }
 
 export function bindPresetEvents() {
-  setupHomeScreenPagination();
 
 window.openPresetScreen = openPresetScreen;
 

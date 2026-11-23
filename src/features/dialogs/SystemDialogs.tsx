@@ -15,20 +15,3 @@ export function CustomModalOverlay() {
     </div>
   )
 }
-
-export function UpdateNoticeModal() {
-  return (
-    <div id="update-notice-modal">
-      <div className="update-notice-content">
-        <div className="update-notice-body" id="update-notice-body">{" "}</div>
-        <div className="update-notice-footer">
-          {" "}
-          <button id="update-notice-confirm-btn" type="button">Got It</button>
-          {" "}
-          <button id="update-notice-dismiss-btn" type="button">Dismiss</button>
-          {" "}
-        </div>
-      </div>
-    </div>
-  )
-}

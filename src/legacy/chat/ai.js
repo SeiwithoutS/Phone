@@ -1,3 +1,6 @@
+import { loreContext } from '../../features/world-book/lore-storage'
+import { characterPrompt } from '../../features/characters/characters'
+import { withConversationRequest } from '../../features/chat/sessions'
 import { openAiUrl } from '../../features/api/endpoints'
 import { preferences } from '../storage/preferences.js'
 import { getGeminiResponseText, parseAiResponse, toGeminiRequestData } from '../api/client.js'
@@ -126,7 +129,7 @@ if (!collectedMemories) {
 
 # 上下文参考 (你必须阅读并遵守)
 ${longTermMemoryContext}
-${worldBookContent}
+${worldBookContent}${loreContext(chat)}
 ${linkedMemoryContext}
 - **这是你们最近的对话历史**:
 ${historySlice.map(msg => `${getDisplayNameInGroup(chat, msg.senderName)}: ${msg.content}`).join('\n')}
@@ -267,7 +270,11 @@ ${stickerContext}
     }
 }
 
-export async function triggerAiResponse() {
+export function triggerAiResponse() {
+    return withConversationRequest(runtime.state.activeChatId, triggerAiResponseForConversation);
+}
+
+async function triggerAiResponseForConversation() {
             if (!runtime.state.activeChatId) return;
             const chatId = runtime.state.activeChatId;
             const chat = runtime.state.chats[runtime.state.activeChatId];
@@ -337,7 +344,7 @@ export async function triggerAiResponse() {
         # 你的任务
         用户刚刚向你发起了视频通话。请根据你的角色设定，决定是“接受”还是“拒绝”。
         # 你的角色设定
-        ${chat.settings.aiPersona}
+        ${characterPrompt(chat)}
         # 核心规则
         你的回复【必须且只能】是以下两种格式之一的JSON数组，绝对不能回复任何其他内容：
         - 接受: '[{"type": "video_call_response", "decision": "accept"}]'
@@ -444,7 +451,7 @@ export async function triggerAiResponse() {
         # 你的任务
         你现在是角色“${chat.name}”。用户之前被你拉黑了，现在TA向你发送了好友申请，希望和好。
         # 供你决策的上下文信息:
-        - **你的角色设定**: ${chat.settings.aiPersona}
+        - **你的角色设定**: ${characterPrompt(chat)}
         - **用户发送的申请理由**: “${chat.relationship.applicationReason}”
         - **被拉黑前的最后对话摘要**: 
         ${contextSummary || "（无有效对话记录）"}
@@ -522,9 +529,10 @@ const timeOfDayGreeting = getTimeOfDayGreeting(localizedDate);
          const lastHiddenMessage = chat.history.filter(m => m.isHidden).pop();
         if (lastHiddenMessage && lastHiddenMessage.content.includes('视频通话刚刚结束')) {
             const lastCallRecord = await runtime.db.callRecords
-                .where('chatId')
-                .equals(chatId)
-                .last();
+                .orderBy('timestamp')
+                .filter(record => record.chatId === chatId)
+                .reverse()
+                .first();
 
             if (lastCallRecord && lastCallRecord.transcript) {
                 console.log("检测到刚结束的通话，正在注入通话记录上下文...");
@@ -892,7 +900,7 @@ ${membersWithContacts}
 - **${myNickname}**: ${chat.settings.myPersona}
 
 # 世界观 (所有角色必须严格遵守)
-${worldBookContent}
+${worldBookContent}${loreContext(chat)}
 # 长期记忆 (所有角色必须严格遵守)
 ${longTermMemoryContext}
 ${chat.longTermMemory && chat.longTermMemory.length > 0 ? chat.longTermMemory.map(mem => `- ${mem.content}`).join('\n') : '- (暂无)'}
@@ -1157,14 +1165,14 @@ ${enabledEntries}
             
            你必须严格遵守 ${presetContext}
 # 你的角色设定：
-你必须严格遵守${chat.settings.aiPersona}
+你必须严格遵守${characterPrompt(chat)}
 
 # 对话者的角色设定
 ${chat.settings.myPersona}
 
 # 供你参考的信息
 ${chat.settings.enableTimePerception ? `- **当前时间**: ${currentTime} (${timeOfDayGreeting})` : ''}
-你必须严格遵守${worldBookContent}
+你必须严格遵守${worldBookContent}${loreContext(chat)}
 # 长期记忆 (你必须严格遵守的事实)
 ${chat.longTermMemory && chat.longTermMemory.length > 0 ? chat.longTermMemory.map(mem => `- ${mem.content}`).join('\n') : '- (暂无)'}
 
@@ -1485,7 +1493,7 @@ systemPrompt = `
 当对话达到特殊时刻（如庆祝纪念日、道歉、表达强烈好感或仅仅是想给用户一个惊喜时），你应该【主动考虑】挑选一件礼物送给用户。
 -  **元数据铁律 **: 你的对话历史中可能包含 (Timestamp: ...) 标记、[系统提示：...] 文本、或你自己上一轮的JSON格式回复。这些都是【系统元数据】，你【必须】完全忽略它们，【绝对禁止】将它们评论为“火星文”、“乱码”或任何你无法理解的内容。
 # 你的角色设定
-你必须严格遵守${chat.settings.aiPersona}
+你必须严格遵守${characterPrompt(chat)}
 ${latestThoughtContext}
 # 对话者的角色设定
 ${chat.settings.myPersona}
@@ -1494,7 +1502,7 @@ ${chat.settings.myPersona}
 ${chat.settings.enableTimePerception ? `- **当前时间**: ${currentTime} (${timeOfDayGreeting})` : ''}
 ${timeContext}
 # 世界观 (必须严格遵守)
-${worldBookContent}
+${worldBookContent}${loreContext(chat)}
 ${linkedMemoryContext}
 # 长期记忆 (必须严格遵守)
 ${chat.longTermMemory && chat.longTermMemory.length > 0 ? chat.longTermMemory.map(mem => `- ${mem.content}`).join('\n') : '- (暂无)'}
@@ -3795,7 +3803,7 @@ ${longTermMemoryContext}
 
         # 当前群聊信息
         - **群名称**: ${chat.name}
-        ${worldBookContent}
+        ${worldBookContent}${loreContext(chat)}
         # 长期记忆 (最高优先级，这是群内已经确立的事实，所有角色必须严格遵守)
         ${chat.longTermMemory && chat.longTermMemory.length > 0 ? chat.longTermMemory.map(mem => `- ${mem.content}`).join('\n') : '- (暂无)'}       
         ${multiLayeredSummaryContext_group}
@@ -4150,7 +4158,11 @@ export async function handleRegenerateCallResponse() {
             triggerAiInCallAction(null); 
         }
 
-export async function handlePropelAction() {
+export function handlePropelAction() {
+    return withConversationRequest(runtime.state.activeChatId, handlePropelActionForConversation);
+}
+
+async function handlePropelActionForConversation() {
     const chat = runtime.state.chats[runtime.state.activeChatId];
     if (!chat) return;
 
@@ -4258,7 +4270,7 @@ ${linkedContents}
 ${chat.longTermMemory && chat.longTermMemory.length > 0 ? chat.longTermMemory.map(mem => `- ${mem.content}`).join('\n') : '- (暂无)'}
 
 # 你的角色设定
-${chat.settings.aiPersona}
+${characterPrompt(chat)}
 
 # 关系与身份档案 (至关重要)
 -   **你的本名**: "${chat.originalName}" (核心身份，用于指令中的'name'字段)
@@ -4267,7 +4279,7 @@ ${chat.settings.aiPersona}
 -   **关键身份档案**:
     ${userProfileContext}
     ${nameHistoryContext}
-    ${worldBookContent}
+    ${worldBookContent}${loreContext(chat)}
 # 可用表情包
     ${stickerContext}
 # 可用资源

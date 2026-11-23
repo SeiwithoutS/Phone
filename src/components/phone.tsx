@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react'
+import { imageSource } from '../runtime/files'
 
 import type { ComponentPropsWithoutRef, KeyboardEvent, ReactNode } from 'react'
 import type { ScreenId } from '../app/routes'
@@ -22,6 +23,26 @@ export function Dialog({ className = '', ...props }: ComponentPropsWithoutRef<'d
 
 export function BackButton({ className = '', children = '‹', ...props }: ComponentPropsWithoutRef<'button'>) {
   return <button type="button" aria-label="Back" {...props} className={`back-btn phone-button ${className}`.trim()}>{children}</button>
+}
+
+export function PhoneFeatureHeader({ title, onBack, backDisabled }: {
+  title: string
+  onBack: () => void
+  backDisabled?: boolean
+}) {
+  return <ScreenHeader className="phone-feature-header">
+    <BackButton onClick={onBack} disabled={backDisabled} />
+    <span>{title}</span>
+    <span aria-hidden="true" />
+  </ScreenHeader>
+}
+
+export function PhoneAvatar({ source = '', name }: { source?: string; name: string }) {
+  const url = imageSource(source)
+  return <span className="phone-app-avatar" aria-hidden="true">
+    <span>{name.trim().charAt(0).toUpperCase() || '?'}</span>
+    {url && <img key={url} src={url} alt="" onError={event => { event.currentTarget.hidden = true }} />}
+  </span>
 }
 
 export function AppShortcut({ className = '', ...props }: ComponentPropsWithoutRef<'button'>) {

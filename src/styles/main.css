@@ -1,6 +1,6 @@
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
 @import "../legacy/styles/foundation.css";
 @import "../legacy/styles/chat.css";
 @import "../legacy/styles/qzone.css";
@@ -10,8 +10,12 @@
 @import "../legacy/styles/chat-settings.css";
 @import "../legacy/styles/home-widgets.css";
 @import "../legacy/styles/character-phone.css";
-@import "../legacy/styles/douban.css";
 @import "../legacy/styles/settings.css";
 @import "../legacy/styles/reading.css";
 @import "../legacy/styles/responsive.css";
 @import "./components.css";
+@import "./home-desktop.css";
+@import "./phone-apps.css";
+
+@source "../";
+@source "../../index.html";

@@ -113,14 +113,14 @@ export function ShoppingSettingsModal() {
           {" "}
         </div>
         <div className="modal-body">
-          <div className="form-group douban-settings-item">
+          <div className="form-group shopping-settings-item">
             {" "}
             <label htmlFor="shopping-category-count-input">
               {" Number of Categories "}
               <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Set how many product categories to generate at once. "}</p>
               {" "}
             </label>
-            <div className="douban-settings-controls">
+            <div className="shopping-settings-controls">
               {" "}
               <input type="number" id="shopping-category-count-input" min="1" max="10" defaultValue="3" />
               {" "}
@@ -128,14 +128,14 @@ export function ShoppingSettingsModal() {
               {" "}
             </div>
           </div>
-          <div className="form-group douban-settings-item">
+          <div className="form-group shopping-settings-item">
             {" "}
             <label htmlFor="shopping-product-count-input">
               {" Products per Category "}
               <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Set how many products to generate in each category. "}</p>
               {" "}
             </label>
-            <div className="douban-settings-controls">
+            <div className="shopping-settings-controls">
               {" "}
               <input type="number" id="shopping-product-count-input" min="2" max="10" defaultValue="8" />
               {" "}

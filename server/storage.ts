@@ -1,9 +1,12 @@
 import { open, chmod, mkdir, readFile, rename, unlink } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { schema } from '../shared/storage.js'
 import type { Snapshot, TableName, Tables } from '../shared/storage.js'
+import { localAddress, loopbackAddress } from './local-address.js'
+import JSZip from 'jszip'
 
 const maxBytes = 256 * 1024 * 1024
 const isObject = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -63,9 +66,10 @@ function reply(response: ServerResponse, status: number, body: unknown, headers:
   response.end(JSON.stringify(body))
 }
 
-function assertLocalRequest(request: IncomingMessage) {
+function assertLocalRequest(request: IncomingMessage, allowedHosts: ReadonlySet<string>) {
   const host = request.headers.host ?? ''
-  if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host)) throw new HttpError(403, 'Local connections only.')
+  const hostname = host.match(/^([a-z0-9.-]+)(?::\d+)?$/i)?.[1].toLowerCase()
+  if (!hostname || !allowedHosts.has(hostname)) throw new HttpError(403, 'Local connections only.')
   if (request.headers.origin && request.headers.origin !== `http://${host}`) {
     throw new HttpError(403, 'Cross-origin access is disabled.')
   }
@@ -73,8 +77,24 @@ function assertLocalRequest(request: IncomingMessage) {
   if (site && site !== 'same-origin' && site !== 'none') throw new HttpError(403, 'Cross-origin access is disabled.')
 }
 
+async function replaceSnapshot(temporary: string, filename: string) {
+  let retries = process.platform === 'win32' ? 4 : 0
+  for (let wait = 20; ; wait *= 2) {
+    try {
+      await rename(temporary, filename)
+      return
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (!retries || !['EPERM', 'EACCES', 'EBUSY'].includes(code ?? '')) throw error
+      retries--
+      await delay(wait)
+    }
+  }
+}
+
 export function openLocalStore(directory: string) {
   const filename = resolve(directory, 'eephone.json')
+  const retiredTables: Record<string, unknown> = {}
   let read = load()
   // Handle the promise before the first request arrives.
   void read.catch(() => {})
@@ -90,6 +110,15 @@ export function openLocalStore(directory: string) {
     }
     if (!isObject(stored) || stored.version !== 1 || typeof stored.revision !== 'number' || !Number.isSafeInteger(stored.revision) || stored.revision < 0) {
       throw new Error('Unsupported EPhone data file.')
+    }
+    if (isObject(stored.tables)) {
+      // Keep old data in the local file while exposing only active tables to the app.
+      for (const name of ['doubanPosts', 'renderingRules']) {
+        if (Object.hasOwn(stored.tables, name)) {
+          retiredTables[name] = stored.tables[name]
+          delete stored.tables[name]
+        }
+      }
     }
     validateTables(stored.tables)
     return { version: 1, revision: stored.revision, tables: stored.tables }
@@ -108,12 +137,12 @@ export function openLocalStore(directory: string) {
     try {
       const file = await open(temporary, 'wx', 0o600)
       try {
-        await file.writeFile(JSON.stringify(next))
+        await file.writeFile(JSON.stringify({ ...next, tables: { ...retiredTables, ...next.tables } }))
         await file.sync()
       } finally {
         await file.close()
       }
-      await rename(temporary, filename)
+      await replaceSnapshot(temporary, filename)
     } catch (error) {
       await unlink(temporary).catch(() => {})
       throw error
@@ -125,6 +154,13 @@ export function openLocalStore(directory: string) {
 
   return {
     snapshot: () => read,
+    async backup() {
+      await queue
+      const data = await read
+      const archive = new JSZip()
+      archive.file('eephone.json', JSON.stringify({ ...data, tables: { ...retiredTables, ...data.tables } }))
+      return archive.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
+    },
     save(body: unknown) {
       const result = queue.then(() => commit(body))
       queue = result.catch(() => {})
@@ -133,18 +169,32 @@ export function openLocalStore(directory: string) {
   }
 }
 
-export function createStorageHandler(directory: string) {
+export function createStorageHandler(directory: string, host = localAddress().host) {
   const store = openLocalStore(directory)
+  const allowedHosts = new Set([host, 'localhost', loopbackAddress])
   return async function storage(request: IncomingMessage, response: ServerResponse, next: () => void) {
     const path = request.url?.split('?')[0]
-    if (path !== '/api/storage' && path !== '/api/backup') {
+    if (path !== '/api/storage' && path !== '/api/backup' && path !== '/api/backup.zip') {
       next()
       return
     }
 
     try {
-      assertLocalRequest(request)
+      assertLocalRequest(request, allowedHosts)
       if (request.method === 'GET') {
+        if (path === '/api/backup.zip') {
+          const archive = await store.backup()
+          const day = new Date().toISOString().slice(0, 10)
+          response.writeHead(200, {
+            'Content-Type': 'application/zip',
+            'Content-Disposition': `attachment; filename="EPhone-User-Data-${day}.zip"`,
+            'Content-Length': String(archive.length),
+            'Cache-Control': 'no-store',
+            'X-Content-Type-Options': 'nosniff',
+          })
+          response.end(archive)
+          return
+        }
         const data = await store.snapshot()
         if (path === '/api/storage') {
           reply(response, 200, data)

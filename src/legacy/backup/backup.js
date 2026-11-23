@@ -17,7 +17,7 @@ export async function cleanupRedundantData() {
 
     let cleanupCounts = {
         posts: 0, likes: 0, comments: 0, memories: 0,
-        callRecords: 0, renderingRules: 0, groupMembers: 0, chatLinks: 0,
+        callRecords: 0, groupMembers: 0, chatLinks: 0,
     };
 
     try {
@@ -107,13 +107,6 @@ export async function cleanupRedundantData() {
             
             await tx.memories.where('chatId').noneOf([...existingChatIds]).delete().then(c => cleanupCounts.memories += c);
             await tx.callRecords.where('chatId').noneOf([...existingChatIds]).delete().then(c => cleanupCounts.callRecords += c);
-            const allRules = await tx.renderingRules.toArray();
-            for(const rule of allRules) {
-                if (rule.chatId !== 'global' && !existingChatIds.has(rule.chatId)) {
-                    await tx.renderingRules.delete(rule.id);
-                    cleanupCounts.renderingRules++;
-                }
-            }
         });
 
         let summary = "✅ 清理完成！\n\n";
@@ -122,7 +115,7 @@ export async function cleanupRedundantData() {
             if (value > 0) {
                 const keyMap = {
                     posts: '动态', likes: '点赞', comments: '评论', memories: '记忆',
-                    callRecords: '通话记录', renderingRules: '渲染规则',
+                    callRecords: '通话记录',
                     groupMembers: '群成员', chatLinks: '记忆链接'
                 };
                 summary += `- 清理了 ${value} 条无效的${keyMap[key] || key}。\n`;
@@ -216,12 +209,6 @@ export function updateBackButtonUnreadCount() {
 
 export function bindBackupSettingsEvents() {
   bindDialogDismissal();
-
-document.getElementById('export-data-btn').addEventListener('click', () => {
-    const download = document.createElement('a')
-    download.href = '/api/backup'
-    download.click()
-});
 
 document.getElementById('cleanup-data-btn').addEventListener('click', cleanupRedundantData);
 

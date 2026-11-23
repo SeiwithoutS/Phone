@@ -17,7 +17,7 @@ const requestResult = <T>(request: IDBRequest<T>) => new Promise<T>((resolve, re
 })
 const legacyDatabaseName = 'GeminiChatDB'
 const preferenceKeys = ['ephone-theme', 'ephoneLastActiveTimestamp', 'unreadPostsCount',
-  'dismissedUpdateVersion', 'novelai-enabled', 'novelai-model', 'novelai-api-key', 'novelai-settings']
+  'novelai-enabled', 'novelai-model', 'novelai-api-key', 'novelai-settings']
 
 async function readLegacyTables(): Promise<Partial<Record<TableName, StoredRow[]>>> {
   if (!indexedDB.databases || !(await indexedDB.databases()).some(db => db.name === legacyDatabaseName)) return {}
@@ -41,7 +41,12 @@ async function exchange(method: 'GET' | 'PATCH', body?: unknown) {
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: 'no-store',
+  }).catch(error => {
+    throw new Error('Could not reach the EPhone server. Open the local address printed in the EPhone terminal.', { cause: error })
   })
+  if (!response.headers.get('content-type')?.includes('application/json')) {
+    throw new Error('The EPhone storage API is missing at this address. Start EPhone with start.bat or bash start.sh and open the printed address.')
+  }
   const data = await response.json()
   if (!response.ok) {
     throw new Error(data.error || 'Could not save local data.')
