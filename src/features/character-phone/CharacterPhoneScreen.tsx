@@ -1,7 +1,15 @@
+import { useState } from 'react'
 import { AppShortcut, BackButton, Dialog, Screen, ScreenHeader, activateOnKey } from '../../components/phone'
+import { Icon } from '../../components/icons'
+import { BankView } from '../bank/BankScreen'
+import type { LocalDatabase } from '../../storage/database'
+import { runtime } from '../../legacy/runtime/state.js'
+import { switchToCharScreen } from '../../legacy/character-phone/launcher.js'
 import { screenActions } from '../../app/actions'
 
-export function CharacterPhoneScreen() {
+export function CharacterPhoneScreen({ database }: { database?: LocalDatabase }) {
+  const [bankOpen, setBankOpen] = useState(false)
+  const actorId = runtime.activeCharacterId
   return (
     <Screen id="character-phone-screen">
       <div id="char-home-screen" className="char-screen active">
@@ -13,25 +21,25 @@ export function CharacterPhoneScreen() {
           <div className="app-row">
             <AppShortcut className="app-icon" onClick={() => { void screenActions.openCharApp("qq") }}>
               <div className="icon-bg">
-                <img id="cphone-icon-img-qq" alt={""} />
+                <img id="cphone-icon-img-qq" alt={""} /><span aria-hidden="true" data-app-initial />
               </div>
               <span className="label">QQ</span>
             </AppShortcut>
             <AppShortcut className="app-icon" onClick={() => { void screenActions.openCharApp("album") }}>
               <div className="icon-bg">
-                <img id="cphone-icon-img-album" alt={""} />
+                <img id="cphone-icon-img-album" alt={""} /><span aria-hidden="true" data-app-initial />
               </div>
               <span className="label">Album</span>
             </AppShortcut>
             <AppShortcut className="app-icon" onClick={() => { void screenActions.openCharApp("browser") }}>
               <div className="icon-bg">
-                <img id="cphone-icon-img-browser" alt={""} />
+                <img id="cphone-icon-img-browser" alt={""} /><span aria-hidden="true" data-app-initial />
               </div>
               <span className="label">Browser</span>
             </AppShortcut>
             <AppShortcut className="app-icon" onClick={() => { void screenActions.openCharApp("taobao") }}>
               <div className="icon-bg">
-                <img id="cphone-icon-img-taobao" alt={""} />
+                <img id="cphone-icon-img-taobao" alt={""} /><span aria-hidden="true" data-app-initial />
               </div>
               <span className="label">Shopping</span>
             </AppShortcut>
@@ -39,25 +47,25 @@ export function CharacterPhoneScreen() {
           <div className="app-row">
             <AppShortcut className="app-icon" onClick={() => { void screenActions.openCharApp("memo") }}>
               <div className="icon-bg">
-                <img id="cphone-icon-img-memo" alt={""} />
+                <img id="cphone-icon-img-memo" alt={""} /><span aria-hidden="true" data-app-initial />
               </div>
               <span className="label">Notes</span>
             </AppShortcut>
             <AppShortcut className="app-icon" onClick={() => { void screenActions.openCharApp("diary") }}>
               <div className="icon-bg">
-                <img id="cphone-icon-img-diary" alt={""} />
+                <img id="cphone-icon-img-diary" alt={""} /><span aria-hidden="true" data-app-initial />
               </div>
               <span className="label">Diary</span>
             </AppShortcut>
             <AppShortcut className="app-icon" onClick={() => { void screenActions.openCharApp("amap") }}>
               <div className="icon-bg">
-                <img id="cphone-icon-img-amap" alt={""} />
+                <img id="cphone-icon-img-amap" alt={""} /><span aria-hidden="true" data-app-initial />
               </div>
               <span className="label">Maps</span>
             </AppShortcut>
             <AppShortcut className="app-icon" onClick={() => { void screenActions.openCharApp("usage") }}>
               <div className="icon-bg">
-                <img id="cphone-icon-img-usage" alt={""} />
+                <img id="cphone-icon-img-usage" alt={""} /><span aria-hidden="true" data-app-initial />
               </div>
               <span className="label">App Activity</span>
             </AppShortcut>
@@ -65,18 +73,25 @@ export function CharacterPhoneScreen() {
           <div className="app-row">
             <AppShortcut className="app-icon" onClick={() => { void screenActions.openCharApp("music") }}>
               <div className="icon-bg">
-                <img id="cphone-icon-img-music" alt={""} />
+                <img id="cphone-icon-img-music" alt={""} /><span aria-hidden="true" data-app-initial />
               </div>
               <span className="label">Music</span>
             </AppShortcut>
+            <AppShortcut className="app-icon" onClick={() => { switchToCharScreen("char-bank-screen"); setBankOpen(true) }}>
+              <div className="icon-bg"><Icon name="bank" /><img id="cphone-icon-img-bank" alt="" /></div>
+              <span className="label">Bank</span>
+            </AppShortcut>
             <AppShortcut className="app-icon" onClick={() => { void screenActions.switchToMyPhone() }}>
               <div className="icon-bg">
-                <img id="cphone-icon-img-ephone" alt={""} />
+                <img id="cphone-icon-img-ephone" alt={""} /><span aria-hidden="true" data-app-initial />
               </div>
               <span className="label">Ephone</span>
             </AppShortcut>
           </div>
         </div>
+      </div>
+      <div id="char-bank-screen" className="char-screen">
+        {bankOpen && actorId && <BankView database={database} actorId={actorId} back={() => { setBankOpen(false); screenActions.switchToCharHomeScreen() }} />}
       </div>
       <div id="char-amap-screen" className="char-screen">
         <ScreenHeader>

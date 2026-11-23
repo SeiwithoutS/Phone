@@ -5,7 +5,7 @@ import { showCallTranscript } from '../calls/calls.js'
 import { renderCallHistoryScreen } from '../chat/attachments.js'
 import { renderChatInterface } from '../chat/conversation.js'
 import { renderChatList } from '../chat/list.js'
-import { exitSelectionMode, sendLocationShare } from '../chat/messages.js'
+import { sendLocationShare } from '../chat/messages.js'
 import { openShareLinkModal, sendUserLinkShare } from '../chat/sharing.js'
 import { showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
 import { displayFilteredFavorites } from './favorites.js'
@@ -280,43 +280,6 @@ controls.searchClearBtn.addEventListener('click', () => {
                         controls.searchClearBtn.style.display = 'none';
                         displayFilteredFavorites(runtime.allFavoriteItems);
                         controls.searchInput.focus();
-                    });
-
-document.getElementById('selection-favorite-btn').addEventListener('click', async () => {
-                        if (runtime.selectedMessages.size === 0) return;
-                        const chat = runtime.state.chats[runtime.state.activeChatId];
-                        if (!chat) return;
-        
-                        const favoritesToAdd = [];
-                        const timestampsToFavorite = [...runtime.selectedMessages];
-        
-                        for (const timestamp of timestampsToFavorite) {
-                            
-                            const existing = await runtime.db.favorites.where('originalTimestamp').equals(timestamp).first();
-                            
-                            if (!existing) {
-                                const messageToSave = chat.history.find(msg => msg.timestamp === timestamp);
-                                if (messageToSave) {
-                                    favoritesToAdd.push({
-                                        type: 'chat_message',
-                                        content: messageToSave,
-                                        chatId: runtime.state.activeChatId,
-                                        timestamp: Date.now(), 
-                                        originalTimestamp: messageToSave.timestamp 
-                                    });
-                                }
-                            }
-                        }
-        
-                        if (favoritesToAdd.length > 0) {
-                            await runtime.db.favorites.bulkAdd(favoritesToAdd);
-                            runtime.allFavoriteItems = await runtime.db.favorites.orderBy('timestamp').reverse().toArray(); 
-                            await showCustomAlert("Added to Favorites", `Added ${favoritesToAdd.length} messages to Favorites.`);
-                        } else {
-                            await showCustomAlert("Notice", "The selected messages are already in Favorites.");
-                        }
-                        
-                        exitSelectionMode();
                     });
 
 controls.favoritesEditBtn = document.getElementById('favorites-edit-btn')

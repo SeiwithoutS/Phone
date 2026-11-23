@@ -8,10 +8,12 @@ import type { Sticker } from '../../features/stickers/library'
 export const runtime: {
   db: LocalDatabase
   defaultAvatar: string
+  activeCharacterId: string | null
   state: {
     chats: Record<string, DirectChat | GroupChat | undefined>
     activeChatId: string | null
     userStickers: Sticker[]
+    personaPresets: Array<{ id: string; name?: string; avatar: string; persona: string }>
     worldBooks?: Array<{ id: string | number; name?: string; content?: Array<{ enabled?: boolean; content?: string; comment?: string }> }>
     presets?: Array<{ id: string | number; name?: string; content?: Array<{ enabled?: boolean; content?: string; comment?: string }> }>
     lorebooks?: LoreBook[]

@@ -1,3 +1,5 @@
+import { escapeHtml } from '../../runtime/files'
+import { importPromptCollection } from './collection-actions.js'
 import { showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
 import { renderWorldBookScreen } from './books.js'
 import { runtime } from '../runtime/state.js'
@@ -7,7 +9,11 @@ export async function handleWorldBookImport(file) {
         
             try {
                 const text = await file.text();
-                const data = JSON.parse(text);
+                const data = JSON.parse(text.replace(/^\uFEFF/, ''));
+                if (await importPromptCollection('worldBooks', data)) {
+                    await renderWorldBookScreen();
+                    return;
+                }
         
                 
                 if (data.type === 'EPhoneWorldBookBackup') {
@@ -26,7 +32,7 @@ export async function handleWorldBookImport(file) {
         
             } catch (error) {
                 console.error("导入世界书时出错:", error);
-                await showCustomAlert("Import Failed", `Could not read or apply the file: ${error.message}`);
+                await showCustomAlert("Import Failed", `Could not read or apply the file: ${escapeHtml(String(error.message))}`);
             }
         }
 
@@ -70,7 +76,7 @@ export async function importTavernWorldBook(tavernData, fileName) {
             runtime.state.worldBooks.push(newWorldBook); 
             await renderWorldBookScreen(); 
         
-            await showCustomAlert("Import Complete", `Imported “${newBookName}” from SillyTavern.`);
+            await showCustomAlert("Import Complete", `Imported “${escapeHtml(newBookName)}” from SillyTavern.`);
         }
 
 export async function exportWorldBooks() {
@@ -106,7 +112,7 @@ export async function exportWorldBooks() {
         
             } catch (error) {
                 console.error("导出世界书时出错:", error);
-                await showCustomAlert("Export Failed", `An error occurred: ${error.message}`);
+                await showCustomAlert("Export Failed", `An error occurred: ${escapeHtml(String(error.message))}`);
             }
         }
 
@@ -145,6 +151,6 @@ export async function importWorldBooks(data) {
         
             } catch (error) {
                 console.error("导入世界书时出错:", error);
-                await showCustomAlert("Import Failed", `Could not read or apply the file: ${error.message}`);
+                await showCustomAlert("Import Failed", `Could not read or apply the file: ${escapeHtml(String(error.message))}`);
             }
         }

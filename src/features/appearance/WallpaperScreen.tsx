@@ -1,3 +1,4 @@
+import { Icon, IconButton } from '../../components/icons'
 import { BackButton, FilePicker, Screen, ScreenHeader } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 
@@ -19,11 +20,11 @@ export function WallpaperScreen() {
         <div id="wallpaper-preview">Upload an image below</div>
         <div className="bg-upload-container">
           {" "}
-          <button className="form-button-secondary" onClick={() => document.getElementById("wallpaper-upload-input")?.click()} type="button">Local Upload</button>
+          <IconButton icon="upload" label="Upload an image" onClick={() => document.getElementById("wallpaper-upload-input")?.click()} />
           {" "}
-          <button id="upload-ephone-bg-url-btn" className="form-button-secondary" type="button">Image URL</button>
+          <IconButton icon="link" id="upload-ephone-bg-url-btn" label="Set EPhone wallpaper URL" />
           {" "}
-          <button id="remove-ephone-bg-btn" className="form-button-secondary" type="button">Remove Wallpaper</button>
+          <IconButton icon="trash" id="remove-ephone-bg-btn" label="Remove EPhone wallpaper" />
           {" "}
         </div>
         {" "}
@@ -34,11 +35,11 @@ export function WallpaperScreen() {
         <div id="cphone-wallpaper-preview">Upload an image below</div>
         <div className="bg-upload-container">
           {" "}
-          <button className="form-button-secondary" onClick={() => document.getElementById("cphone-wallpaper-upload-input")?.click()} type="button">Local Upload</button>
+          <IconButton icon="upload" label="Upload an image" onClick={() => document.getElementById("cphone-wallpaper-upload-input")?.click()} />
           {" "}
-          <button id="upload-cphone-bg-url-btn" className="form-button-secondary" type="button">Image URL</button>
+          <IconButton icon="link" id="upload-cphone-bg-url-btn" label="Set Cphone wallpaper URL" />
           {" "}
-          <button id="remove-cphone-bg-btn" className="form-button-secondary" type="button">Remove Wallpaper</button>
+          <IconButton icon="trash" id="remove-cphone-bg-btn" label="Remove Cphone wallpaper" />
           {" "}
         </div>
         {" "}
@@ -49,11 +50,11 @@ export function WallpaperScreen() {
         <div id="global-bg-preview" className="wallpaper-preview" style={{ height: "160px", width: "90px" }}>Upload an image below</div>
         <div className="bg-upload-container">
           {" "}
-          <button className="form-button-secondary" onClick={() => document.getElementById("global-bg-input")?.click()} type="button">Local Upload</button>
+          <IconButton icon="upload" label="Upload an image" onClick={() => document.getElementById("global-bg-input")?.click()} />
           {" "}
-          <button id="upload-global-bg-url-btn" className="form-button-secondary" type="button">Image URL</button>
+          <IconButton icon="link" id="upload-global-bg-url-btn" label="Set default chat background URL" />
           {" "}
-          <button id="remove-global-bg-btn" className="form-button-secondary" type="button">Remove Global Background</button>
+          <IconButton icon="trash" id="remove-global-bg-btn" label="Remove default chat background" />
           {" "}
         </div>
         {" "}
@@ -85,49 +86,47 @@ export function WallpaperScreen() {
           {" "}
         </div>
         <hr style={{ width: "80%", opacity: "0.3", margin: "30px 0" }} />
-        <div style={{ width: "100%", textAlign: "left", marginBottom: "15px" }}>
-          {" "}
-          <label style={{ fontWeight: "500", color: "var(--text-secondary)" }}>Message Notification Sound</label>
-          {" "}
-        </div>
-        <div className="form-group" style={{ width: "100%" }}>
-          {" "}
-          <label htmlFor="notification-sound-url-input">Sound file URL (.mp3, .wav, .ogg)</label>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "8px" }}>
-            {" "}
-            <input type="text" id="notification-sound-url-input" placeholder="Leave blank to use the default sound" style={{ flexGrow: "1" }} />
-            {" "}
-            <button id="test-sound-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">{"▶"}</button>
-            <button id="reset-sound-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Reset</button>
-            {" "}
+        <section className="phone-app-card message-sound-card">
+          <div className="message-sound-heading">
+            <Icon name="volume" />
+            <label htmlFor="message-sound-toggle"><strong>Message sounds</strong><small>Play a sound when you send or receive a message.</small></label>
+            <label className="toggle-switch">
+              <input type="checkbox" id="message-sound-toggle" role="switch" aria-label="Message sounds" />
+              <span className="slider" />
+            </label>
           </div>
-        </div>
+          <label htmlFor="notification-sound-url-input">Custom received sound URL</label>
+          <div className="sound-controls">
+            <input type="url" id="notification-sound-url-input" placeholder="Use the default when blank" />
+            <IconButton icon="play" id="test-sound-received" label="Preview received sound" />
+            <IconButton icon="reset" id="reset-sound-btn" label="Restore default received sound" />
+          </div>
+          <div className="sound-controls">
+            <span>Sent sound</span><IconButton icon="play" id="test-sound-sent" label="Preview sent sound" />
+          </div>
+        </section>
         <hr style={{ width: "80%", opacity: "0.3", margin: "30px 0" }} />
-        <div style={{ width: "100%", textAlign: "left", marginBottom: "15px" }}>
-          {" "}
-          <label style={{ fontWeight: "500", color: "var(--text-secondary)" }}>EPhone App Icons</label>
-          {" "}
-        </div>
-        <div id="icon-settings-grid" />
+        <details className="settings-disclosure icon-settings-panel">
+          <summary>EPhone app names and icons</summary>
+          <div id="icon-settings-grid" />
+        </details>
         <hr style={{ width: "80%", opacity: "0.3", margin: "30px 0" }} />
         <div className="form-group" style={{ width: "100%" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
             {" "}
             <label>Chat Toolbar Order</label>
             {" "}
-            <button id="reset-button-order-btn" title="Restore Default Order" className="form-button-secondary" style={{ margin: "0", padding: "4px 12px", fontSize: "13px" }} type="button" aria-label="Restore Default Order">Reset Order</button>
+            <IconButton icon="reset" id="reset-button-order-btn" label="Restore default toolbar order" />
             {" "}
           </div>
           <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Drag the buttons below to reorder them. Changes are saved automatically. "}</p>
           <div id="button-order-editor" style={{ display: "flex", flexWrap: "wrap", gap: "10px", padding: "10px", backgroundColor: "var(--ui-raised)", borderRadius: "8px", border: "1px solid var(--border-color)" }}>{" "}</div>
         </div>
         <hr style={{ width: "80%", opacity: "0.3", margin: "30px 0" }} />
-        <div style={{ width: "100%", textAlign: "left", marginBottom: "15px" }}>
-          {" "}
-          <label style={{ fontWeight: "500", color: "var(--text-secondary)" }}>Character Phone App Icons</label>
-          {" "}
-        </div>
-        <div id="cphone-icon-settings-grid" />
+        <details className="settings-disclosure icon-settings-panel">
+          <summary>Cphone app names and icons</summary>
+          <div id="cphone-icon-settings-grid" />
+        </details>
         <hr style={{ width: "80%", opacity: "0.3", margin: "30px 0" }} />
         <h3 style={{ marginTop: "0", borderBottom: "1px solid var(--border-color)", paddingBottom: "10px", width: "100%", textAlign: "left" }}>Appearance Presets</h3>
         <p style={{ fontSize: "12px", color: "#8a8a8a", marginTop: "-5px", lineHeight: "1.5", width: "100%", textAlign: "left" }}>{" Save or load wallpaper, icons, toolbar order, and theme."}</p>
@@ -138,9 +137,9 @@ export function WallpaperScreen() {
             {" "}
             <select id="appearance-preset-select" style={{ flexGrow: "1" }} />
             {" "}
-            <button id="save-appearance-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Save</button>
+            <IconButton icon="check" id="save-appearance-preset-btn" label="Save appearance preset" />
             {" "}
-            <button id="delete-appearance-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)" }} type="button">Delete</button>
+            <IconButton icon="trash" id="delete-appearance-preset-btn" label="Delete appearance preset" />
             {" "}
           </div>
         </div>
@@ -153,9 +152,9 @@ export function WallpaperScreen() {
             {" "}
             <select id="css-preset-select" style={{ flexGrow: "1" }} />
             {" "}
-            <button id="save-css-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Save</button>
+            <IconButton icon="check" id="save-css-preset-btn" label="Save CSS preset" />
             {" "}
-            <button id="delete-css-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)" }} type="button">Delete</button>
+            <IconButton icon="trash" id="delete-css-preset-btn" label="Delete CSS preset" />
             {" "}
           </div>
         </div>
@@ -163,7 +162,7 @@ export function WallpaperScreen() {
           {" "}
           <label htmlFor="global-css-input">
             {" Global Custom CSS "}
-            <button id="reset-global-css-btn" type="button" style={{ background: "none", border: "1px solid var(--ui-divider)", color: "var(--ui-muted)", fontSize: "12px", padding: "2px 8px", borderRadius: "5px", cursor: "pointer", marginLeft: "10px" }}>Reset</button>
+            <IconButton icon="reset" id="reset-global-css-btn" label="Reset global CSS" />
             {" "}
           </label>
           {" "}
@@ -171,7 +170,7 @@ export function WallpaperScreen() {
           {" "}
         </div>
         {" "}
-        <button className="form-button form-button-secondary" id="import-appearance-btn" style={{ marginTop: "10px" }} type="button">Import Appearance (JSON)</button>
+        <div className="settings-tools"><span>Appearance JSON</span><IconButton icon="upload" id="import-appearance-btn" label="Import appearance JSON" /></div>
         <FilePicker id="import-appearance-input" accept="application/json" />
         {" "}
         <button className="form-button" id="save-wallpaper-btn" style={{ marginTop: "30px" }} type="button">Save Appearance Settings</button>

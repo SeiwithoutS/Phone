@@ -1,3 +1,4 @@
+import { IconButton } from '../../components/icons'
 import { Dialog } from '../../components/phone'
 
 export function AvatarFrameModal() {
@@ -13,7 +14,7 @@ export function AvatarFrameModal() {
             {" "}
             <button id="upload-custom-frame-btn" className="action-button" type="button">Upload</button>
             {" "}
-            <button id="batch-import-frames-btn" className="action-button" type="button">Batch Import</button>
+            <IconButton icon="upload" id="batch-import-frames-btn" label="Import avatar frames" />
             {" "}
           </div>
         </div>

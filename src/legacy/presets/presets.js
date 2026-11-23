@@ -1,15 +1,17 @@
-import { addLongPressListener, showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
+import { escapeHtml } from '../../runtime/files'
+import { collectionCard, importPromptCollection } from '../world-book/collection-actions.js'
+import { showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
 import { showScreen } from '../../app/routes'
 import { runtime } from '../runtime/state.js'
 
 export async function openPresetScreen() {
-    await renderPresetScreen();
     showScreen('preset-screen');
 }
 
 export async function renderPresetScreen() {
     const tabsContainer = document.getElementById('preset-tabs');
     const contentContainer = document.getElementById('preset-content-container');
+    const selected = tabsContainer.querySelector('.active')?.dataset.categoryId ?? 'all';
     tabsContainer.innerHTML = '';
     contentContainer.innerHTML = '';
 
@@ -66,44 +68,16 @@ export async function renderPresetScreen() {
     
     
     presets.forEach(preset => {
-        
-        const contentPreview = `该预设包含 ${preset.content.length} 个条目。`;
-        
-        const card = document.createElement('div');
-        card.className = 'world-book-card'; 
-        card.innerHTML = `
-            <div class="card-title">${preset.name}</div>
-            <div class="card-content-preview">${contentPreview}</div>
-        `;
-        
-        
-        const cardClickHandler = () => openPresetEditor(preset.id);
-        const cardLongPressHandler = async () => { 
-            const confirmed = await showCustomConfirm("Delete Preset", `Delete “${preset.name}”?`, { confirmButtonClass: 'btn-danger' }); 
-            if (confirmed) { 
-                await runtime.db.presets.delete(preset.id);
-                runtime.state.presets = await runtime.db.presets.toArray();
-                renderPresetScreen(); 
-            } 
-        };
-
-        card.addEventListener('click', cardClickHandler);
-        addLongPressListener(card, cardLongPressHandler);
-
-        const clonedCardForAll = card.cloneNode(true);
-        clonedCardForAll.addEventListener('click', cardClickHandler);
-        addLongPressListener(clonedCardForAll, cardLongPressHandler);
-        allPane.appendChild(clonedCardForAll);
-        
-        const categoryKey = preset.categoryId ? String(preset.categoryId) : 'uncategorized';
-        const targetPane = contentContainer.querySelector(`.world-book-category-pane[data-category-id="${categoryKey}"]`);
-        if (targetPane) {
-            targetPane.appendChild(card);
-        }
+        const category = categories.find(item => item.id === preset.categoryId);
+        const count = Array.isArray(preset.content) ? preset.content.length : 0;
+        const card = () => collectionCard('presets', preset, count + (count === 1 ? ' entry' : ' entries'),
+            category, openPresetEditor, renderPresetScreen);
+        allPane.appendChild(card());
+        const key = preset.categoryId ? String(preset.categoryId) : 'uncategorized';
+        [...contentContainer.children].find(pane => pane.dataset.categoryId === key)?.appendChild(card());
     });
-    
-    
-    
+
+    switchPresetCategory([...tabsContainer.children].some(tab => tab.dataset.categoryId === selected) ? selected : 'all');
     document.querySelectorAll('#preset-tabs .world-book-tab').forEach(tab => {
         tab.addEventListener('click', () => switchPresetCategory(tab.dataset.categoryId));
     });
@@ -169,7 +143,7 @@ export async function openPresetEditor(presetId) {
 
     } catch (error) {
         console.error("打开预设编辑器时发生严重错误:", error);
-        await showCustomAlert("Loading Failed", `Could not load preset details: ${error.message}`);
+        await showCustomAlert("Loading Failed", `Could not load preset details: ${escapeHtml(String(error.message))}`);
         showScreen('preset-screen'); 
     }
 }
@@ -190,11 +164,11 @@ export function createPresetEntryBlock(entry = { keys: [], comment: '', content:
         </div>
         <div class="form-group" style="margin-bottom: 10px;">
             <label style="font-size: 0.8em;">Note (optional)</label>
-            <input type="text" class="entry-comment-input" value="${entry.comment || ''}" placeholder="例如：角色核心设定" style="padding: 8px;">
+            <input type="text" class="entry-comment-input" value="${escapeHtml(String(entry.comment || ''))}" placeholder="例如：角色核心设定" style="padding: 8px;">
         </div>
         <div class="form-group" style="margin-bottom: 10px;">
             <label style="font-size: 0.8em;">Keywords (comma-separated)</label>
-            <input type="text" class="entry-keys-input" value="${(entry.keys || []).join(', ')}" placeholder="例如: key1, key2" style="padding: 8px;">
+            <input type="text" class="entry-keys-input" value="${escapeHtml(Array.isArray(entry.keys) ? entry.keys.join(', ') : String(entry.keys || ''))}" placeholder="例如: key1, key2" style="padding: 8px;">
         </div>
         
         <!-- 这里是全新的、带有“Expand/Collapse”按钮的结构 -->
@@ -204,7 +178,7 @@ export function createPresetEntryBlock(entry = { keys: [], comment: '', content:
                 <button type="button" class="toggle-content-btn">Expand</button>
             </label>
             <div class="entry-content-container">
-                 <textarea class="entry-content-textarea" rows="8" style="width: 100%; font-size: 14px;">${entry.content || ''}</textarea>
+                 <textarea class="entry-content-textarea" rows="8" style="width: 100%; font-size: 14px;">${escapeHtml(String(entry.content || ''))}</textarea>
             </div>
         </div>
     `;
@@ -252,7 +226,7 @@ export async function renderPresetCategoriesInManager() {
     categories.forEach(cat => {
         const item = document.createElement('div');
         item.className = 'existing-group-item';
-        item.innerHTML = `<span class="group-name">${cat.name}</span><span class="delete-group-btn" data-id="${cat.id}">×</span>`;
+        item.innerHTML = `<span class="group-name">${escapeHtml(String(cat.name))}</span><span class="delete-group-btn" data-id="${cat.id}">×</span>`;
         listEl.appendChild(item);
     });
 }
@@ -292,14 +266,18 @@ export async function handlePresetImport(event) {
         }
         
         const text = await file.text();
-        const tavernData = JSON.parse(text);
+        const tavernData = JSON.parse(text.replace(/^\uFEFF/, ''));
+        if (await importPromptCollection('presets', tavernData)) {
+            await renderPresetScreen();
+            return;
+        }
         
         
         await importTavernPresetFile(tavernData, file.name);
 
     } catch (error) {
         console.error("预设导入失败:", error);
-        await showCustomAlert("Import Failed", `Could not read the preset file. Error: ${error.message}`);
+        await showCustomAlert("Import Failed", `Could not read the preset file. Error: ${escapeHtml(String(error.message))}`);
     } finally {
         
         event.target.value = null;
@@ -410,7 +388,7 @@ export async function importTavernPresetFile(tavernData, fileName) {
             runtime.state.presets.push(newPreset);
 
             await renderPresetScreen();
-            await showCustomAlert("Import Complete", `Imported preset “${newPresetName}”.`);
+            await showCustomAlert("Import Complete", `Imported preset “${escapeHtml(newPresetName)}”.`);
         }
 
 export async function renderOfflinePresetSelector(chat) {

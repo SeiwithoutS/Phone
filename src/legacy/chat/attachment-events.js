@@ -1,8 +1,9 @@
 import { triggerAiResponse } from './ai.js'
-import { addPollOptionInput, endPoll, handlePacketClick, handlePaymentButtonClick, handleUserVote, openCreatePollModal, sendDirectRedPacket, sendGroupRedPacket, sendPoll, showPollResults, triggerAiFriendApplication } from './attachments.js'
+import { addPollOptionInput, handlePaymentButtonClick, openCreatePollModal, sendDirectRedPacket, sendGroupRedPacket, sendPoll, triggerAiFriendApplication } from './attachments.js'
 import { appendMessage, renderChatInterface } from './conversation.js'
 import { renderChatList } from './list.js'
-import { exitSelectionMode, sendWaimaiOrderForAI } from './messages.js'
+import { exitSelectionMode } from './messages.js'
+import { showScreen } from '../../app/routes'
 import { showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
 import { closePersonaEditor, closePersonaLibrary, deletePersonaPreset, hidePresetActions, openPersonaEditorForCreate, openPersonaEditorForEdit, openPersonaLibrary, savePersonaPreset } from '../personas/personas.js'
 import { renderMemoriesScreen } from '../qzone/feed.js'
@@ -98,7 +99,12 @@ controls.waimaiModal.addEventListener('click', (e) => {
     }
 });
 
-document.getElementById('waimai-order-for-ai-btn').addEventListener('click', sendWaimaiOrderForAI);
+document.getElementById('waimai-order-for-ai-btn').addEventListener('click', () => {
+    const chatId = runtime.state.activeChatId;
+    if (!chatId) return;
+    controls.waimaiModal.classList.remove('visible');
+    showScreen('market-screen', { from: 'chat', chatId, food: true });
+});
 
 document.getElementById('waimai-confirm-btn').addEventListener('click', async () => {
     if (!runtime.state.activeChatId) return;
@@ -190,7 +196,7 @@ document.getElementById('selection-soft-delete-btn').addEventListener('click', a
 }
 
 export function bindGroupAttachments() {
-  document.querySelector('.nav-item[data-view="memories-view"]').addEventListener('click', () => {
+  document.querySelector('.nav-item[data-view="memories-view"]')?.addEventListener('click', () => {
             
             if (runtime.isFavoritesSelectionMode) {
                 document.getElementById('favorites-edit-btn').click(); 
@@ -401,20 +407,6 @@ document.getElementById('rp-direct-amount').addEventListener('input', (e) => {
             document.getElementById('rp-direct-total').textContent = `¥ ${amount.toFixed(2)}`;
         });
 
-document.getElementById('chat-messages').addEventListener('click', (e) => {
-            
-            const packetCard = e.target.closest('.red-packet-card');
-            if (!packetCard) return; 
-        
-            
-            const messageBubble = packetCard.closest('.message-bubble');
-            if (!messageBubble || !messageBubble.dataset.timestamp) return;
-        
-            
-            const timestamp = parseInt(messageBubble.dataset.timestamp);
-            handlePacketClick(timestamp);
-        });
-
 document.getElementById('send-poll-btn').addEventListener('click', openCreatePollModal);
 
 document.getElementById('add-poll-option-btn').addEventListener('click', addPollOptionInput);
@@ -424,35 +416,4 @@ document.getElementById('cancel-create-poll-btn').addEventListener('click', () =
         });
 
 document.getElementById('confirm-create-poll-btn').addEventListener('click', sendPoll);
-
-document.getElementById('chat-messages').addEventListener('click', (e) => {
-            const pollCard = e.target.closest('.poll-card');
-            if (!pollCard) return;
-        
-            const timestamp = parseInt(pollCard.dataset.pollTimestamp);
-            if (isNaN(timestamp)) return;
-            
-            
-            const optionItem = e.target.closest('.poll-option-item');
-            if (optionItem && !pollCard.classList.contains('closed')) {
-                handleUserVote(timestamp, optionItem.dataset.option);
-                return;
-            }
-            
-            
-            const actionBtn = e.target.closest('.poll-action-btn');
-            if (actionBtn) {
-                if (pollCard.classList.contains('closed')) {
-                    showPollResults(timestamp);
-                } else {
-                    endPoll(timestamp);
-                }
-                return;
-            }
-        
-            
-            if (pollCard.classList.contains('closed')) {
-                showPollResults(timestamp);
-            }
-        });
 }

@@ -515,6 +515,7 @@ export function updateUnreadIndicator(count) {
             
             const navItem = document.querySelector('.nav-item[data-view="qzone-screen"]');
             
+            if (!navItem) return;
             const targetSpan = navItem.querySelector('span'); 
             let indicator = navItem.querySelector('.unread-indicator');           
 

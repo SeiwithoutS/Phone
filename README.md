@@ -33,7 +33,7 @@ Open <http://127.0.0.1:8017> in the phone's browser and leave Termux running. Th
 | A custom hostname does not open | Open `http://127.0.0.1:<port>` on the device running EPhone. |
 | The page says the storage API is missing | Start EPhone using the launcher and use its printed address. EPhone needs the Node server to read and save data. |
 
-`npm start` builds on the first run and serves the existing build on later runs. To apply source changes, run the launcher again, use `npm start -- --build`, or develop with `npm run dev`. See [Đổi host và avatar](HOST-VA-AVATAR.md) for hostname, port, and site image settings.
+`npm start` builds on the first run and serves the existing build on later runs. To apply source changes, run the launcher again, use `npm start -- --build`, or develop with `npm run dev`. Set `EEPHONE_HOST` or `PORT` to change the local address. Replace `public/site-avatar.jpg` and rebuild to change the site icon.
 
 ## Home screen and apps
 
@@ -45,19 +45,32 @@ Open <http://127.0.0.1:8017> in the phone's browser and leave Termux running. Th
 - In QQ, open the three-line **Chat actions** menu to start a chat, manage chat files, regenerate the latest reply, or delete messages from a selected point. Use the controls below a reply to edit it, generate an alternate, or return to an earlier version. The branch button opens a separate chat through the selected message and keeps the original in **Manage chat files**.
 - **Mini Prompts** stores prompts you can attach to chats. **World Info** manages lorebook entries and their activation keywords. Embedded card lorebooks appear here after you save the character.
 - **Social** offers a local timeline, editable profile, photo posts, replies, likes, reposts, bookmarks and search. Use the plus icon to compose a post with up to four photos. In **Social settings**, you can enable **Auto AI comment** and choose which character or NPC replies using your configured API.
+- **Marketplace** records purchases under **Orders**. Open an order to see its estimated arrival and simulated delivery timeline. Choose a chat at checkout to send a gift card immediately, send it later by hand, or schedule it to appear in chat on delivery. Automatic delivery is checked while EPhone is open and catches up the next time it opens.
+- See [Hướng dẫn tùy chỉnh CSS](HUONG-DAN-CSS.md) for widget imports and selectors for chat and other screens.
 
 ## Local data and backup
 
 - The server creates `data/eephone.json` in the project folder on the first write. Set `EEPHONE_DATA_DIR` to use another data folder.
 - Chats, personas, World Info, preferences, API configuration, and local media are saved to disk. Reloading the browser or restarting the server preserves that file.
-- Use **API Connections → Export User Data ZIP**. To restore it, close the app and stop EPhone, extract `eephone.json` to the local data folder, then restart. See [Hướng dẫn sao lưu và khôi phục](HUONG-DAN-SAO-LUU.md).
+- Open **Backup** and use the download icon to export a full or selective ZIP. Restore a selected set using the upload icon in **Backup**. For a full replacement, stop EPhone, extract `eephone.json` to the local data folder, then restart.
 - EPhone can migrate the earlier browser database on its first run if both versions use the same browser origin. The **Data maintenance** section also supports legacy JSON backups.
 - Configure your own AI providers in **API Connections**. You can enter a model ID directly or use **Fetch Models**. External AI, music, and remote images still need access to their respective services.
 
+## Repository structure
+
+- [`index.html`](index.html) provides the HTML entry point and [`src/main.tsx`](src/main.tsx) mounts React and the router.
+- [`src/`](src/) contains the browser app.
+  - [`app/`](src/app/) defines routes, composes screens and dialogs, and connects React to existing actions.
+  - [`features/`](src/features/) groups React screens, dialogs, and TypeScript logic by feature.
+  - [`components/`](src/components/) contains shared UI, including screen headers and icon buttons.
+  - [`legacy/`](src/legacy/) contains JavaScript and CSS still used by chat, AI, and other existing workflows.
+  - [`styles/`](src/styles/) contains the Tailwind entry point, theme tokens, and feature styles.
+  - [`storage/`](src/storage/) and [`runtime/`](src/runtime/) provide the browser-side database layer and shared utilities.
+- [`server/`](server/) serves the built app and handles local storage and backups. [`shared/storage.ts`](shared/storage.ts) defines the data format used by the browser and server.
+- [`public/`](public/) holds static assets. [`scripts/`](scripts/) holds the shared launcher. [`tests/`](tests/) holds storage and compatibility tests.
+
+For a file-by-file map and where to change specific features, see [Cấu trúc dự án](README-CAU-TRUC.md).
+
 ## Development
-
-EPhone uses strict TypeScript for the React UI, routing, storage API, and Node server. React screens and related dialogs live in feature folders. Existing DOM-based JavaScript is grouped by feature in `src/legacy/`.
-
-Read [Cấu trúc dự án](README-CAU-TRUC.md) for a directory map and [the project conventions](CONTRIBUTING.md) for component contracts, styling rules, and how to migrate a feature.
 
 Run `npm ci` once, then `npm run dev` for development. Use `npm run typecheck`, `npm test`, and `npm run build` to verify changes. The production build writes the frontend into `dist/` and the compiled server into `build/server/`.

@@ -23,7 +23,7 @@ export function TutorialScreen() {
             <li>Open a chat, send a message, and choose Generate Reply.</li>
             <li>Use World Info to link keyword-triggered lore to a character. Attach Mini Prompts in QQ’s Chat Settings.</li>
           </ol>
-          <p>Use Export Data in API Connections to download a backup.</p>
+          <p>Open Backup and use the download icon to save a ZIP.</p>
         </article>
         {" "}
       </div>

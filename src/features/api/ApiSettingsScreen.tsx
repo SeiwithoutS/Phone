@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { IconButton } from '../../components/icons'
 import { BackButton, FormField, Screen, ScreenHeader } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 
@@ -23,9 +23,9 @@ export function ApiSettingsScreen() {
             {" "}
             <select id="api-preset-select" style={{ flexGrow: "1" }} />
             {" "}
-            <button id="save-api-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Save</button>
+            <IconButton icon="check" id="save-api-preset-btn" label="Save API preset" />
             {" "}
-            <button id="delete-api-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)" }} type="button">Delete</button>
+            <IconButton icon="trash" id="delete-api-preset-btn" label="Delete API preset" />
             {" "}
           </div>
         </div>
@@ -246,10 +246,10 @@ export function ApiSettingsScreen() {
         {" "}
         <button className="form-button" id="save-api-settings-btn" style={{ marginTop: "20px" }} type="button">Save All Settings</button>
         {" "}
-        <UserDataBackup />
+        <button type="button" className="form-button form-button-secondary" onClick={() => showScreen("backup-screen")}>Open Backup</button>
         <details className="settings-disclosure">
         <summary>Data maintenance</summary>
-        <button className="form-button" id="import-btn" type="button">Import Legacy JSON Backup</button>
+        <div className="settings-tools"><span>Legacy JSON backup</span><IconButton icon="upload" id="import-btn" label="Import legacy JSON backup" /></div>
         <button className="form-button form-button-secondary" id="cleanup-data-btn" style={{ backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)", marginTop: "10px" }} type="button">Clean Up Unused Data</button>
         <button className="form-button form-button-secondary" id="delete-world-books-btn" style={{ backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)", marginTop: "10px" }} type="button">Delete World Info</button>
         <button className="form-button form-button-secondary" id="clear-specific-data-btn" style={{ backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)", marginTop: "10px" }} type="button">Advanced Data Cleanup</button>
@@ -260,51 +260,4 @@ export function ApiSettingsScreen() {
       </div>
     </Screen>
   )
-}
-
-function UserDataBackup() {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-
-  async function download() {
-    setBusy(true)
-    setError('')
-    try {
-      const response = await fetch('/api/backup.zip', { cache: 'no-store' })
-      if (!response.ok || !response.headers.get('content-type')?.includes('application/zip')) {
-        throw new Error('The local backup could not be read.')
-      }
-      const url = URL.createObjectURL(await response.blob())
-      const link = document.createElement('a')
-      link.href = url
-      link.download = response.headers.get('content-disposition')?.match(/filename="([^"]+\.zip)"/)?.[1] ||
-        'EPhone-User-Data-' + new Date().toISOString().slice(0, 10) + '.zip'
-      document.body.append(link)
-      link.click()
-      link.remove()
-      setTimeout(() => URL.revokeObjectURL(url), 2000)
-    } catch {
-      setError('Could not download the ZIP. Check that the EPhone server is running and try again.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return <section className="local-backup">
-    <h2>User Data</h2>
-    <button type="button" className="phone-app-button" id="export-data-btn" disabled={busy} onClick={() => void download()}>
-      {busy ? 'Preparing ZIP…' : 'Export User Data ZIP'}
-    </button>
-    {error && <p role="alert">{error}</p>}
-    <details className="settings-disclosure">
-      <summary>How to restore</summary>
-      <ol>
-        <li>Stop EPhone and close its browser tabs.</li>
-        <li>Extract the ZIP. Keep a copy of your current <code>data/eephone.json</code>.</li>
-        <li>Copy the extracted <code>eephone.json</code> into the <code>data</code> folder or the folder set by <code>EEPHONE_DATA_DIR</code>.</li>
-        <li>Start EPhone and open it again.</li>
-      </ol>
-      <p>The ZIP includes API keys. Keep it private.</p>
-    </details>
-  </section>
 }

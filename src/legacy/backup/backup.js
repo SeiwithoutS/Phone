@@ -1,3 +1,5 @@
+import { logActivity } from '../../runtime/activity-log'
+import { openImageArchive } from '../../runtime/dependencies'
 import { normalizeWorldInfo } from '../../features/world-book/model'
 import { showCustomAlert, showCustomConfirm, bindDialogDismissal } from '../dialogs/dialogs.js'
 import { decodePortable } from '../../storage/portable'
@@ -143,6 +145,20 @@ export async function cleanupRedundantData() {
 const legacySingletons = new Set(['apiConfig', 'globalSettings', 'musicLibrary', 'qzoneSettings'])
 
 function readBackup(data) {
+    if (data?.version === 1 && data.tables && typeof data.tables === 'object') {
+        const records = new Map();
+        for (const table of runtime.db.tables) {
+            if (!Object.hasOwn(data.tables, table.name)) continue;
+            const rows = data.tables[table.name]?.rows;
+            if (!Array.isArray(rows) || rows.some(row => !row || (typeof row.id !== 'string' && !Number.isSafeInteger(row.id))) ||
+                new Set(rows.map(row => row.id)).size !== rows.length) throw new Error('Invalid backup table: ' + table.name);
+            records.set(table.name, decodePortable(rows));
+        }
+        if (!records.size && data.partial !== true && Object.keys(data.tables).length === 0) return { records, partial: false };
+        if (!records.size) throw new Error('No EPhone tables found.');
+        records.get('worldBooks')?.forEach(normalizeWorldInfo);
+        return { records, partial: data.partial === true };
+    }
     const wrapped = data?.data && Array.isArray(data.data.chats);
     const source = wrapped ? (data.version === 4 ? decodePortable(data.data) : data.data) : data;
     if (!Array.isArray(source?.chats)) throw new Error('This file is not an EPhone backup.');
@@ -159,32 +175,45 @@ function readBackup(data) {
         }
     }
     records.get('worldBooks')?.forEach(normalizeWorldInfo);
-    return records;
+    return { records, partial: false };
 }
 
 export async function handleSmartImport(file) {
     if (!file) return;
 
     try {
-        const tables = readBackup(JSON.parse(await file.text()));
+        const isZip = /\.zip$/i.test(file.name) || file.type === 'application/zip';
+        let contents;
+        if (isZip) {
+            const archive = await openImageArchive(file);
+            const entry = archive.file('eephone.json');
+            if (!entry) throw new Error('The ZIP must contain eephone.json.');
+            contents = await entry.async('string');
+        } else {
+            contents = await file.text();
+        }
+        const { records: tables, partial } = readBackup(JSON.parse(contents));
         const confirmed = await showCustomConfirm(
             'Restore Backup?',
-            'Restoring this backup will replace your current data. Continue?',
+            partial ? 'Restore the data categories included in this file? Their current records will be replaced.'
+                : 'Restoring this backup will replace your current data. Continue?',
             { confirmButtonClass: 'btn-danger' }
         );
         if (!confirmed) return;
         const db = runtime.db;
         await db.transaction('rw', db.tables, async tx => {
             for (const table of tx.tables) {
-                if (table.name === 'deviceSettings' && !tables.has(table.name)) continue;
+                if (!tables.has(table.name) && (partial || table.name === 'deviceSettings')) continue;
                 await table.clear();
                 const records = tables.get(table.name);
                 if (records?.length) await table.bulkPut(records);
             }
         });
+        logActivity('backup.restore', 'ok');
         await showCustomAlert('Import Complete', 'Backup restored. EPhone will reload to display your data.');
         window.location.reload();
     } catch (error) {
+        logActivity('backup.restore', 'failed');
         await showCustomAlert('Import Failed', 'Could not read or apply the file: ' + error.message);
     }
 }
@@ -192,7 +221,7 @@ export async function handleSmartImport(file) {
 export function updateBackButtonUnreadCount() {
   const unreadChats = Object.values(runtime.state.chats).reduce((total, chat) =>
     chat.id === runtime.state.activeChatId ? total : total + (chat.unreadCount || 0), 0)
-  const count = unreadChats + (runtime.unreadPostsCount || 0)
+  const count = unreadChats
   const back = document.getElementById('back-to-list-btn')
   if (!back) return
 
@@ -217,15 +246,4 @@ document.getElementById('offline-mode-toggle').addEventListener('change', (e) =>
     document.getElementById('offline-mode-options').style.display = e.target.checked ? 'block' : 'none';
 });
 
-document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-data-input').click());
-
-document.getElementById('time-perception-toggle').addEventListener('change', (e) => {
-        document.getElementById('time-zone-group').style.display = e.target.checked ? 'block' : 'none';
-    });
-
-document.getElementById('import-data-input').addEventListener('change', event => {
-    const file = event.target.files[0];
-    event.target.value = '';
-    void handleSmartImport(file);
-});
 }

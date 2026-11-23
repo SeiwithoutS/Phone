@@ -48,6 +48,8 @@ export function makeLoreEntry(raw: unknown = {}, index = 0): LoreEntry {
 
 export function readLoreBook(raw: unknown, fallbackName: string): LoreBook | undefined {
   const book = record(raw)
+  if (book.type === 'EPhoneLoreBook' && (book.version !== 1 || !Array.isArray(book.entries) ||
+    !book.entries.every(entry => typeof record(entry).content === 'string'))) return
   const entries = Array.isArray(book.entries) ? book.entries : Object.values(record(book.entries))
   if (!entries.length && !('entries' in book)) return
   const depth = Number(book.scan_depth ?? book.scanDepth)
@@ -55,7 +57,7 @@ export function readLoreBook(raw: unknown, fallbackName: string): LoreBook | und
     id: crypto.randomUUID(),
     name: string(book.name).trim() || fallbackName,
     scanDepth: Number.isFinite(depth) ? Math.min(100, Math.max(1, Math.trunc(depth))) : 5,
-    content: entries.map(makeLoreEntry).filter(entry => entry.content.trim()),
+    content: entries.map(makeLoreEntry).filter(entry => book.type === 'EPhoneLoreBook' || entry.content.trim()),
   }
 }
 

@@ -173,10 +173,13 @@ export async function loadAppearancePresetsDropdown() {
         globalChatBackground: runtime.state.globalSettings.globalChatBackground,
         appIcons: runtime.state.globalSettings.appIcons,
         cphoneAppIcons: runtime.state.globalSettings.cphoneAppIcons,
+        appNames: runtime.state.globalSettings.appNames,
+        cphoneAppNames: runtime.state.globalSettings.cphoneAppNames,
         chatActionButtonsOrder: runtime.state.globalSettings.chatActionButtonsOrder,
         theme: preferences.getItem('ephone-theme') || 'light',
         showStatusBar: runtime.state.globalSettings.showStatusBar,
         notificationSoundUrl: runtime.state.globalSettings.notificationSoundUrl,
+        messageSounds: runtime.state.globalSettings.messageSounds,
         widgetData: runtime.state.globalSettings.widgetData,
     };
 
@@ -244,10 +247,13 @@ export async function saveAppearancePreset() {
         globalChatBackground: runtime.state.globalSettings.globalChatBackground,
         appIcons: runtime.state.globalSettings.appIcons,
         cphoneAppIcons: runtime.state.globalSettings.cphoneAppIcons,
+        appNames: runtime.state.globalSettings.appNames,
+        cphoneAppNames: runtime.state.globalSettings.cphoneAppNames,
         chatActionButtonsOrder: runtime.state.globalSettings.chatActionButtonsOrder,
         theme: preferences.getItem('ephone-theme') || 'light',
         showStatusBar: runtime.state.globalSettings.showStatusBar,
         notificationSoundUrl: runtime.state.globalSettings.notificationSoundUrl,
+        messageSounds: runtime.state.globalSettings.messageSounds,
         widgetData: runtime.state.globalSettings.widgetData,
     };
 

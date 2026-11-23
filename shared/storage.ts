@@ -1,4 +1,5 @@
 export const schema = {
+  bankTransfers: { autoIncrement: false },
   chats: { autoIncrement: false },
   homeWidgets: { autoIncrement: false },
   socialPosts: { autoIncrement: false },
@@ -22,6 +23,7 @@ export const schema = {
   callRecords: { autoIncrement: true },
   shoppingProducts: { autoIncrement: true },
   shoppingCategories: { autoIncrement: true },
+  marketOrders: { autoIncrement: false },
   apiPresets: { autoIncrement: true },
   appearancePresets: { autoIncrement: true },
   stickerCategories: { autoIncrement: true },

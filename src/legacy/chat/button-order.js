@@ -3,6 +3,13 @@ import { runtime } from '../runtime/state.js'
 import { handleDataClearNext, openDataClearWizard } from '../backup/clear-data.js'
 import { handlePresetImport } from '../presets/presets.js'
 
+function getChatToolOrder() {
+    const defaults = runtime.DEFAULT_BUTTON_ORDER;
+    const saved = runtime.state.globalSettings.chatActionButtonsOrder;
+    const available = new Set(defaults);
+    return [...new Set([...(Array.isArray(saved) ? saved.filter(id => available.has(id)) : []), ...defaults])];
+}
+
 export function renderButtonOrderEditor() {
     const editor = document.getElementById('button-order-editor');
     if (!editor) return;
@@ -11,7 +18,7 @@ export function renderButtonOrderEditor() {
 
     
     
-    let buttonOrder = runtime.state.globalSettings.chatActionButtonsOrder || runtime.DEFAULT_BUTTON_ORDER;
+    const buttonOrder = getChatToolOrder();
     
     buttonOrder.forEach(buttonId => {
         const originalButton = document.getElementById(buttonId);
@@ -115,10 +122,7 @@ export async function saveButtonOrder() {
 }
 
 export function applyButtonOrder() {
-    const buttonOrder = runtime.state.globalSettings.chatActionButtonsOrder;
-    if (!buttonOrder || !Array.isArray(buttonOrder) || buttonOrder.length === 0) {
-        return; 
-    }
+    const buttonOrder = getChatToolOrder();
 
     const container = document.getElementById('chat-input-actions-top');
     if (!container) return;
@@ -126,7 +130,7 @@ export function applyButtonOrder() {
     
     buttonOrder.forEach(buttonId => {
         const button = document.getElementById(buttonId);
-        if (button) {
+        if (button?.parentElement === container) {
             container.appendChild(button);
         }
     });

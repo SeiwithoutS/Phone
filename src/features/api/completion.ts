@@ -1,7 +1,9 @@
+import { logActivity } from '../../runtime/activity-log'
 import { runtime } from '../../legacy/runtime/state.js'
 import { getRandomValue } from '../../runtime/helpers'
 import { assembleContext, chatContextScope, contextConfig, recordContext } from '../context/context'
 import { openAiUrl } from './endpoints'
+import { chatFeatureContext } from '../chat/chat-features'
 import { maySendImages } from './image-input'
 import type { ContextInput } from '../context/context'
 import type { PromptMessage } from '../context/budget'
@@ -47,10 +49,16 @@ export async function requestContextCompletion(chat: DirectChat | GroupChat | un
   const scope = input.scope ?? (chat && chatContextScope(chat))
   const config = contextConfig()
   const requestOptions = { ...options, outputTokens: config.response }
-  const plan = await assembleContext(chat, input, runtime.db, config)
+  const featureContext = chatFeatureContext(chat, ['QQ reply', 'QQ character background'].includes(input.task ?? ''))
+  const plan = await assembleContext(chat, featureContext ? { ...input, instructions: input.instructions + '\n\n' + featureContext } : input, runtime.db, config)
   if (plan.error) throw new Error(plan.error)
   if (scope) recordContext(scope, plan, input.task ?? 'Chat completion')
-  const primary = await sendCompletion(plan.messages, requestOptions)
+  const started = performance.now()
+  const primary = await sendCompletion(plan.messages, requestOptions).catch((error: unknown) => {
+    logActivity('completion', 'failed', started)
+    throw error
+  })
+  logActivity('completion', primary.ok ? 'ok' : 'failed', started)
   const count = options.swipes ? generationSettings().swipes - 1 : 0
   if (!primary.ok || !count) return primary
   const result = await primary.json()

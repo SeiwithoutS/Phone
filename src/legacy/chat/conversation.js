@@ -1,4 +1,6 @@
-import { escapeHtml } from '../../runtime/files'
+import { pollVotes } from '../../features/chat/chat-features'
+import { bankAmount, bankCurrency } from '../../features/bank/bank'
+import { escapeHtml, imageSource } from '../../runtime/files'
 import { addMessageTools } from '../../features/chat/replies'
 import { characterAvatar } from '../../features/characters/gallery'
 import { sharedCardHtml } from '../../features/chat/shared-cards'
@@ -23,6 +25,17 @@ import { runtime } from '../runtime/state.js'
 
 let renderVersion = 0;
 
+export function updateChatHeaderStatus(chat) {
+    const container = document.getElementById('chat-header-status');
+    const visible = !chat.isGroup && chat.settings.showCharacterStatus !== false;
+    container.style.display = visible ? 'flex' : 'none';
+    document.getElementById('chat-header-title-wrapper').style.justifyContent = visible ? 'flex-start' : 'center';
+    if (visible) {
+        container.querySelector('.status-text').textContent = chat.status?.text || 'Online';
+        container.classList.toggle('busy', Boolean(chat.status?.isBusy));
+    }
+}
+
 export async function renderChatInterface(chatId, preserveScroll = false) {
             applyButtonOrder();
             cleanupWaimaiTimers();
@@ -44,18 +57,7 @@ export async function renderChatInterface(chatId, preserveScroll = false) {
 
             document.getElementById('chat-header-title').textContent = chat.name;
             document.getElementById('qq-branch-status').hidden = !chat.branchFrom;
-            const statusContainer = document.getElementById('chat-header-status');
-            const statusTextEl = statusContainer.querySelector('.status-text');
-
-            if (chat.isGroup) {
-                statusContainer.style.display = 'none';
-                document.getElementById('chat-header-title-wrapper').style.justifyContent = 'center';
-            } else {
-                statusContainer.style.display = 'flex';
-                document.getElementById('chat-header-title-wrapper').style.justifyContent = 'flex-start';
-                statusTextEl.textContent = chat.status?.text || "Online";
-                statusContainer.classList.toggle('busy', chat.status?.isBusy || false);
-            }
+            updateChatHeaderStatus(chat);
 
             const chatScreen = document.getElementById('chat-interface-screen');
             const individualBg = chat.settings.background;
@@ -415,7 +417,23 @@ export async function createMessageElement(msg, chat, interactive = false) {
         
             let rawContent = msg.content; 
 
-            if (msg.isOpening || msg.plainText) {
+            if (msg.type === 'market_gift') {
+                bubble.classList.add('is-card-like', 'is-market-order');
+                const note = String(msg.giftNote ?? '');
+                const contents = String(rawContent ?? '');
+                const message = note && contents.endsWith('\n' + note) ? contents.slice(0, -note.length - 1) : contents;
+                contentHtml = `<button type="button" class="market-chat-card market-gift-card" data-market-order="${escapeHtml(String(msg.orderId ?? ''))}" data-gift-style="${escapeHtml(String(msg.giftStyle ?? 'Blue'))}">
+                    <strong>Gift card</strong><span>${escapeHtml(message)}</span>
+                    ${note ? `<em>${escapeHtml(note)}</em>` : ''}
+                    <small>Track gift</small>
+                </button>`;
+            } else if (msg.type === 'market_order') {
+                bubble.classList.add('is-card-like', 'is-market-order');
+                contentHtml = `<button type="button" class="market-chat-card" data-market-order="${escapeHtml(String(msg.orderId ?? ''))}">
+                    <strong>Marketplace order</strong><span>${escapeHtml(String(rawContent ?? ''))}</span>
+                    <small>${escapeHtml(bankAmount(Number(msg.orderTotal), bankCurrency(runtime.db)))} · View order</small>
+                </button>`;
+            } else if (msg.isOpening || msg.plainText) {
                 contentHtml = parseMarkdown(escapeHtml(String(rawContent))).replace(/\n/g, '<br>');
             } else if (typeof rawContent === 'string' && rawContent.trim().startsWith('<') && rawContent.trim().endsWith('>')) {
                 contentHtml = rawContent;
@@ -514,7 +532,7 @@ export async function createMessageElement(msg, chat, interactive = false) {
             <div class="voice-transcript"></div>
         `;
     }
-}else if (msg.type === 'transfer') {
+} else if (msg.type === 'transfer') {
                     bubble.classList.add('is-transfer', 'is-card-like');
                      let titleText, noteText;
                     const myNickname = chat.isGroup ? (chat.settings.myNickname || '我') : '我';
@@ -528,8 +546,16 @@ export async function createMessageElement(msg, chat, interactive = false) {
                         else if (msg.receiverName === myNickname) { titleText = `转账给 ${myNickname}`; if (msg.status === 'accepted') noteText = '你已收款'; else if (msg.status === 'declined') noteText = '你已拒收'; else { bubble.style.cursor = 'pointer'; bubble.dataset.status = 'pending'; noteText = msg.note || '点击处理'; } } 
                         else { titleText = `转账: ${senderDisplayName} → ${receiverDisplayName}`; noteText = msg.note || '群聊内转账'; }
                     }
-                    const heartIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="vertical-align: middle;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>`;
-                    contentHtml = `<div class="transfer-card"><div class="transfer-title">${heartIcon} ${titleText}</div><div class="transfer-amount">¥ ${Number(msg.amount).toFixed(2)}</div><div class="transfer-note">${noteText}</div></div>`;
+                    if (msg.bankTransferId) {
+                        titleText = isUser ? 'Sent to ' + receiverDisplayName : 'Received from ' + senderDisplayName;
+                        noteText = msg.note || 'Completed';
+                    }
+                    const transferAmount = bankAmount(Math.round(Number(msg.amount) * 100), bankCurrency(runtime.db));
+                    contentHtml = `<div class="transfer-card">
+                        <div class="transfer-title">${escapeHtml(String(titleText))}</div>
+                        <div class="transfer-amount">${escapeHtml(transferAmount)}</div>
+                        <div class="transfer-note">${escapeHtml(String(noteText))}</div>
+                    </div>`;
                 } else if (msg.type === 'waimai_request') {
                     bubble.classList.add('is-waimai-request', 'is-card-like');
                      if (msg.status === 'paid' || msg.status === 'rejected') bubble.classList.add(`status-${msg.status}`);
@@ -586,12 +612,24 @@ export async function createMessageElement(msg, chat, interactive = false) {
                     contentHtml = `<div class="red-packet-card ${cardClass}"><div class="rp-header"><img src="https://files.catbox.moe/lo9xhc.png" class="rp-icon"><span class="rp-greeting">${msg.greeting || '恭喜发财，大吉大利！'}</span></div><div class="rp-type">${typeText}</div>${claimedInfoHtml}</div>`;
                 } else if (msg.type === 'poll') {
                     bubble.classList.add('is-poll', 'is-card-like');
-                    const pollQuestionText = msg.question || msg.content || '(无标题投票)';
-                    let totalVotes = 0; const voteCounts = {}; for (const option in msg.votes) { const count = msg.votes[option].length; voteCounts[option] = count; totalVotes += count; }
-                    const myOriginalName = runtime.state.qzoneSettings.nickname || '{{user}}'; let myVote = null; for (const option in msg.votes) { if (msg.votes[option].includes(myOriginalName)) { myVote = option; break; } }
-                    let optionsHtml = '<div class="poll-options-list">'; msg.options.forEach(optionText => { const count = voteCounts[optionText] || 0; const percentage = totalVotes > 0 ? (count / totalVotes) * 100 : 0; const isVotedByMe = myVote === optionText; optionsHtml += `<div class="poll-option-item ${isVotedByMe ? 'voted' : ''}" data-option="${optionText}"><div class="poll-option-bar" style="width: ${percentage}%;"></div><div class="poll-option-content"><span class="poll-option-text">${optionText}</span><span class="poll-option-votes">${count} 票</span></div></div>`; }); optionsHtml += '</div>';
-                    let footerHtml = msg.isClosed ? `<div class="poll-footer"><span class="poll-total-votes">${totalVotes} votes</span><button class="poll-action-btn">View Results</button></div>` : `<div class="poll-footer"><span class="poll-total-votes">${totalVotes} votes</span><button class="poll-action-btn">End Poll</button></div>`;
-                    contentHtml = `<div class="poll-card ${msg.isClosed ? 'closed' : ''}" data-poll-timestamp="${msg.timestamp}"><div class="poll-question">${pollQuestionText}</div>${optionsHtml}${footerHtml}</div>`;
+                    const question = escapeHtml(String(msg.question || msg.content || 'Poll'));
+                    const options = Array.isArray(msg.options) ? msg.options : [];
+                    const totalVotes = options.reduce((sum, option) => sum + pollVotes(msg.votes, option).length, 0);
+                    const voter = chat.isGroup ? (chat.settings.myNickname || '我') : '我';
+                    const rows = options.map(option => {
+                        const votes = pollVotes(msg.votes, option);
+                        const percent = totalVotes ? 100 * votes.length / totalVotes : 0;
+                        const label = escapeHtml(String(option));
+                        return `<button type="button" class="poll-option-item ${votes.includes(voter) ? 'voted' : ''}" data-option="${label}"
+                            aria-pressed="${votes.includes(voter)}" ${msg.isClosed ? 'disabled' : ''}>
+                            <span class="poll-option-bar" style="width: ${percent}%;"></span>
+                            <span class="poll-option-content"><span class="poll-option-text">${label}</span>
+                            <span class="poll-option-votes">${votes.length}</span></span></button>`;
+                    });
+                    contentHtml = `<div class="poll-card ${msg.isClosed ? 'closed' : ''}" data-poll-timestamp="${Number(msg.timestamp)}">
+                        <div class="poll-question">${question}</div><div class="poll-options-list">${rows.join('')}</div>
+                        <div class="poll-footer"><span class="poll-total-votes">${totalVotes} votes</span>
+                        <button type="button" class="poll-action-btn">${msg.isClosed ? 'View Results' : 'End Poll'}</button></div></div>`;
                 } else if (msg.type === 'gift') {
                     bubble.classList.add('is-gift', 'is-card-like');
                      let headerText; const myNicknameForGift = chat.settings.myNickname || '我';
@@ -604,7 +642,7 @@ export async function createMessageElement(msg, chat, interactive = false) {
                         if (isUser) { headerText = `送给 ${chat.name} 的礼物`; } 
                         else { const recipientDisplayName = chat.settings.myNickname || '你'; headerText = `送给 ${recipientDisplayName} 的礼物`; }
                     }
-                    const previewItems = msg.items.slice(0, 3); let previewHtml = ''; previewItems.forEach(item => { previewHtml += `<div class="gift-preview-item"><img src="${item.imageUrl}" class="gift-preview-img"><span class="gift-preview-name">${item.name}</span><span class="gift-preview-quantity">x${item.quantity}</span></div>`; });
+                    const previewItems = msg.items.slice(0, 3); let previewHtml = ''; previewItems.forEach(item => { previewHtml += `<div class="gift-preview-item"><img src="${escapeHtml(imageSource(String(item.imageUrl ?? "")))}" class="gift-preview-img"><span class="gift-preview-name">${escapeHtml(String(item.name))}</span><span class="gift-preview-quantity">x${item.quantity}</span></div>`; });
                     let moreItemsText = ''; if (msg.items.length > 3) { moreItemsText = ` 等${msg.items.length}件商品`; }
                     contentHtml = `<div class="gift-card"><div class="gift-header"><svg class="gift-header-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18a4 4 0 0 0-7.64 0H8a4 4 0 0 0-4 4v2h20V10a4 4 0 0 0-4-4zM8 4a2 2 0 1 1-2 2a2 2 0 0 1 2-2zm12 0a2 2 0 1 1-2 2a2 2 0 0 1 2-2zM4 14v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6H4z"></path></svg><span class="gift-header-text">${headerText}</span></div><div class="gift-items-preview">${previewHtml}</div><div class="gift-footer">${msg.items.length} items${moreItemsText} · View</div></div>`;
                 }
@@ -681,8 +719,8 @@ if (lastMessage && (msg.timestamp - lastMessage.timestamp > 600000)) {
             if (!messageEl) return;
     
     
-    if (msg.role === 'assistant' && !isInitialLoad) {
-        playNotificationSound();
+    if (!isInitialLoad && ['assistant', 'ai', 'user'].includes(msg.role)) {
+        playNotificationSound(msg.role === 'user' ? 'sent' : 'received');
     }
     
             if (!isInitialLoad) {
@@ -747,7 +785,7 @@ updateBackButtonUnreadCount();
                 triggerAiResponse();
             }
             
-            document.getElementById('send-poll-btn').style.display = isGroup ? 'flex' : 'none';
+            document.getElementById('send-poll-btn').style.display = 'flex';
         }
 
 export function setAvatarActingState(chatId, isActing) {

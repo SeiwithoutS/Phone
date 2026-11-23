@@ -1,5 +1,7 @@
+import { escapeHtml } from '../../runtime/files'
+import { collectionCard } from './collection-actions.js'
 import { runtime } from '../runtime/state.js'
-import { addLongPressListener, showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
+import { showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
 import { showScreen } from '../../app/routes'
 import { cancelReplyMode } from '../chat/attachments.js'
 import { startReplyToMessage } from '../chat/messages.js'
@@ -11,7 +13,7 @@ export function switchWorldBookCategory(categoryId) {
                 tab.classList.toggle('active', tab.dataset.categoryId === categoryId);
             });
             
-            document.querySelectorAll('.world-book-category-pane').forEach(pane => {
+            document.querySelectorAll('#world-book-content-container .world-book-category-pane').forEach(pane => {
                 pane.classList.toggle('active', pane.dataset.categoryId === categoryId);
             });
         }
@@ -90,101 +92,19 @@ export async function renderWorldBookScreen() {
                     contentPreview = book.content;
                 }
         
-                const card = document.createElement('div');
-                card.className = 'world-book-card';
-                card.innerHTML = `
-                    <div class="card-title">${book.name}</div>
-                    <div class="card-content-preview">${contentPreview}</div>
-                `;
-                
-                
-                const cardClickHandler = () => openWorldBookEditor(book.id);
-                const cardLongPressHandler = async () => { 
-                    const confirmed = await showCustomConfirm("Delete Mini Prompts", `Delete “${book.name}”?`, { confirmButtonClass: 'btn-danger' });
-                    if (confirmed) { 
-                        await runtime.db.worldBooks.delete(book.id); 
-                        runtime.state.worldBooks = runtime.state.worldBooks.filter(wb => wb.id !== book.id); 
-                        renderWorldBookScreen(); 
-                    } 
-                };
-        
-                card.addEventListener('click', cardClickHandler);
-                addLongPressListener(card, cardLongPressHandler);
-        
-                
-                const clonedCardForAll = card.cloneNode(true);
-                clonedCardForAll.addEventListener('click', cardClickHandler);
-                addLongPressListener(clonedCardForAll, cardLongPressHandler);
-                allPane.appendChild(clonedCardForAll);
-                
-                
-                const categoryKey = book.categoryId ? String(book.categoryId) : 'uncategorized';
-                const targetPane = contentContainer.querySelector(`.world-book-category-pane[data-category-id="${categoryKey}"]`);
-                if (targetPane) {
-                    targetPane.appendChild(card);
-                }
+                const category = categories.find(item => item.id === book.categoryId);
+                const card = () => collectionCard('worldBooks', book, contentPreview, category, openWorldBookEditor, renderWorldBookScreen);
+                allPane.appendChild(card());
+                const key = book.categoryId ? String(book.categoryId) : 'uncategorized';
+                [...contentContainer.children].find(pane => pane.dataset.categoryId === key)?.appendChild(card());
             });
         
             
-            document.querySelectorAll('.world-book-tab').forEach(tab => {
+            const tabs = [...tabsContainer.querySelectorAll('.world-book-tab')];
+            switchWorldBookCategory(tabs.some(tab => tab.dataset.categoryId === selected) ? selected : 'all');
+            tabs.forEach(tab => {
                 tab.addEventListener('click', () => switchWorldBookCategory(tab.dataset.categoryId));
             });
-        }
-
-export function createWorldBookGroup(groupName, books) {
-            const groupContainer = document.createElement('div');
-            groupContainer.className = 'world-book-group-container';
-            
-            groupContainer.innerHTML = `
-                <div class="world-book-group-header">
-                    <span class="arrow">▼</span>
-                    <span class="group-name">${groupName}</span>
-                </div>
-                <div class="world-book-group-content"></div>
-            `;
-        
-            const contentEl = groupContainer.querySelector('.world-book-group-content');
-            books.sort((a,b) => a.name.localeCompare(b.name, 'zh-CN')); 
-            
-            books.forEach(book => {
-                
-                let contentPreview = '暂无内容...';
-                
-                
-                if (Array.isArray(book.content) && book.content.length > 0) {
-                    
-                    
-                    const firstEntry = book.content[0];
-                    contentPreview = firstEntry.comment || firstEntry.content || '';
-                } 
-                
-                else if (typeof book.content === 'string' && book.content.trim() !== '') {
-                    
-                    contentPreview = book.content;
-                }
-                
-        
-                const item = document.createElement('div');
-                item.className = 'list-item';
-                item.dataset.bookId = book.id;
-                
-                item.innerHTML = `
-                    <div class="item-title">${book.name}</div>
-                    <div class="item-content">${String(contentPreview).substring(0, 50)}</div>
-                `;
-                item.addEventListener('click', () => openWorldBookEditor(book.id));
-                addLongPressListener(item, async () => { 
-                    const confirmed = await showCustomConfirm("Delete Mini Prompts", `Permanently delete “${book.name}”?`, { confirmButtonClass: 'btn-danger' });
-                    if (confirmed) { 
-                        await runtime.db.worldBooks.delete(book.id); 
-                        runtime.state.worldBooks = runtime.state.worldBooks.filter(wb => wb.id !== book.id); 
-                        renderWorldBookScreen(); 
-                    } 
-                });
-                contentEl.appendChild(item);
-            });
-        
-            return groupContainer;
         }
 
 function openWorldBookEditor(bookId) {
@@ -251,7 +171,7 @@ export async function openWorldBookDeletionModal() {
             item.dataset.bookId = book.id;
             item.innerHTML = `
                 <div class="checkbox"></div>
-                <span class="name">${book.name}</span>
+                <span class="name">${escapeHtml(String(book.name))}</span>
             `;
             listEl.appendChild(item);
         });
@@ -329,7 +249,7 @@ export async function renderCategoryListInManager() {
                 const item = document.createElement('div');
                 item.className = 'existing-group-item'; 
                 item.innerHTML = `
-                    <span class="group-name">${cat.name}</span>
+                    <span class="group-name">${escapeHtml(String(cat.name))}</span>
                     <span class="delete-group-btn" data-id="${cat.id}">×</span>
                 `;
                 listEl.appendChild(item);

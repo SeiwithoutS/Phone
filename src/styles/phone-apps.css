@@ -17,25 +17,15 @@
 .widget-list-header > :last-child { justify-self: end; }
 
 .phone-feature {
-  --feature-bg: #f5f7fb;
-  --feature-panel: #fff;
-  --feature-text: #192a40;
-  --feature-muted: #4c5f76;
-  --feature-border: #c9d3df;
-  --feature-accent: #204f9a;
-  --feature-error: #9a2630;
+  --feature-bg: var(--ui-canvas);
+  --feature-panel: var(--ui-surface);
+  --feature-text: var(--ui-text);
+  --feature-muted: var(--ui-muted);
+  --feature-border: var(--ui-divider);
+  --feature-accent: var(--ui-accent);
+  --feature-error: var(--ui-danger);
   background: var(--feature-bg);
   color: var(--feature-text);
-}
-
-#phone-screen.dark-mode .phone-feature {
-  --feature-bg: #151923;
-  --feature-panel: #202735;
-  --feature-text: #edf4fc;
-  --feature-muted: #b4c1d3;
-  --feature-border: #556177;
-  --feature-accent: #a9ceff;
-  --feature-error: #ffacb2;
 }
 
 #phone-screen .phone-feature-header, #phone-screen .widget-editor .header {
@@ -83,7 +73,7 @@
   font-size: 16px;
   user-select: text;
 }
-.phone-app-stack input[type=checkbox] { width: 18px; height: 18px; margin: 0; accent-color: #497cd0; }
+.phone-app-stack input[type=checkbox] { width: 18px; height: 18px; margin: 0; accent-color: var(--ui-accent); }
 .phone-app-stack textarea { resize: vertical; }
 .phone-app-stack textarea.phone-app-code { font-family: ui-monospace, monospace; }
 .phone-app-stack input[type=color] { width: 62px; padding: 4px; }
@@ -95,19 +85,22 @@
 .phone-app-button {
   min-height: 44px;
   padding: 7px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--feature-border, #becfe1);
-  background: var(--feature-panel, #f8fbff);
-  color: var(--feature-accent, #204f9a);
+  border-radius: 12px;
+  border: 1px solid var(--feature-border, var(--ui-divider));
+  background: var(--feature-panel, var(--ui-surface));
+  color: var(--feature-accent, var(--ui-accent));
   font: inherit;
   font-size: .88rem;
   font-weight: 650;
   cursor: pointer;
   overflow-wrap: anywhere;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
-.phone-app-button.primary { border-color: #214f98; background: #214f98; color: #fff; }
-.phone-app-button.danger { color: var(--feature-error, #9a2630); }
-.phone-app-button.compact { align-self: flex-start; }
+.phone-app-button:not(:disabled):hover { background: var(--ui-accent-soft); }
+.phone-app-button.primary { border-color: var(--ui-accent); background: var(--ui-accent); color: var(--ui-on-accent); }
+.phone-app-button.primary:not(:disabled):hover { background: color-mix(in srgb, var(--ui-accent) 88%, var(--ui-text)); }
+.phone-app-button.danger { color: var(--feature-error, var(--ui-danger)); }
+.phone-app-button.compact { align-self: flex-start; min-height: 38px; }
 .phone-app-button:disabled { opacity: .62; cursor: default; }
 .phone-app-button[aria-pressed=true], .phone-app-button[aria-current=true] { border-color: var(--feature-accent); }
 .phone-app-list-row, .phone-app-profile, .social-post-heading { display: flex; align-items: center; text-align: left; gap: 10px; min-width: 0; }

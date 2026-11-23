@@ -10,7 +10,7 @@ export function WorldBookScreen() {
         <h1 id="mini-prompts-title">Mini Prompts</h1>
         <div className="mini-prompts-tools" role="group" aria-label="Mini Prompts tools">
           <IconButton icon="upload" label="Import Mini Prompts" id="import-world-book-btn" />
-          <IconButton icon="download" label="Export Mini Prompts" id="export-world-book-btn" />
+          <IconButton icon="download" label="Export all Mini Prompts" id="export-world-book-btn" />
           <IconButton icon="folder" label="Categories" id="manage-world-book-categories-btn" />
           <IconButton icon="plus" label="Create Mini Prompts" id="add-world-book-btn" />
         </div>

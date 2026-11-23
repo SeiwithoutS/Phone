@@ -1,3 +1,6 @@
+import { escapeHtml } from '../../runtime/files'
+import { chatFeatureSwitches, parseCalendarDates } from '../../features/chat/chat-features'
+import { categoryKey } from '../../features/stickers/library'
 import { loadThemePresetsDropdown } from '../appearance/presets.js'
 import { applyScopedCss, updateSettingsPreview } from '../appearance/theme.js'
 import { renderChatInterface } from './conversation.js'
@@ -7,7 +10,7 @@ import { renderGroupMemberSettings, updateWorldBookSelectionDisplay } from './se
 import { showCustomConfirm } from '../dialogs/dialogs.js'
 import { applyLyricsBarPosition } from '../music/player.js'
 import { renderOfflinePresetSelector } from '../presets/presets.js'
-import { openStickerPicker } from '../stickers/stickers.js'
+import { closeStickerPicker, openStickerPicker } from '../stickers/stickers.js'
 import { showScreen } from '../../app/routes'
 import { controls } from '../runtime/state.js'
 import { runtime } from '../runtime/state.js'
@@ -19,11 +22,20 @@ controls.worldBookSelectBox = document.querySelector('.custom-multiselect .selec
 
 controls.worldBookCheckboxesContainer = document.getElementById('world-book-checkboxes-container')
 
-controls.worldBookSelectBox.addEventListener('click', (e) => { e.stopPropagation(); controls.worldBookCheckboxesContainer.classList.toggle('visible'); controls.worldBookSelectBox.classList.toggle('expanded'); });
+function setWorldBookPicker(open) {
+    controls.worldBookCheckboxesContainer.classList.toggle('visible', open);
+    controls.worldBookSelectBox.classList.toggle('expanded', open);
+    controls.worldBookSelectBox.setAttribute('aria-expanded', String(open));
+}
+
+controls.worldBookSelectBox.addEventListener('click', () =>
+    setWorldBookPicker(controls.worldBookSelectBox.getAttribute('aria-expanded') !== 'true'));
 
 document.getElementById('world-book-checkboxes-container').addEventListener('change', updateWorldBookSelectionDisplay);
 
-window.addEventListener('click', (e) => { if (!document.querySelector('.custom-multiselect').contains(e.target)) { controls.worldBookCheckboxesContainer.classList.remove('visible'); controls.worldBookSelectBox.classList.remove('expanded'); } });
+window.addEventListener('click', event => {
+    if (!controls.worldBookSelectBox.parentElement.contains(event.target)) setWorldBookPicker(false);
+});
 
 document.getElementById('chat-settings-btn').addEventListener('click', async () => {
             loadThemePresetsDropdown(); 
@@ -33,7 +45,14 @@ document.getElementById('chat-settings-btn').addEventListener('click', async () 
             const characterDetails = document.getElementById('qq-character-details');
             characterDetails.hidden = Boolean(isGroup);
             characterDetails.open = false;
-            document.getElementById('qq-appearance-details').open = false;
+            document.getElementById('ai-avatar-preview').hidden = Boolean(isGroup);
+            document.getElementById('group-avatar-preview').hidden = !isGroup;
+            document.getElementById('chat-settings-contact-name').textContent = chat.name;
+            document.getElementById('chat-settings-error').textContent = '';
+            document.getElementById('chat-location-group').hidden = Boolean(isGroup);
+            for (const disclosure of document.querySelectorAll('.chat-settings-body details')) disclosure.open = false;
+            setWorldBookPicker(false);
+            document.querySelector('.chat-settings-body').scrollTop = 0;
             const groupNai = document.getElementById('group-nai-settings-group');
             const singleNai = document.getElementById('nai-character-settings-group');
             groupNai.style.display = isGroup ? 'block' : 'none';
@@ -61,6 +80,12 @@ document.getElementById('chat-settings-btn').addEventListener('click', async () 
             document.getElementById('offline-mode-group').style.display = isGroup ? 'none' : 'block';
             document.getElementById('ai-cooldown-group').style.display = isGroup ? 'none' : 'block';
             document.getElementById('group-cooldown-group').style.display = isGroup ? 'block' : 'none';
+            document.getElementById('chat-character-features').hidden = isGroup;
+            for (const [id, [key, fallback]] of Object.entries(chatFeatureSwitches)) {
+                document.getElementById(id).checked = chat.settings[key] ?? fallback;
+            }
+            document.getElementById('chat-character-location').value = chat.settings.characterLocation || '';
+            document.getElementById('chat-holiday-dates').value = chat.settings.holidayDates || '';
             document.getElementById('chat-name-input').value = chat.name;
             document.getElementById('my-persona').value = chat.settings.myPersona;
             document.getElementById('my-avatar-preview').src = chat.settings.myAvatar || (isGroup ? runtime.defaultMyGroupAvatar : runtime.defaultAvatar);
@@ -84,14 +109,15 @@ document.getElementById('group-background-activity-group').style.display = isGro
 
 
 const timePerceptionToggle = document.getElementById('time-perception-toggle');
-const timeZoneGroup = document.getElementById('time-zone-group');
 timePerceptionToggle.checked = chat.settings.enableTimePerception;
-timeZoneGroup.style.display = timePerceptionToggle.checked ? 'block' : 'none';
 
 
 const timezoneSelect = document.getElementById('time-zone-select');
 
 const timezones = Intl.supportedValuesOf('timeZone');
+const selectedZone = chat.settings.timeZone || 'Asia/Shanghai';
+if (!timezones.includes(selectedZone)) timezones.push(selectedZone);
+document.getElementById('time-zone-search-input').value = '';
 timezoneSelect.innerHTML = ''; 
 timezones.forEach(tz => {
     const option = document.createElement('option');
@@ -100,7 +126,7 @@ timezones.forEach(tz => {
     timezoneSelect.appendChild(option);
 });
 
-timezoneSelect.value = chat.settings.timeZone || 'Asia/Shanghai';
+timezoneSelect.value = selectedZone;
 if (isGroup) {
     
     document.getElementById('group-background-activity-switch').checked = chat.settings.enableBackgroundActivity;
@@ -154,10 +180,27 @@ document.getElementById('enable-tts-switch').checked = chat.settings.enableTts !
             const worldBookCheckboxesContainer = document.getElementById('world-book-checkboxes-container');
             worldBookCheckboxesContainer.innerHTML = ''; 
         
-            const [allCategories, allBooks] = await Promise.all([
+            const [allCategories, allBooks, stickerCategories] = await Promise.all([
                 runtime.db.worldBookCategories.toArray(),
-                runtime.db.worldBooks.toArray()
+                runtime.db.worldBooks.toArray(),
+                runtime.db.stickerCategories.toArray()
             ]);
+            const stickerGroups = document.getElementById('chat-sticker-groups');
+            const assigned = new Set((chat.settings.stickerCategoryIds || []).map(categoryKey));
+            if (assigned.has('uncategorized') || runtime.state.userStickers.some(sticker => !sticker.categoryId)) {
+                stickerCategories.push({ id: 'uncategorized', name: 'Uncategorized' });
+            }
+            const stickerOptions = stickerCategories.map(category => {
+                const label = document.createElement('label');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = categoryKey(category.id);
+                checkbox.checked = assigned.has(checkbox.value);
+                label.append(checkbox, category.name);
+                return label;
+            });
+            stickerGroups.replaceChildren(...stickerOptions);
+            if (!stickerOptions.length) stickerGroups.textContent = 'Create a group in the Stickers app to assign it here.';
         
             const linkedBookIds = new Set(chat.settings.linkedWorldBookIds || []);
         
@@ -177,7 +220,7 @@ document.getElementById('enable-tts-switch').checked = chat.settings.enableTts !
                             const isChecked = linkedBookIds.has(book.id);
                             const label = document.createElement('label');
                             
-                            label.innerHTML = `<input type="checkbox" value="book_${book.id}" ${isChecked ? 'checked' : ''}> ${book.name}`;
+                            label.innerHTML = `<input type="checkbox" value="book_${escapeHtml(String(book.id))}" ${isChecked ? 'checked' : ''}> ${escapeHtml(String(book.name))}`;
                             worldBookCheckboxesContainer.appendChild(label);
                         });
                     }
@@ -194,7 +237,7 @@ document.getElementById('enable-tts-switch').checked = chat.settings.enableTts !
                     uncategorizedBooks.forEach(book => {
                         const isChecked = linkedBookIds.has(book.id);
                         const label = document.createElement('label');
-                        label.innerHTML = `<input type="checkbox" value="book_${book.id}" ${isChecked ? 'checked' : ''}> ${book.name}`;
+                        label.innerHTML = `<input type="checkbox" value="book_${escapeHtml(String(book.id))}" ${isChecked ? 'checked' : ''}> ${escapeHtml(String(book.name))}`;
                         worldBookCheckboxesContainer.appendChild(label);
                     });
                 }
@@ -254,6 +297,14 @@ document.getElementById('reset-theme-btn').addEventListener('click', () => { doc
 
 document.getElementById('save-chat-settings-btn').addEventListener('click', async () => {
     if (!runtime.state.activeChatId) return;
+    const notice = document.getElementById('chat-settings-error');
+    notice.textContent = '';
+    const invalid = (message, field, tab = 'Setup') => {
+        document.querySelector('[data-settings-tab="' + tab + '"]').click();
+        notice.textContent = message;
+        if (field.closest('details')) field.closest('details').open = true;
+        requestAnimationFrame(() => field.focus());
+    };
     const current = runtime.state.chats[runtime.state.activeChatId];
     const chat = structuredClone(current);
     
@@ -261,8 +312,9 @@ document.getElementById('save-chat-settings-btn').addEventListener('click', asyn
     const oldOfflineModeState = chat.settings.isOfflineMode || false;
 
     
-    const newName = document.getElementById('chat-name-input').value.trim();
-    if (!newName) return alert("Enter a chat or group name.");
+    const nameInput = document.getElementById('chat-name-input');
+    const newName = nameInput.value.trim();
+    if (!newName) return invalid('Enter a display name.', nameInput);
     if (!chat.isGroup && newName !== chat.name) {
         if (!chat.nameHistory) chat.nameHistory = [];
         if (!chat.nameHistory.includes(chat.name)) chat.nameHistory.push(chat.name);
@@ -284,6 +336,9 @@ document.getElementById('save-chat-settings-btn').addEventListener('click', asyn
         }
     });
     chat.settings.linkedWorldBookIds = newLinkedBookIds;
+    chat.settings.stickerCategoryIds = Array.from(
+        document.querySelectorAll('#chat-sticker-groups input:checked'), checkbox => checkbox.value
+    );
     
     chat.settings.enableTimePerception = document.getElementById('time-perception-toggle').checked;
     chat.settings.timeZone = document.getElementById('time-zone-select').value;
@@ -295,8 +350,16 @@ document.getElementById('save-chat-settings-btn').addEventListener('click', asyn
         chat.settings.enableBackgroundActivity = document.getElementById('group-background-activity-switch').checked;
         chat.settings.myNickname = document.getElementById('my-group-nickname-input').value.trim();
         chat.settings.groupAvatar = document.getElementById('group-avatar-preview').src;
-        chat.settings.actionCooldownMinutes = parseInt(document.getElementById('group-action-cooldown-input').value) || 10;
+        chat.settings.actionCooldownMinutes = Math.max(1, parseInt(document.getElementById('group-action-cooldown-input').value) || 10);
     } else {
+        const holidayInput = document.getElementById('chat-holiday-dates');
+        const holidayDates = holidayInput.value.trim();
+        try { parseCalendarDates(holidayDates); } catch (error) { return invalid(error.message, holidayInput, 'Features'); }
+        for (const [id, [key]] of Object.entries(chatFeatureSwitches)) {
+            chat.settings[key] = document.getElementById(id).checked;
+        }
+        chat.settings.characterLocation = document.getElementById('chat-character-location').value.trim();
+        chat.settings.holidayDates = holidayDates;
         chat.settings.enableBackgroundActivity = document.getElementById('char-background-activity-switch').checked;
         const newOfflineModeState = document.getElementById('offline-mode-toggle').checked;
         chat.settings.isOfflineMode = newOfflineModeState;
@@ -327,15 +390,16 @@ document.getElementById('save-chat-settings-btn').addEventListener('click', asyn
         chat.settings.offlineMaxLength = parseInt(document.getElementById('offline-max-length-input').value) || 300;
         chat.settings.offlinePresetId = document.getElementById('offline-preset-select').value || null;
         
-        const newOriginalName = document.getElementById('ai-original-name-input').value.trim();
-        if (!newOriginalName) return alert("Enter the character’s name.");
+        const characterNameInput = document.getElementById('ai-original-name-input');
+        const newOriginalName = characterNameInput.value.trim();
+        if (!newOriginalName) return invalid("Enter the character's name.", characterNameInput);
         chat.originalName = newOriginalName;
         chat.settings.aiPersona = document.getElementById('ai-persona').value;
         chat.settings.minimaxVoiceId = document.getElementById('ai-voice-id-input').value.trim();
 chat.settings.enableTts = document.getElementById('enable-tts-switch').checked;
         chat.settings.aiAvatar = document.getElementById('ai-avatar-preview').src;
         chat.settings.myNickname = document.getElementById('my-nickname-input').value.trim() || '我';
-        chat.settings.actionCooldownMinutes = parseInt(document.getElementById('ai-action-cooldown-input').value) || 10;
+        chat.settings.actionCooldownMinutes = Math.max(1, parseInt(document.getElementById('ai-action-cooldown-input').value) || 10);
         chat.settings.lyricsPosition = {
             vertical: document.getElementById('lyrics-vertical-pos').value,
             horizontal: document.getElementById('lyrics-horizontal-pos').value,
@@ -366,6 +430,7 @@ chat.settings.enableTts = document.getElementById('enable-tts-switch').checked;
             if (oldOfflineModeState && !chat.settings.isOfflineMode) current.history = chat.history;
         }
     } catch {
+        notice.textContent = 'Could not save chat settings. Try again.';
         return;
     } finally {
         button.disabled = false;
@@ -427,8 +492,14 @@ document.getElementById('remove-bg-btn').addEventListener('click', () => {
 
 controls.stickerPanel = document.getElementById('sticker-panel')
 
-document.getElementById('open-sticker-panel-btn').addEventListener('click', openStickerPicker);
+document.getElementById('open-sticker-panel-btn').addEventListener('click', () => {
+    if (controls.stickerPanel.classList.contains('visible')) closeStickerPicker(true);
+    else openStickerPicker();
+});
 
-document.getElementById('close-sticker-panel-btn').addEventListener('click', () => controls.stickerPanel.classList.remove('visible'));
+document.getElementById('close-sticker-panel-btn').addEventListener('click', () => closeStickerPicker(true));
+controls.stickerPanel.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeStickerPicker(true);
+});
 
 }

@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import { imageSource } from '../runtime/files'
+import { Icon } from './icons'
 
 import type { ComponentPropsWithoutRef, KeyboardEvent, ReactNode } from 'react'
 import type { ScreenId } from '../app/routes'
@@ -21,8 +22,8 @@ export function Dialog({ className = '', ...props }: ComponentPropsWithoutRef<'d
   return <div role="dialog" {...props} className={`modal ${className}`.trim()} />
 }
 
-export function BackButton({ className = '', children = '‹', ...props }: ComponentPropsWithoutRef<'button'>) {
-  return <button type="button" aria-label="Back" {...props} className={`back-btn phone-button ${className}`.trim()}>{children}</button>
+export function BackButton({ className = '', children = <Icon name="back" />, ...props }: ComponentPropsWithoutRef<'button'>) {
+  return <button type="button" aria-label="Back" {...props} className={`back-btn phone-button ui-icon-button ${className}`.trim()}>{children}</button>
 }
 
 export function PhoneFeatureHeader({ title, onBack, backDisabled }: {

@@ -3,7 +3,6 @@ import { runtime } from '../runtime/state.js'
 import { showCustomConfirm, showCustomAlert, showCustomPrompt } from '../dialogs/dialogs.js'
 import { requestContextCompletion } from '../../features/api/completion'
 import { getGeminiResponseText } from '../api/client.js'
-import { handleIconChange } from '../appearance/icons.js'
 
 export async function handleLocalGroupAvatarUpload(event) {
             const file = event.target.files[0];
@@ -542,13 +541,5 @@ document.getElementById('group-avatar-upload-input').addEventListener('change', 
 
 document.getElementById('close-group-avatar-library-btn').addEventListener('click', closeGroupAvatarLibraryModal);
 
-document.getElementById('icon-settings-grid').addEventListener('click', (e) => {
-    if (e.target.classList.contains('change-icon-btn')) {
-        const item = e.target.closest('.icon-setting-item');
-        const iconId = item.dataset.iconId;
-        if (iconId) {
-            handleIconChange(iconId, 'ephone', item);
-        }
-    }
-});
+
 }

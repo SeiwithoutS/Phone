@@ -1,3 +1,4 @@
+import { IconButton } from '../../components/icons'
 import { BackButton, FormField, Screen, ScreenHeader } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 
@@ -22,9 +23,9 @@ export function FontSettingsScreen() {
             {" "}
             <select id="font-preset-select" style={{ flexGrow: "1" }} />
             {" "}
-            <button id="save-font-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Save</button>
+            <IconButton icon="check" id="save-font-preset-btn" label="Save font preset" />
             {" "}
-            <button id="delete-font-preset-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px", backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)" }} type="button">Delete</button>
+            <IconButton icon="trash" id="delete-font-preset-btn" label="Delete font preset" />
             {" "}
           </div>
         </div>

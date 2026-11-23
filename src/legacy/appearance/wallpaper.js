@@ -55,6 +55,7 @@ loadAppearancePresetsDropdown();
     renderIconSettings();
     renderCPhoneIconSettings(); 
     document.getElementById('global-css-input').value = runtime.state.globalSettings.globalCss || '';
+    document.getElementById('message-sound-toggle').checked = runtime.state.globalSettings.messageSounds !== false;
     document.getElementById('notification-sound-url-input').value = runtime.state.globalSettings.notificationSoundUrl || '';
     document.getElementById('status-bar-toggle-switch').checked = runtime.state.globalSettings.showStatusBar || false;
     renderButtonOrderEditor();
@@ -82,6 +83,16 @@ export function bindWallpaperUpload() {
 
 document.getElementById('save-wallpaper-btn').addEventListener('click', async () => {
             
+            if (document.querySelector('.launcher-setting-row[data-reading-image]')) {
+                alert('Wait for the app image to finish loading.');
+                return;
+            }
+            const invalid = document.querySelector('.launcher-setting-row [aria-invalid="true"]');
+            if (invalid) {
+                invalid.closest('details').open = true;
+                invalid.focus();
+                return;
+            }
             if (runtime.newWallpaperBase64) {
                 runtime.state.globalSettings.wallpaper = runtime.newWallpaperBase64;
             }
@@ -90,6 +101,7 @@ document.getElementById('save-wallpaper-btn').addEventListener('click', async ()
             
 
             runtime.state.globalSettings.globalCss = document.getElementById('global-css-input').value.trim();
+            runtime.state.globalSettings.messageSounds = document.getElementById('message-sound-toggle').checked;
             runtime.state.globalSettings.notificationSoundUrl = document.getElementById('notification-sound-url-input').value.trim();
             runtime.state.globalSettings.showStatusBar = document.getElementById('status-bar-toggle-switch').checked;
             

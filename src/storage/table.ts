@@ -99,6 +99,8 @@ export class Table {
     readonly write: Write,
   ) {}
 
+  async count() { return this.read().rows.length }
+
   where(field: string | Record<string, unknown>) {
     if (typeof field === 'string') return new Query(this, { field })
     const criteria = Object.entries(field)

@@ -8,6 +8,7 @@ import { openChat } from '../legacy/chat/conversation.js'
 import { bindImageDownloads } from '../legacy/novelai/download.js'
 import { startRuntime } from '../legacy/runtime/start.js'
 import { startSocialActivity } from '../features/social/activity'
+import { startMarketDelivery } from '../features/shopping/market-gifts'
 import { runtime } from '../legacy/runtime/state.js'
 
 import type { LocalDatabase } from '../storage/database'
@@ -56,6 +57,7 @@ export function App() {
   }, [])
 
   useEffect(() => database && startSocialActivity(database), [database])
+  useEffect(() => database && startMarketDelivery(database), [database])
 
   useEffect(() => {
     const notice = (event: Event) => setStorageError((event as CustomEvent<string>).detail)

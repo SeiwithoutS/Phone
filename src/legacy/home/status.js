@@ -61,17 +61,31 @@ export function handleBatteryChange(battery) { updateBatteryDisplay(battery); co
 
 export async function initBatteryManager() { if ('getBattery' in navigator) { try { const battery = await navigator.getBattery(); runtime.lastKnownBatteryLevel = battery.level; handleBatteryChange(battery); battery.addEventListener('levelchange', () => handleBatteryChange(battery)); battery.addEventListener('chargingchange', () => { handleBatteryChange(battery); if (battery.charging) { showBatteryAlert('https://i.postimg.cc/3NDQ0dWG/image.jpg', 'Charging'); } }); } catch (err) { console.error("无法获取电池信息:", err); document.querySelector('.battery-text').textContent = 'ᗜωᗜ'; } } else { console.log("浏览器不支持电池状态API。"); document.querySelector('.battery-text').textContent = 'ᗜωᗜ'; } }
 
-export function playNotificationSound() {
+const receivedSound = import.meta.env.BASE_URL + 'message-received.wav';
+const sentSound = import.meta.env.BASE_URL + 'message-sent.wav';
+let lastReceivedSound = 0;
+
+export async function previewMessageSound(kind = 'received', customUrl = '') {
     const player = document.getElementById('notification-sound-player');
- 
-    const soundUrl = runtime.state.globalSettings.notificationSoundUrl || runtime.DEFAULT_NOTIFICATION_SOUND;
-    
-    // 检查URL是否有效
-    if (soundUrl && soundUrl.trim()) {
-        player.src = soundUrl;
-  
-        player.play().catch(error => console.log("播放被中断，这是正常行为:", error));
+    const url = kind === 'sent' ? sentSound : customUrl || receivedSound;
+    if (player.getAttribute('src') !== url) player.src = url;
+    player.currentTime = 0;
+    await player.play();
+}
+
+export function playNotificationSound(kind = 'received') {
+    const settings = runtime.state.globalSettings;
+    if (settings.messageSounds === false) return;
+    if (kind === 'received') {
+        const now = Date.now();
+        if (now - lastReceivedSound < 240) return;
+        lastReceivedSound = now;
     }
+    void previewMessageSound(kind, settings.notificationSoundUrl).catch(error => {
+        if (kind === 'received' && settings.notificationSoundUrl && error.name !== 'NotAllowedError') {
+            void previewMessageSound().catch(() => {});
+        }
+    });
 }
 
 export function formatReadingStateForAI(chatId) {

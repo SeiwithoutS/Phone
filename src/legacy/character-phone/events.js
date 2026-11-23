@@ -1,4 +1,3 @@
-import { handleIconChange } from '../appearance/icons.js'
 import { renderWallpaperScreen } from '../appearance/wallpaper.js'
 import { switchToCharScreen } from './launcher.js'
 import { closeCharMusicPlayer } from './music.js'
@@ -154,13 +153,5 @@ document.getElementById('cphone-wallpaper-upload-input').addEventListener('chang
             }
         });
 
-document.getElementById('cphone-icon-settings-grid').addEventListener('click', (e) => {
-    if (e.target.classList.contains('change-icon-btn')) {
-        const item = e.target.closest('.icon-setting-item');
-        const iconId = item.dataset.iconId;
-        if (iconId) {
-            handleIconChange(iconId, 'cphone', item);
-        }
-    }
-});
+
 }

@@ -1,3 +1,4 @@
+import { IconButton } from '../../components/icons'
 import { useContext, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -49,7 +50,7 @@ function Editor({ path }: { path: string }) {
       } else {
         void navigate('/edit/' + encodeURIComponent(id), { replace: true })
       }
-      setError('Saved. This character is available in QQ.')
+      setError('Saved. This character is available in Chat.')
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Could not save this character.')
     } finally {
@@ -126,7 +127,7 @@ function Editor({ path }: { path: string }) {
     </form> : <div className="phone-app-scroll phone-app-stack">
       <div className="phone-app-actions">
         <button type="button" className="phone-app-button primary" disabled={busy} onClick={() => { setDraft(blankCharacter()); setError('') }}>New character</button>
-        <button type="button" className="phone-app-button" disabled={busy} onClick={() => importInput.current?.click()}>Import card</button>
+        <IconButton icon="upload" label="Import character card" disabled={busy} onClick={() => importInput.current?.click()} />
       </div>
       <small>PNG, JSON or CHARX</small>
       {error && <p className="phone-app-error" role="alert">{error}</p>}
