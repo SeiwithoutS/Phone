@@ -1,0 +1,88 @@
+.prompt-collection-screen {
+  background: var(--ui-canvas);
+  color: var(--ui-text);
+}
+#phone-screen .prompt-collection-screen > .header {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 3px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  padding-inline: 8px;
+}
+.prompt-collection-screen > .header h1 { flex: 1; font-size: 1rem; min-width: 0; margin: 0; }
+.prompt-collection-screen :is(.mini-prompts-tools, .prompt-collection-tools) { display: flex; gap: 0; }
+#phone-screen .prompt-collection-screen > .header .ui-icon-button { min-width: 34px; min-height: 40px; padding-inline: 4px; }
+.prompt-collection-cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  align-items: start;
+  gap: 7px;
+  width: min(100%, 44rem);
+  box-sizing: border-box;
+  margin-inline: auto;
+}
+.prompt-collection-scroll { flex: 1 1 0; min-height: 0; overflow: auto; padding: 10px 12px; }
+.prompt-collection-cards[data-grid=true] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#phone-screen :is(.prompt-collection-screen, .prompt-collection-cards) .collection-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  min-height: 54px;
+  margin: 0;
+  padding: 3px 7px 3px 10px;
+  border: 1px solid var(--ui-divider);
+  border-radius: 11px;
+  background: var(--ui-surface);
+  box-shadow: none;
+  word-break: normal;
+}
+#phone-screen :is(.prompt-collection-screen, .prompt-collection-cards) .collection-card:hover {
+  transform: none;
+  border-color: var(--ui-accent);
+}
+#phone-screen :is(.prompt-collection-screen[data-grid=true], .prompt-collection-cards[data-grid=true]) .collection-card { grid-template-columns: minmax(0, 1fr); }
+#phone-screen .collection-card .collection-open { min-height: 42px; align-content: center; gap: 2px; }
+#phone-screen .collection-card .collection-open :is(.card-title, strong) {
+  margin: 0;
+  font-size: .88rem;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#phone-screen .collection-card .card-content-preview { margin: 0; font-size: .76rem; line-height: 1.25; -webkit-line-clamp: 1; }
+.collection-card .ui-icon-button { min-width: 34px; min-height: 38px; }
+.prompt-collection-editor > .phone-app-button { align-self: start; }
+.prompt-entry-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px; color: var(--ui-text); }
+.prompt-entry-heading small, .prompt-entry-detail { color: var(--ui-muted); font-size: .72rem; }
+.prompt-entry-list { display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.prompt-entry-list li { min-width: 0; border: 1px solid var(--ui-divider); border-radius: 9px; background: var(--ui-surface); }
+.prompt-entry-list li[data-dragging=true] { opacity: .68; }
+.prompt-entry-list li[data-drop=true] { outline: 2px solid var(--ui-accent); background: var(--ui-accent-soft); }
+.prompt-entry-row { display: flex; align-items: center; gap: 5px; min-height: 43px; padding-inline-end: 8px; }
+.prompt-entry-list [data-enabled=false] .prompt-entry-title { color: var(--ui-muted); }
+.prompt-entry-row .prompt-drag { min-width: 33px; touch-action: none; cursor: grab; }
+.prompt-entry-title {
+  flex: 1; min-width: 0; min-height: 40px;
+  display: flex; align-items: center; gap: 6px;
+  background: transparent; color: var(--ui-text); border: 0; padding: 0; text-align: start; font: inherit; cursor: pointer;
+}
+.prompt-entry-title span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prompt-entry-title .ui-icon { width: 14px; height: 14px; color: var(--ui-muted); }
+.prompt-entry-detail { min-width: 2.3em; text-align: end; }
+.prompt-entry-row .prompt-entry-switch {
+  display: inline-block;
+  position: relative;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 18px;
+  margin: 0 4px;
+}
+.prompt-entry-switch .slider::before { width: 12px; height: 12px; left: 3px; bottom: 3px; }
+.prompt-entry-switch input:checked + .slider::before { transform: translateX(12px); }
+.prompt-entry-fields { padding: 10px; border-top: 1px solid var(--ui-divider); }
+.prompt-entry-fields[hidden] { display: none; }
+.prompt-entry-fields > .ui-icon-button { align-self: end; }

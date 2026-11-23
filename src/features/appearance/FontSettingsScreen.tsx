@@ -1,19 +1,12 @@
 import { IconButton } from '../../components/icons'
-import { BackButton, FormField, Screen, ScreenHeader } from '../../components/phone'
+import { HeaderSaveButton, PhoneFeatureHeader, FormField, Screen } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 
 export function FontSettingsScreen() {
   return (
     <Screen id="font-settings-screen">
-      <ScreenHeader>
-        {" "}
-        <BackButton onClick={() => showScreen("home-screen")} />
-        {" "}
-        <span>Font Settings</span>
-        {" "}
-        <span style={{ width: "30px" }} />
-        {" "}
-      </ScreenHeader>
+      <PhoneFeatureHeader title="Font Settings" onBack={() => showScreen('home-screen')}
+        actions={<HeaderSaveButton id="save-font-btn" label="Save and apply font" />} />
       <div className="form-container">
         <h3 style={{ marginTop: "0", borderBottom: "1px solid var(--ui-divider)", paddingBottom: "10px" }}>Font Presets</h3>
         <div className="form-group">
@@ -42,7 +35,6 @@ export function FontSettingsScreen() {
           </div>
         </div>
         {" "}
-        <button className="form-button" id="save-font-btn" type="button">Save and Apply</button>
         {" "}
         <button className="form-button form-button-secondary" id="reset-font-btn" type="button">Restore Default Font</button>
       </div>

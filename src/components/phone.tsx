@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 import { imageSource } from '../runtime/files'
-import { Icon } from './icons'
+import { Icon, IconButton } from './icons'
 
 import type { ComponentPropsWithoutRef, KeyboardEvent, ReactNode } from 'react'
 import type { ScreenId } from '../app/routes'
@@ -26,16 +26,21 @@ export function BackButton({ className = '', children = <Icon name="back" />, ..
   return <button type="button" aria-label="Back" {...props} className={`back-btn phone-button ui-icon-button ${className}`.trim()}>{children}</button>
 }
 
-export function PhoneFeatureHeader({ title, onBack, backDisabled }: {
+export function PhoneFeatureHeader({ title, onBack, backDisabled, actions }: {
   title: string
   onBack: () => void
   backDisabled?: boolean
+  actions?: ReactNode
 }) {
-  return <ScreenHeader className="phone-feature-header">
+  return <ScreenHeader className={actions ? 'phone-feature-header phone-editor-header' : 'phone-feature-header'}>
     <BackButton onClick={onBack} disabled={backDisabled} />
-    <span>{title}</span>
-    <span aria-hidden="true" />
+    <h1>{title}</h1>
+    {actions ? <div className="phone-header-actions">{actions}</div> : <span aria-hidden="true" />}
   </ScreenHeader>
+}
+
+export function HeaderSaveButton({ label, form, ...props }: Pick<ComponentPropsWithoutRef<'button'>, 'form' | 'id' | 'disabled'> & { label: string }) {
+  return <IconButton {...props} icon="check" className="phone-header-save" label={label} form={form} type={form ? 'submit' : 'button'} />
 }
 
 export function PhoneAvatar({ source = '', name }: { source?: string; name: string }) {

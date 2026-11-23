@@ -1,19 +1,12 @@
 import { Icon, IconButton } from '../../components/icons'
-import { BackButton, FilePicker, Screen, ScreenHeader } from '../../components/phone'
+import { HeaderSaveButton, PhoneFeatureHeader, FilePicker, Screen } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 
 export function WallpaperScreen() {
   return (
     <Screen id="wallpaper-screen">
-      <ScreenHeader>
-        {" "}
-        <BackButton onClick={() => showScreen("home-screen")} />
-        {" "}
-        <span>Appearance</span>
-        {" "}
-        <span style={{ width: "30px" }} />
-        {" "}
-      </ScreenHeader>
+      <PhoneFeatureHeader title="Appearance" onBack={() => showScreen('home-screen')}
+        actions={<HeaderSaveButton id="save-wallpaper-btn" label="Save Appearance settings" />} />
       <div className="form-container">
         {" "}
         <label style={{ fontWeight: "500", color: "var(--text-secondary)" }}>EPhone Home Wallpaper</label>
@@ -170,10 +163,9 @@ export function WallpaperScreen() {
           {" "}
         </div>
         {" "}
-        <div className="settings-tools"><span>Appearance JSON</span><IconButton icon="upload" id="import-appearance-btn" label="Import appearance JSON" /></div>
+        <div className="settings-tools"><span>Appearance JSON</span><IconButton icon="import" id="import-appearance-btn" label="Import appearance JSON" /></div>
         <FilePicker id="import-appearance-input" accept="application/json" />
         {" "}
-        <button className="form-button" id="save-wallpaper-btn" style={{ marginTop: "30px" }} type="button">Save Appearance Settings</button>
       </div>
     </Screen>
   )

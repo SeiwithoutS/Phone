@@ -1,4 +1,3 @@
-import { escapeHtml } from '../../runtime/files'
 import { chatFeatureSwitches, parseCalendarDates } from '../../features/chat/chat-features'
 import { categoryKey } from '../../features/stickers/library'
 import { loadThemePresetsDropdown } from '../appearance/presets.js'
@@ -180,8 +179,7 @@ document.getElementById('enable-tts-switch').checked = chat.settings.enableTts !
             const worldBookCheckboxesContainer = document.getElementById('world-book-checkboxes-container');
             worldBookCheckboxesContainer.innerHTML = ''; 
         
-            const [allCategories, allBooks, stickerCategories] = await Promise.all([
-                runtime.db.worldBookCategories.toArray(),
+            const [allBooks, stickerCategories] = await Promise.all([
                 runtime.db.worldBooks.toArray(),
                 runtime.db.stickerCategories.toArray()
             ]);
@@ -202,48 +200,19 @@ document.getElementById('enable-tts-switch').checked = chat.settings.enableTts !
             stickerGroups.replaceChildren(...stickerOptions);
             if (!stickerOptions.length) stickerGroups.textContent = 'Create a group in the Stickers app to assign it here.';
         
-            const linkedBookIds = new Set(chat.settings.linkedWorldBookIds || []);
-        
-            if (allBooks.length === 0) {
-                worldBookCheckboxesContainer.innerHTML = "<p style=\"text-align:center; color: #8a8a8a;\">No World Info books yet</p>";
-            } else {
-                
-                allCategories.forEach(cat => {
-                    const booksInCategory = allBooks.filter(book => book.categoryId === cat.id);
-                    if (booksInCategory.length > 0) {
-                        const categoryHeader = document.createElement('h4');
-                        categoryHeader.textContent = cat.name; 
-                        categoryHeader.style.cssText = 'margin: 10px 0 5px; color: #555; border-bottom: 1px solid #eee; padding-bottom: 3px;';
-                        worldBookCheckboxesContainer.appendChild(categoryHeader);
-        
-                        booksInCategory.forEach(book => {
-                            const isChecked = linkedBookIds.has(book.id);
-                            const label = document.createElement('label');
-                            
-                            label.innerHTML = `<input type="checkbox" value="book_${escapeHtml(String(book.id))}" ${isChecked ? 'checked' : ''}> ${escapeHtml(String(book.name))}`;
-                            worldBookCheckboxesContainer.appendChild(label);
-                        });
-                    }
-                });
-        
-                
-                const uncategorizedBooks = allBooks.filter(book => !book.categoryId);
-                if (uncategorizedBooks.length > 0) {
-                    const bookHeader = document.createElement('h4');
-                    bookHeader.textContent = "Uncategorized";
-                    bookHeader.style.cssText = 'margin: 15px 0 5px; color: #555; border-bottom: 1px solid #eee; padding-bottom: 3px;';
-                    worldBookCheckboxesContainer.appendChild(bookHeader);
-        
-                    uncategorizedBooks.forEach(book => {
-                        const isChecked = linkedBookIds.has(book.id);
-                        const label = document.createElement('label');
-                        label.innerHTML = `<input type="checkbox" value="book_${escapeHtml(String(book.id))}" ${isChecked ? 'checked' : ''}> ${escapeHtml(String(book.name))}`;
-                        worldBookCheckboxesContainer.appendChild(label);
-                    });
-                }
-            }
-            
-        
+            const linkedBookIds = new Set((chat.settings.linkedWorldBookIds || []).map(String));
+            const miniPromptOptions = allBooks.map(book => {
+                const label = document.createElement('label');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = 'book_' + book.id;
+                checkbox.checked = linkedBookIds.has(String(book.id));
+                label.append(checkbox, String(book.name));
+                return label;
+            });
+            worldBookCheckboxesContainer.replaceChildren(...miniPromptOptions);
+            if (!miniPromptOptions.length) worldBookCheckboxesContainer.textContent = 'No Mini Prompts books yet.';
+
             updateWorldBookSelectionDisplay();
 
             const themeRadio = [...document.querySelectorAll('input[name="theme-select"]')]

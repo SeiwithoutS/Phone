@@ -1,7 +1,7 @@
 import { IconButton } from '../../components/icons'
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { BackButton, FilePicker, Screen, ScreenHeader } from '../../components/phone'
+import { HeaderSaveButton, PhoneFeatureHeader, FilePicker, Screen } from '../../components/phone'
 import { Icon } from '../../components/icons'
 import type { IconName } from '../../components/icons'
 import { showScreen } from '../../app/routes'
@@ -40,11 +40,8 @@ export function ChatSettingsScreen() {
   }, [tab])
   return (
     <Screen id="chat-settings-screen">
-      <ScreenHeader>
-        <BackButton onClick={() => showScreen("chat-interface-screen")} />
-        <h1>Chat Settings</h1>
-        <button type="button" className="save-btn" id="save-chat-settings-btn">Save</button>
-      </ScreenHeader>
+      <PhoneFeatureHeader title="Chat Settings" onBack={() => showScreen('chat-interface-screen')}
+        actions={<HeaderSaveButton id="save-chat-settings-btn" label="Save chat settings" />} />
       <div className="chat-settings-identity" id="chat-settings-identity">
         <img id="ai-avatar-preview" alt="" />
         <img id="group-avatar-preview" alt="" hidden />
@@ -144,8 +141,8 @@ export function ChatSettingsScreen() {
           <summary>Chat history and privacy</summary>
           <div className="phone-app-actions">
             <button className="phone-app-button compact" id="search-history-btn" type="button">Search history</button>
-            <IconButton icon="download" id="export-single-chat-btn" label="Export chat" />
-            <IconButton icon="upload" id="import-single-chat-btn" label="Import chat" />
+            <IconButton icon="export" id="export-single-chat-btn" label="Export chat" />
+            <IconButton icon="import" id="import-single-chat-btn" label="Import chat" />
             <button className="phone-app-button compact danger" id="block-chat-btn" type="button">Block Character</button>
             <button className="phone-app-button compact danger" id="clear-chat-btn" type="button">Clear history</button>
           </div>
@@ -298,7 +295,7 @@ export function ChatSettingsScreen() {
             </div>
             <div className="form-group" style={{ marginTop: "15px", marginBottom: "0" }}>
               {" "}
-              <label htmlFor="offline-preset-select">Writing Style Preset</label>
+              <label htmlFor="offline-preset-select">Offline Prompt Preset</label>
               {" "}
               <select id="offline-preset-select" style={{ width: "100%", marginTop: "5px" }} />
               {" "}

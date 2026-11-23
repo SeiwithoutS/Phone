@@ -1,19 +1,12 @@
 import { IconButton } from '../../components/icons'
-import { BackButton, FormField, Screen, ScreenHeader } from '../../components/phone'
+import { HeaderSaveButton, PhoneFeatureHeader, FormField, Screen } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 
 export function ApiSettingsScreen() {
   return (
     <Screen id="api-settings-screen">
-      <ScreenHeader>
-        {" "}
-        <BackButton onClick={() => showScreen("home-screen")} />
-        {" "}
-        <span>API Connections</span>
-        {" "}
-        <span style={{ width: "30px" }} />
-        {" "}
-      </ScreenHeader>
+      <PhoneFeatureHeader title="API Connections" onBack={() => showScreen('home-screen')}
+        actions={<HeaderSaveButton id="save-api-settings-btn" label="Save API settings" />} />
       <div className="form-container">
         <h3 style={{ marginTop: "0", borderBottom: "1px solid var(--ui-divider)", paddingBottom: "10px" }}>API Presets</h3>
         <div className="form-group">
@@ -244,12 +237,11 @@ export function ApiSettingsScreen() {
         </p>
         <hr style={{ margin: "30px 0", opacity: "0.3" }} />
         {" "}
-        <button className="form-button" id="save-api-settings-btn" style={{ marginTop: "20px" }} type="button">Save All Settings</button>
         {" "}
         <button type="button" className="form-button form-button-secondary" onClick={() => showScreen("backup-screen")}>Open Backup</button>
         <details className="settings-disclosure">
         <summary>Data maintenance</summary>
-        <div className="settings-tools"><span>Legacy JSON backup</span><IconButton icon="upload" id="import-btn" label="Import legacy JSON backup" /></div>
+        <div className="settings-tools"><span>Legacy JSON backup</span><IconButton icon="import" id="import-btn" label="Import legacy JSON backup" /></div>
         <button className="form-button form-button-secondary" id="cleanup-data-btn" style={{ backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)", marginTop: "10px" }} type="button">Clean Up Unused Data</button>
         <button className="form-button form-button-secondary" id="delete-world-books-btn" style={{ backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)", marginTop: "10px" }} type="button">Delete World Info</button>
         <button className="form-button form-button-secondary" id="clear-specific-data-btn" style={{ backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)", marginTop: "10px" }} type="button">Advanced Data Cleanup</button>

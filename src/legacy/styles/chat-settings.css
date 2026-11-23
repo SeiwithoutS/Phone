@@ -656,61 +656,6 @@
             background-color: #000000;
         }
 
-#world-book-tabs {
-            display: flex;
-            overflow-x: auto; 
-            padding: 10px 15px 0 15px;
-            flex-shrink: 0; 
-            border-bottom: 1px solid var(--border-color);
-            background-color: var(--secondary-bg);
-            -ms-overflow-style: none;  
-            scrollbar-width: none;  
-        }
-
-#world-book-tabs::-webkit-scrollbar {
-            display: none; 
-        }
-
-.world-book-tab {
-            padding: 8px 16px;
-            cursor: pointer;
-            border: none;
-            background-color: transparent;
-            font-size: 15px;
-            font-weight: 500;
-            color: var(--text-secondary);
-            border-bottom: 2px solid transparent;
-            margin-bottom: -1px; 
-            transition: all 0.2s ease-in-out;
-            white-space: nowrap; 
-        }
-
-.world-book-tab.active {
-            color: var(--accent-color);
-            border-bottom-color: var(--accent-color);
-            font-weight: 600;
-        }
-
-#phone-screen.dark-mode .world-book-tab.active {
-            color: #ffffff;
-        }
-
-#world-book-content-container {
-            flex-grow: 1;
-            overflow-y: auto;
-        }
-
-.world-book-category-pane {
-            display: none; 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 15px;
-            padding: 15px;
-        }
-
-.world-book-category-pane.active {
-            display: grid;
-        }
-
 .world-book-card {
     background-color: var(--secondary-bg);
     border-radius: 12px;

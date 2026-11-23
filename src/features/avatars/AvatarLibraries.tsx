@@ -17,7 +17,7 @@ function AvatarLibrary({ kind }: { kind: keyof typeof libraries }) {
           <div className="modal-header">
             <span id={titleId}>{libraries[kind]}</span>
             <div className="header-actions">
-              <IconButton id={`add-${prefix}-batch-btn`} icon="upload" label="Import images" />
+              <IconButton id={`add-${prefix}-batch-btn`} icon="import" label="Import images" />
               <button type="button" id={`add-${prefix}-url-btn`} className="action-button">URL</button>
               <button type="button" id={`add-${prefix}-upload-btn`} className="action-button">Upload</button>
             </div>

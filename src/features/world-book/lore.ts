@@ -1,4 +1,4 @@
-import type { Key, StoredRow } from '../../../shared/storage'
+import type { Key, StoredRow } from '../../../shared/storage.js'
 
 export type LoreEntry = {
   id: string

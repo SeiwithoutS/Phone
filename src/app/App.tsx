@@ -68,7 +68,7 @@ export function App() {
   useLayoutEffect(() => {
     if (status !== 'ready') return
     if (!route || (route.requiresContext && !locationState?.prepared) ||
-        (route.id === 'world-book-editor-screen' && locationState?.bookId == null)) {
+        ((route.id === 'world-book-editor-screen' || route.id === 'preset-editor-screen') && locationState?.bookId == null)) {
       void navigate(route?.fallback ?? '/', { replace: true })
       return
     }

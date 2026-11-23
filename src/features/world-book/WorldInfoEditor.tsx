@@ -1,60 +1,63 @@
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { showScreen } from '../../app/routes'
-import { BackButton, FormField, Screen, ScreenContext, ScreenHeader } from '../../components/phone'
+import type { ScreenId } from '../../app/routes'
+import { HeaderSaveButton, PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
+import { IconButton } from '../../components/icons'
+import { PromptEntryList, movePromptEntry } from '../../components/PromptEntryList'
 import type { Key, StoredRow } from '../../../shared/storage'
 import type { LocalDatabase } from '../../storage/database'
 import { updateCachedWorldBook } from '../../legacy/world-book/books.js'
+import { confirmDeletePromptCollection } from '../../legacy/world-book/collection-actions.js'
+import { runtime } from '../../legacy/runtime/state.js'
+import { keywords, record, string } from './lore'
+import { promptRole, promptSlot, promptSlots } from '../presets/prompt-order'
+import type { PromptEntry } from '../presets/prompt-order'
+import { messageTokens } from '../context/budget'
 
-interface EntryDraft {
-  key: string
-  original: Record<string, unknown>
-  comment: string
-  keywords: string
-  content: string
-  enabled: boolean
-}
+type EntryDraft = Omit<PromptEntry, 'keys'> & { id: string; original: Record<string, unknown>; keywords: string }
+type Kind = 'mini' | 'preset'
 
-function entryDraft(source: Record<string, unknown> = {}): EntryDraft {
+const collections = {
+  mini: { editor: 'world-book-editor-screen', list: 'world-book-screen', table: 'worldBooks', title: 'Mini Prompts' },
+  preset: { editor: 'preset-editor-screen', list: 'preset-screen', table: 'presets', title: 'Preset' },
+} as const satisfies Record<Kind, { editor: ScreenId; list: ScreenId; table: string; title: string }>
+
+function entryDraft(raw?: unknown): EntryDraft {
+  const source = record(raw)
   return {
-    key: crypto.randomUUID(),
-    original: source,
-    comment: String(source.comment ?? ''),
-    keywords: Array.isArray(source.keys) ? source.keys.join(', ') : '',
-    content: String(source.content ?? ''),
-    enabled: source.enabled !== false,
+    id: crypto.randomUUID(), original: source,
+    comment: string(source.comment), keywords: keywords(source.keys).join(', '),
+    content: string(source.content), enabled: source.enabled !== false,
+    slot: promptSlot(source.slot), role: source.role === undefined ? undefined : promptRole(source.role),
   }
 }
 
-function WorldInfoForm({ database, id }: { database: LocalDatabase; id: Key }) {
+function CollectionForm({ database, id, kind }: { database: LocalDatabase; id: Key; kind: Kind }) {
+  const collection = collections[kind]
   const [book, setBook] = useState<StoredRow>()
   const [name, setName] = useState('')
-  const [category, setCategory] = useState('')
-  const [categories, setCategories] = useState<StoredRow[]>([])
   const [entries, setEntries] = useState<EntryDraft[]>([])
+  const [newEntry, setNewEntry] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const active = useRef(true)
 
   useEffect(() => {
-    active.current = true
     let cancelled = false
-    void Promise.all([database.worldBooks.get(id), database.worldBookCategories.toArray()])
-      .then(([record, choices]) => {
+    void database[collection.table].get(id)
+      .then(saved => {
         if (cancelled) return
-        if (!record) { showScreen('world-book-screen'); return }
-        setBook(record)
-        setName(String(record.name ?? ''))
-        setCategory(String(record.categoryId ?? ''))
-        setCategories(choices)
-        setEntries(Array.isArray(record.content) ? record.content.map(item => entryDraft(item ?? {})) : [])
+        if (!saved) { showScreen(collection.list); return }
+        setBook(saved)
+        setName(String(saved.name ?? ''))
+        setEntries(Array.isArray(saved.content) ? saved.content.map(entryDraft) : [])
       })
-      .catch(() => { if (!cancelled) setError('Could not load this Mini Prompts book.') })
-    return () => { cancelled = true; active.current = false }
-  }, [database, id])
+      .catch(() => { if (!cancelled) setError('Could not load this collection.') })
+    return () => { cancelled = true }
+  }, [database, collection, id])
 
-  function edit(key: string, values: Partial<Pick<EntryDraft, 'comment' | 'keywords' | 'content' | 'enabled'>>) {
-    setEntries(current => current.map(entry => entry.key === key ? { ...entry, ...values } : entry))
+  function edit(id: string, changes: Partial<EntryDraft>) {
+    setEntries(current => current.map(entry => entry.id === id ? { ...entry, ...changes } : entry))
   }
 
   async function save() {
@@ -64,81 +67,101 @@ function WorldInfoForm({ database, id }: { database: LocalDatabase; id: Key }) {
     const saved = {
       ...book,
       name: name.trim(),
-      categoryId: categories.find(item => String(item.id) === category)?.id ?? null,
-      content: entries.filter(entry => entry.content.trim()).map(entry => ({
+      content: entries.filter(entry => entry.slot || entry.comment.trim() || entry.content.trim()).map(entry => ({
         ...entry.original,
         comment: entry.comment.trim(),
-        keys: entry.keywords.split(',').map(key => key.trim()).filter(Boolean),
+        keys: keywords(entry.keywords),
         content: entry.content.trim(),
         enabled: entry.enabled,
+        ...(kind === 'preset' ? { role: entry.role, slot: entry.slot } : {}),
       })),
     }
     try {
-      if (!await database.worldBooks.update(id, saved)) throw new Error('This book was deleted.')
-      updateCachedWorldBook(saved)
-      if (active.current) showScreen('world-book-screen')
-    } catch (cause) {
-      if (active.current) {
-        setError(cause instanceof Error ? cause.message : 'Could not save this book.')
-        setBusy(false)
-      }
+      if (!await database[collection.table].update(id, saved)) throw new Error('This collection was deleted.')
+      if (kind === 'mini') updateCachedWorldBook(saved)
+      else runtime.state.presets = await database.presets.toArray() as typeof runtime.state.presets
+      showScreen(collection.list)
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Could not save this collection.')
+      setBusy(false)
     }
   }
 
+  async function remove() {
+    if (!book || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      if (await confirmDeletePromptCollection(collection.table, book)) showScreen(collection.list)
+    } catch {
+      setError('Could not delete this collection.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const keyPrefix = kind === 'preset' ? 'preset' : 'world-book'
   return <>
-    <ScreenHeader>
-      <BackButton onClick={() => showScreen('world-book-screen')} />
-      <span id="world-book-editor-title">{String(book?.name ?? 'Edit Mini Prompts')}</span>
-      <button form="world-info-form" className="phone-button save-btn" id="save-world-book-btn" type="submit"
-        disabled={!book || busy || !name.trim()}>Save</button>
-    </ScreenHeader>
-    <form id="world-info-form" className="form-container" onSubmit={event => { event.preventDefault(); void save() }}>
-      {error && <p role="alert">{error}</p>}
-      <FormField id="world-book-name-input" label="Book Name">
-        <input id="world-book-name-input" value={name} onChange={event => setName(event.target.value)} required />
-      </FormField>
-      <FormField id="world-book-category-select" label="Category">
-        <select id="world-book-category-select" value={category} onChange={event => setCategory(event.target.value)}>
-          <option value="">Uncategorized</option>
-          {categories.map(item => <option key={item.id} value={item.id}>{String(item.name)}</option>)}
-        </select>
-      </FormField>
-      <div id="world-book-entries-container" className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-1">
-        {entries.length === 0 && <p>Use Add Entry below to get started.</p>}
-        {entries.map(entry => <fieldset key={entry.key} className="message-editor-block">
-          <legend className="sr-only">Mini Prompts entry</legend>
-          <div className="mb-2 flex items-center justify-end gap-3">
-            <label><input type="checkbox" className="entry-enabled-switch" checked={entry.enabled}
-              onChange={event => edit(entry.key, { enabled: event.target.checked })} /> Enabled</label>
-            <button className="delete-block-btn" type="button" aria-label="Remove entry"
-              onClick={() => setEntries(current => current.filter(item => item.key !== entry.key))}>×</button>
-          </div>
-          <FormField id={entry.key + '-note'} label="Note (optional)">
-            <input id={entry.key + '-note'} className="entry-comment-input" value={entry.comment}
-              onChange={event => edit(entry.key, { comment: event.target.value })} />
-          </FormField>
-          <FormField id={entry.key + '-keys'} label="Keywords (comma-separated)">
-            <input id={entry.key + '-keys'} className="entry-keys-input" value={entry.keywords}
-              onChange={event => edit(entry.key, { keywords: event.target.value })} />
-          </FormField>
-          <FormField id={entry.key + '-text'} label="Content">
-            <textarea id={entry.key + '-text'} className="entry-content-textarea" value={entry.content}
-              onChange={event => edit(entry.key, { content: event.target.value })} />
-          </FormField>
-        </fieldset>)}
-      </div>
-      <button id="add-world-book-entry-btn" type="button" className="form-button form-button-secondary"
-        disabled={!book || busy} onClick={() => setEntries(current => [...current, entryDraft()])}>+ Add Entry</button>
+    <PhoneFeatureHeader title={name || collection.title} onBack={() => showScreen(collection.list)} backDisabled={busy} actions={<>
+      <IconButton icon="trash" label={'Delete ' + collection.title} disabled={!book || busy} onClick={() => void remove()} />
+      <HeaderSaveButton label={kind === 'preset' ? 'Save preset' : 'Save Mini Prompts'}
+        id={kind === 'preset' ? 'save-preset-btn' : 'save-world-book-btn'} form={keyPrefix + '-form'}
+        disabled={!book || busy || !name.trim()} />
+    </>} />
+    <form id={keyPrefix + '-form'} className="phone-app-scroll phone-app-stack prompt-collection-editor"
+      onSubmit={event => { event.preventDefault(); void save() }}>
+      {error && <p className="phone-app-error" role="alert">{error}</p>}
+      <label>{collection.title} name<input id={keyPrefix + '-name-input'} value={name} onChange={event => setName(event.target.value)} required /></label>
+      <PromptEntryList rows={entries.map((entry, i) => ({ id: entry.id, title: entry.comment || entry.content.trim().split('\n')[0] || 'Entry ' + (i + 1),
+        marker: Boolean(entry.slot), enabled: entry.enabled,
+        detail: kind === 'preset' ? entry.slot ? 'Context' : entry.content.trim()
+          ? '~' + messageTokens({ role: entry.role ?? 'system', content: entry.content.trim() }) : '—' : undefined }))}
+        openNew={newEntry}
+        showTokens={kind === 'preset'}
+        move={(from, to) => setEntries(current => movePromptEntry(current, from, to))}
+        toggle={id => setEntries(current => current.map(entry => entry.id === id ? { ...entry, enabled: !entry.enabled } : entry))}
+        fields={id => {
+          const entry = entries.find(row => row.id === id)!
+          return <>
+            <label>Title<input value={entry.comment} className="entry-comment-input" onChange={event => edit(id, { comment: event.target.value })} /></label>
+            {kind === 'preset' && <div className="phone-app-two">
+              <label>Source<select value={entry.slot ?? ''} onChange={event => edit(id, { slot: promptSlot(event.target.value) })}>
+                <option value="">Custom text</option>
+                {Object.entries(promptSlots).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select></label>
+              {!entry.slot && <label>Role<select value={entry.role ?? 'system'} onChange={event => edit(id, { role: promptRole(event.target.value) })}>
+                <option value="system">System</option><option value="user">User</option><option value="assistant">Assistant</option>
+              </select></label>}
+            </div>}
+            {!entry.slot && <>
+              {kind === 'mini' && <label>Keywords (comma-separated)<input value={entry.keywords} className="entry-keys-input"
+                onChange={event => edit(id, { keywords: event.target.value })} /></label>}
+              <label>Content<textarea rows={5} className="entry-content-textarea" value={entry.content} onChange={event => edit(id, { content: event.target.value })} /></label>
+            </>}
+            <IconButton icon="trash" label="Remove entry" onClick={() => setEntries(current => current.filter(item => item.id !== id))} />
+          </>
+        }} />
+      <button id={kind === 'preset' ? 'add-preset-entry-btn' : 'add-world-book-entry-btn'} type="button" className="phone-app-button compact"
+        disabled={!book || busy} onClick={() => {
+          const entry = entryDraft(kind === 'preset' ? { role: 'system' } : undefined)
+          setEntries(current => [...current, entry])
+          setNewEntry(entry.id)
+        }}>+ Add entry</button>
     </form>
   </>
 }
 
-export function WorldBookEditorScreen({ database }: { database?: LocalDatabase }) {
+export function PromptCollectionEditor({ database, kind }: { database?: LocalDatabase; kind: Kind }) {
   const { state } = useLocation()
-  const visible = useContext(ScreenContext) === 'world-book-editor-screen'
+  const collection = collections[kind]
+  const visible = useContext(ScreenContext) === collection.editor
   const id: unknown = state?.bookId
-  return <Screen id="world-book-editor-screen">
-    {database && visible && (typeof id === 'string' || typeof id === 'number')
-      && <WorldInfoForm key={id} id={id} database={database} />}
+  return <Screen id={collection.editor} className="phone-feature">
+    {database && visible && (typeof id === 'string' || typeof id === 'number') &&
+      <CollectionForm key={id} database={database} id={id} kind={kind} />}
   </Screen>
+}
+
+export function WorldBookEditorScreen({ database }: { database?: LocalDatabase }) {
+  return <PromptCollectionEditor kind="mini" database={database} />
 }

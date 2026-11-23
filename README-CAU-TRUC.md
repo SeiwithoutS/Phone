@@ -13,6 +13,7 @@ Giao diện dùng React, TypeScript, React Router và Tailwind CSS. Vite phục 
 | Tin nhắn tự gửi sau thời gian chờ hoặc nội dung gửi lên AI | [`simulation.js`](src/legacy/npc/simulation.js), [`context.ts`](src/features/context/context.ts), [`completion.ts`](src/features/api/completion.ts) |
 | Số dư, tiền tệ, thanh toán và đơn hàng | [`src/features/bank/`](src/features/bank/), [`src/features/shopping/`](src/features/shopping/), [`market.css`](src/styles/market.css) |
 | Nhập, xuất, xóa một bộ prompt hoặc lorebook | [`collection-actions.js`](src/legacy/world-book/collection-actions.js) cho Mini Prompts và Presets. [`LorebookScreen.tsx`](src/features/world-book/LorebookScreen.tsx) cho World Info. |
+| Đổi thứ tự hoặc bật/tắt entry | [`PromptEntryList.tsx`](src/components/PromptEntryList.tsx), [`WorldInfoEditor.tsx`](src/features/world-book/WorldInfoEditor.tsx), [`prompt-order.ts`](src/features/presets/prompt-order.ts) |
 | Sao lưu, phục hồi hoặc đổi cách ghi dữ liệu | [`BackupScreen.tsx`](src/features/backup/BackupScreen.tsx), [`database.ts`](src/storage/database.ts), [`server/storage.ts`](server/storage.ts) |
 
 ## File ở thư mục gốc và phía server
@@ -67,7 +68,7 @@ Tên file trong bảng tính từ thư mục tương ứng ở cột đầu.
 | `context/` | `ContextScreen.tsx` hiển thị cấu hình và ngữ cảnh đã tạo. `context.ts` thu thập lịch sử, bộ nhớ, prompt và hoạt động liên quan. `budget.ts` chuẩn hóa cấu hình, ước lượng token và phân bổ giới hạn. |
 | `world-book/` | `LorebookScreen.tsx` quản lý World Info, keyword và bộ lorebook. `lore.ts` đọc dữ liệu lorebook và chọn entry được kích hoạt. `lore-storage.ts` lưu bộ và liên kết với nhân vật. |
 | `world-book/` | `WorldInfoScreens.tsx`, `WorldInfoEditor.tsx`, `WorldInfoDialogs.tsx` lắp danh sách, trình sửa và hộp thoại của luồng Mini Prompts. `model.ts` chuẩn hóa cấu trúc entries nhập vào luồng này. |
-| `presets/` | `PresetScreens.tsx` lắp danh sách, trình sửa entries và hộp thoại của Presets. Phần lưu và nhập nằm trong `legacy/presets/`. |
+| `presets/` | `PresetScreens.tsx` lắp danh sách và trình chỉnh sửa dùng chung với Mini Prompts. `prompt-order.ts` đọc preset SillyTavern và chuyển entries thành các bước ráp prompt. |
 | `social/`, `qzone/` | `SocialScreen.tsx` quản lý feed, tìm kiếm, trang hồ sơ và cài đặt. `SocialPost.tsx` hiển thị, soạn và sửa bài. `SocialDialog.tsx` chứa khung hộp thoại Social và tiện ích ảnh. `social.ts` định nghĩa dữ liệu và tạo nội dung AI. `activity.ts` lưu và điều phối bài đăng, bình luận AI. `qzone/PostDialogs.tsx` chứa các hộp thoại đăng bài của luồng Qzone. |
 | `bank/` | `BankScreen.tsx` hiển thị số dư, sổ giao dịch và thông báo. `bank.ts` tính số dư, ghi chuyển khoản và lưu đơn vị hiển thị mặc định VND. `useBankCurrency.ts` đồng bộ thay đổi đơn vị giữa các màn hình React. |
 | `shopping/` | `MarketScreen.tsx` hiển thị danh mục, giỏ, thanh toán và lịch sử đơn. `MarketProductEditor.tsx` là form thêm sản phẩm. `MarketOrderDetails.tsx` hiển thị tiến độ giao hàng và trình tạo thiệp. `market.ts` tính giá, lưu đơn, ghi giao dịch Bank và ghi thiệp vào chat. `market-gifts.ts` kiểm tra đơn tới hạn và đồng bộ thiệp với hội thoại đang mở. |
@@ -94,7 +95,7 @@ React cung cấp khung màn hình. Các file bên dưới vẫn gắn sự kiệ
 | `appearance/` | `wallpaper.js` nạp, lưu và áp dụng hình nền/cài đặt Appearance. `icons.js` render hàng chỉnh tên và ảnh, rồi áp dụng lên launcher. `theme.js` áp dụng theme và CSS tùy chỉnh. `fonts.js` xử lý font. `presets.js` lưu và nạp các preset giao diện. `events.js` gắn sự kiện cho các điều khiển, gồm nghe thử âm báo. |
 | `home/` | `status.js` cập nhật đồng hồ, pin, toast, âm báo và ngữ cảnh đọc. `events.js` gắn sự kiện tùy chọn điện thoại. `widgets.js` xử lý tải ảnh cục bộ của luồng cũ. |
 | `character-phone/` | `launcher.js` chuyển giữa EPhone, Cphone và các màn hình Cphone. `apps.js` mở app, điều phối hành động. `settings.js` áp dụng hình nền và icon. `simulation.js` sinh và hiển thị dữ liệu mô phỏng. `notes.js`, `music.js`, `profile.js` xử lý ghi chú/nhật ký, nghe nhạc và hồ sơ. `events.js` gắn sự kiện cho các màn hình này. |
-| `world-book/`, `presets/` | `books.js` điều khiển danh sách, danh mục và chỉnh sửa Mini Prompts. `transfer.js` xử lý nhập/xuất và tương thích World Book. `collection-actions.js` tạo nút và xử lý nhập, xuất hoặc xóa từng bộ Mini Prompts và Presets. `presets/presets.js` xử lý danh sách, bộ và entries của Presets. |
+| `world-book/`, `presets/` | `books.js` điều khiển danh sách và thao tác Mini Prompts. `transfer.js` xử lý nhập/xuất và tương thích World Book. `collection-actions.js` tạo nút và xử lý nhập, xuất hoặc xóa từng bộ Mini Prompts và Presets. `presets/presets.js` xử lý danh sách, bộ và entries của Presets. |
 | `storage/`, `backup/` | `load.js` nạp dữ liệu và điền cấu hình mặc định. `preferences.js` truy cập tùy chọn thiết bị. `backup.js` xử lý nhập bản sao lưu. `clear-data.js` dọn dữ liệu. `media.js` tính dung lượng và nén ảnh. `repair.js` kiểm tra và sửa dữ liệu. `events.js` gắn thao tác dọn và sửa. |
 | `api/`, `npc/` | `api/settings.js` nạp và lưu form API, preset và model. `api/client.js` phân tích phản hồi AI và hỗ trợ tóm tắt bộ nhớ. `npcs.js` quản lý hồ sơ NPC. `npc/simulation.js` xử lý hoạt động nền và tin nhắn tự gửi theo cooldown. |
 | `memories/` | `memories.js` đọc, sửa, xóa bộ nhớ dài hạn và tạo tóm tắt từ chat hoặc cuộc gọi. `events.js` gắn sự kiện điều hướng và chỉnh sửa bộ nhớ. |
@@ -112,6 +113,7 @@ React cung cấp khung màn hình. Các file bên dưới vẫn gắn sự kiệ
 | `src/styles/theme.css`, `components.css`, `appearance-controls.css` | Bảng màu sáng/tối và nút icon, khung và trạng thái chung, kiểu nút và điều khiển Appearance. |
 | `src/styles/home-desktop.css`, `phone-apps.css`, `phone-refresh.css` | Lưới Home, dock và kéo thả. Khung app, form và widget dùng chung. Các kiểu cập nhật cho danh sách chat, thanh công cụ, cài đặt chat và một số màn hình điện thoại. |
 | `src/styles/market.css`, `social.css`, `stickers.css`, `context.css` | Kiểu riêng cho Bank và Marketplace, Social, thư viện sticker và màn hình Context. |
+| `src/styles/prompts.css` | Bố cục danh sách/lưới của các bộ prompt và giao diện thu gọn, bật/tắt, kéo thả entry. |
 | `src/legacy/styles/foundation.css`, `theme.css`, `responsive.css` | CSS nền của khung điện thoại, theme cũ và quy tắc theo kích thước màn hình. |
 | `src/legacy/styles/chat.css`, `chat-messages.css`, `chat-settings.css`, `attachments.css` | Bố cục chat, bong bóng và thẻ tin nhắn, cài đặt chat và nội dung đính kèm ở các luồng cũ. |
 | `src/legacy/styles/home-widgets.css`, `character-phone.css`, `qzone.css`, `reading.css`, `settings.css` | Kiểu cho widget cũ, Cphone, Qzone, trình đọc và các màn hình cài đặt. |

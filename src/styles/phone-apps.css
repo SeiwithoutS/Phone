@@ -41,6 +41,39 @@
 
 #phone-screen .phone-feature .back-btn { color: var(--feature-accent); min-height: 44px; }
 #phone-screen.status-bar-visible .phone-feature-header, #phone-screen.status-bar-visible .widget-editor .header { padding-top: calc(40px + env(safe-area-inset-top)); }
+.phone-feature-header > h1 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+}
+#phone-screen .header.phone-editor-header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) max-content;
+  grid-template-rows: auto;
+  align-items: center;
+}
+#phone-screen .phone-editor-header > .back-btn { grid-area: 1 / 1; }
+#phone-screen .phone-editor-header > h1 { grid-area: 1 / 2; }
+#phone-screen .phone-editor-header > .phone-header-actions {
+  grid-area: 1 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
+  gap: 4px;
+}
+.phone-header-actions > .ui-icon-button {
+  flex: 0 0 40px;
+  box-sizing: border-box;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+}
+.phone-header-actions .phone-header-save { color: var(--ui-accent); background: var(--ui-accent-soft); }
 
 .phone-app-scroll {
   flex: 1;

@@ -1,6 +1,8 @@
 import { runtime } from '../../legacy/runtime/state.js'
 import { loreContext } from '../world-book/lore-storage'
 import { filterVisiblePostsForAI } from '../../legacy/chat/sharing.js'
+import { promptSteps } from '../presets/prompt-order'
+import type { PromptEntry } from '../presets/prompt-order'
 import { budgetSources, buildContext, contextKey, normalizeContext, wholeSources } from './budget'
 import type { ContextConfig, ContextFull, ContextItem, ContextItems, ContextPlan, PromptMessage, Source } from './budget'
 import type { ChatMessage, DirectChat, GroupChat } from '../chat/model'
@@ -8,7 +10,7 @@ import type { LocalDatabase } from '../../storage/database'
 import type { ActorProfile, Post } from '../social/social'
 
 type Chat = DirectChat | GroupChat
-type TextBook = { id: string | number; name?: string; content?: Array<{ enabled?: boolean; content?: string; comment?: string }> }
+type TextBook = { id: string | number; name?: string; content?: Array<Partial<PromptEntry>> }
 type Npc = { id: string | number; name: string; persona?: string; associatedWith?: string[]; includeInContext?: boolean }
 type Memory = { timestamp?: number; content?: string }
 type QzonePost = { id: number; timestamp?: number; authorId: string; authorOriginalName?: string; content?: string;
@@ -48,11 +50,9 @@ function fullText(books: TextBook[]) {
   }).join('\n\n')
 }
 
-function fullSources(chat: Chat | undefined, rawHistory: ChatMessage[], extraMessages: ChatMessage[], config: ContextConfig): ContextFull {
+function fullSources(chat: Chat | undefined, rawHistory: ChatMessage[], extraMessages: ChatMessage[], preset?: TextBook): ContextFull {
   const miniIds = new Set((chat?.settings.linkedWorldBookIds as Array<string | number> | undefined ?? []).map(String))
   const miniPrompts = (runtime.state.worldBooks ?? []).filter(book => miniIds.has(String(book.id)))
-  const presetId = config.presetId ?? (chat?.settings.isOfflineMode === true ? chat.settings.offlinePresetId : undefined)
-  const preset = (runtime.state.presets ?? []).find(item => String(item.id) === String(presetId))
   return {
     worldInfo: chat ? loreContext({ settings: chat.settings, history: rawHistory }, extraMessages).replace(/^\n# World Info\n/, '') : '',
     miniPrompts: fullText(miniPrompts), preset: preset ? fullText([preset]) : '',
@@ -171,5 +171,11 @@ export async function assembleContext(chat: Chat | undefined, input: ContextInpu
   if (database && ['posts', 'comments', 'npcs'].some(key => config.sources[key as 'posts' | 'comments' | 'npcs'].enabled)) {
     Object.assign(items, await socialItems(database, chat, input, config.sources.posts.enabled || config.sources.comments.enabled))
   }
-  return buildContext(config, input.instructions, fullSources(chat, rawHistory, input.extraMessages ?? [], config), items, input.request)
+  const presets = (runtime.state.presets ?? []) as TextBook[]
+  const selected = (id: unknown) => id == null ? undefined : presets.find(item => String(item.id) === String(id))
+  const preset = selected(config.presetId) ?? (chat?.settings.isOfflineMode === true ? selected(chat.settings.offlinePresetId) : undefined)
+  const steps = config.sources.preset.enabled && preset?.content?.some(entry => entry.slot || entry.role || entry.identifier)
+    ? promptSteps(preset.content) : undefined
+  return buildContext(config, input.instructions, fullSources(chat, rawHistory, input.extraMessages ?? [], steps ? undefined : preset),
+    items, input.request, steps)
 }

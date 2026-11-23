@@ -7,105 +7,23 @@ import { cancelReplyMode } from '../chat/attachments.js'
 import { startReplyToMessage } from '../chat/messages.js'
 import { handleConfirmRepost, hideRepostModal } from '../qzone/feed.js'
 
-export function switchWorldBookCategory(categoryId) {
-            
-            document.querySelectorAll('#world-book-tabs .world-book-tab').forEach(tab => {
-                tab.classList.toggle('active', tab.dataset.categoryId === categoryId);
-            });
-            
-            document.querySelectorAll('#world-book-content-container .world-book-category-pane').forEach(pane => {
-                pane.classList.toggle('active', pane.dataset.categoryId === categoryId);
-            });
-        }
-
 export async function renderWorldBookScreen() {
-            const tabsContainer = document.getElementById('world-book-tabs');
-            const contentContainer = document.getElementById('world-book-content-container');
-            const selected = tabsContainer.querySelector('.active')?.dataset.categoryId ?? 'all';
-        
-            
-            const [books, categories] = await Promise.all([
-                runtime.db.worldBooks.toArray(),
-                runtime.db.worldBookCategories.orderBy('name').toArray()
-            ]);
-        
-            tabsContainer.replaceChildren();
-            contentContainer.replaceChildren();
-            runtime.state.worldBooks = books; 
-        
-            if (books.length === 0) {
-                const empty = document.createElement('p');
-                empty.className = 'mini-prompts-empty';
-                empty.textContent = 'Use the plus button to create your first Mini Prompts book.';
-                contentContainer.appendChild(empty);
-                return;
-            }
-        
-            
-            const allTab = document.createElement('button');
-            allTab.className = 'world-book-tab active';
-            allTab.textContent = "All";
-            allTab.dataset.categoryId = 'all';
-            tabsContainer.appendChild(allTab);
-        
-            const allPane = document.createElement('div');
-            allPane.className = 'world-book-category-pane active';
-            allPane.dataset.categoryId = 'all';
-            contentContainer.appendChild(allPane);
-        
-            
-            categories.forEach(category => {
-                const categoryTab = document.createElement('button');
-                categoryTab.className = 'world-book-tab';
-                categoryTab.textContent = category.name;
-                categoryTab.dataset.categoryId = String(category.id);
-                tabsContainer.appendChild(categoryTab);
-        
-                const categoryPane = document.createElement('div');
-                categoryPane.className = 'world-book-category-pane';
-                categoryPane.dataset.categoryId = String(category.id);
-                contentContainer.appendChild(categoryPane);
-            });
-            
-            
-            const hasUncategorized = books.some(book => !book.categoryId);
-            if (hasUncategorized) {
-                const uncategorizedTab = document.createElement('button');
-                uncategorizedTab.className = 'world-book-tab';
-                uncategorizedTab.textContent = "Uncategorized";
-                uncategorizedTab.dataset.categoryId = 'uncategorized';
-                tabsContainer.appendChild(uncategorizedTab);
-            
-                const uncategorizedPane = document.createElement('div');
-                uncategorizedPane.className = 'world-book-category-pane';
-                uncategorizedPane.dataset.categoryId = 'uncategorized';
-                contentContainer.appendChild(uncategorizedPane);
-            }
-        
-            
-            books.forEach(book => {
-                let contentPreview = 'No entries yet';
-                if (Array.isArray(book.content) && book.content.length > 0) {
-                    const firstEntry = book.content[0];
-                    contentPreview = firstEntry.comment || firstEntry.content || '';
-                } else if (typeof book.content === 'string' && book.content.trim() !== '') {
-                    contentPreview = book.content;
-                }
-        
-                const category = categories.find(item => item.id === book.categoryId);
-                const card = () => collectionCard('worldBooks', book, contentPreview, category, openWorldBookEditor, renderWorldBookScreen);
-                allPane.appendChild(card());
-                const key = book.categoryId ? String(book.categoryId) : 'uncategorized';
-                [...contentContainer.children].find(pane => pane.dataset.categoryId === key)?.appendChild(card());
-            });
-        
-            
-            const tabs = [...tabsContainer.querySelectorAll('.world-book-tab')];
-            switchWorldBookCategory(tabs.some(tab => tab.dataset.categoryId === selected) ? selected : 'all');
-            tabs.forEach(tab => {
-                tab.addEventListener('click', () => switchWorldBookCategory(tab.dataset.categoryId));
-            });
-        }
+    const books = await runtime.db.worldBooks.toArray();
+    runtime.state.worldBooks = books;
+    const container = document.getElementById('world-book-content-container');
+    const cards = books.map(book => {
+        const first = Array.isArray(book.content) ? book.content[0] : undefined;
+        const preview = first?.comment || first?.content || (typeof book.content === 'string' ? book.content : '') || 'No entries yet';
+        return collectionCard('worldBooks', book, preview, openWorldBookEditor, renderWorldBookScreen);
+    });
+    container.replaceChildren(...cards);
+    if (!cards.length) {
+        const empty = document.createElement('p');
+        empty.className = 'phone-app-muted';
+        empty.textContent = 'Use the plus button to create your first Mini Prompts book.';
+        container.append(empty);
+    }
+}
 
 function openWorldBookEditor(bookId) {
   showScreen('world-book-editor-screen', { bookId })
@@ -115,43 +33,6 @@ export function updateCachedWorldBook(book) {
   const index = runtime.state.worldBooks.findIndex(item => item.id === book.id)
   if (index !== -1) runtime.state.worldBooks[index] = book
 }
-
-export async function addNewCategory() {
-            const input = document.getElementById('new-category-name-input');
-            const name = input.value.trim();
-            if (!name) {
-                alert("Enter a category name.");
-                return;
-            }
-            const existing = await runtime.db.worldBookCategories.where('name').equals(name).first();
-            if (existing) {
-                alert(`The category “${name}” already exists.`);
-                return;
-            }
-            await runtime.db.worldBookCategories.add({ name });
-            input.value = '';
-            await renderCategoryListInManager();
-        }
-
-export async function deleteCategory(categoryId) {
-            const confirmed = await showCustomConfirm(
-                "Confirm Delete", 
-                "Delete this category? Its Mini Prompts books will become uncategorized.",
-                { confirmButtonClass: 'btn-danger' }
-            );
-            if (confirmed) {
-                await runtime.db.worldBookCategories.delete(categoryId);
-                
-                const booksToUpdate = await runtime.db.worldBooks.where('categoryId').equals(categoryId).toArray();
-                for (const book of booksToUpdate) {
-                    book.categoryId = null;
-                    await runtime.db.worldBooks.put(book);
-                    const bookInState = runtime.state.worldBooks.find(wb => wb.id === book.id);
-                    if(bookInState) bookInState.categoryId = null;
-                }
-                await renderCategoryListInManager();
-            }
-        }
 
 export async function openWorldBookDeletionModal() {
     const modal = document.getElementById('delete-world-books-modal');
@@ -232,53 +113,13 @@ export async function handleConfirmWorldBookDeletion() {
     }
 }
 
-export async function openCategoryManager() {
-            await renderCategoryListInManager();
-            document.getElementById('world-book-category-manager-modal').classList.add('visible');
-        }
-
-export async function renderCategoryListInManager() {
-            const listEl = document.getElementById('existing-categories-list');
-            const categories = await runtime.db.worldBookCategories.toArray();
-            listEl.innerHTML = '';
-            if (categories.length === 0) {
-                listEl.innerHTML = "<p style=\"text-align: center; color: var(--text-secondary);\">No categories yet.</p>";
-            }
-            categories.forEach(cat => {
-                
-                const item = document.createElement('div');
-                item.className = 'existing-group-item'; 
-                item.innerHTML = `
-                    <span class="group-name">${escapeHtml(String(cat.name))}</span>
-                    <span class="delete-group-btn" data-id="${cat.id}">×</span>
-                `;
-                listEl.appendChild(item);
-            });
-        }
-
 export function bindWorldBookEditor() {
   document.getElementById('add-world-book-btn').addEventListener('click', async () => { const name = await showCustomPrompt("Create Mini Prompts", "Enter a name for this Mini Prompts book"); if (name && name.trim()) { const newBook = { id: 'wb_' + Date.now(), name: name.trim(), content: [] }; await runtime.db.worldBooks.add(newBook); runtime.state.worldBooks.push(newBook); openWorldBookEditor(newBook.id); } });
 
 
 }
 
-export function bindWorldBookCategories() {
-  document.getElementById('manage-world-book-categories-btn').addEventListener('click', openCategoryManager);
-
-document.getElementById('close-category-manager-btn').addEventListener('click', () => {
-            document.getElementById('world-book-category-manager-modal').classList.remove('visible');
-            renderWorldBookScreen(); 
-        });
-
-document.getElementById('add-new-category-btn').addEventListener('click', addNewCategory);
-
-document.getElementById('existing-categories-list').addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-group-btn')) {
-                const categoryId = parseInt(e.target.dataset.id);
-                deleteCategory(categoryId);
-            }
-        });
-
+export function bindWorldBookRelatedEvents() {
 document.getElementById('repost-cancel-btn').addEventListener('click', hideRepostModal);
 
 document.getElementById('repost-confirm-btn').addEventListener('click', handleConfirmRepost);

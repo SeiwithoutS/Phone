@@ -185,7 +185,7 @@
 }
 #phone-screen.dark-mode :is(
   .chat-list-item, .chat-group-header, .world-book-card, .world-book-entry, .preset-item,
-  #world-book-tabs, .world-book-category-pane, #settings-preview-area, #chat-lock-overlay
+  #settings-preview-area, #chat-lock-overlay
 ) { background-color: var(--ui-surface); color: var(--ui-text); }
 #phone-screen.dark-mode :is(.form-container, #chat-action-panel, .select-box, .checkboxes-container, #wallpaper-preview,
   #cphone-wallpaper-preview, #global-bg-preview, #font-preview, #button-order-editor, .search-bar-container) {

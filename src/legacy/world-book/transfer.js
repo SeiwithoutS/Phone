@@ -69,7 +69,6 @@ export async function importTavernWorldBook(tavernData, fileName) {
                 id: 'wb_' + Date.now(),
                 name: newBookName.trim(),
                 content: newEntries,
-                categoryId: null 
             };
         
             await runtime.db.worldBooks.add(newWorldBook);
@@ -82,9 +81,8 @@ export async function importTavernWorldBook(tavernData, fileName) {
 export async function exportWorldBooks() {
             try {
                 const books = await runtime.db.worldBooks.toArray();
-                const categories = await runtime.db.worldBookCategories.toArray();
         
-                if (books.length === 0 && categories.length === 0) {
+                if (books.length === 0) {
                     alert("There are no Mini Prompts books to export.");
                     return;
                 }
@@ -93,8 +91,7 @@ export async function exportWorldBooks() {
                     type: 'EPhoneWorldBookBackup', 
                     version: 1,
                     timestamp: Date.now(),
-                    books: books,
-                    categories: categories
+                    books: books.map(({ categoryId, ...book }) => book)
                 };
         
                 const blob = new Blob(
@@ -125,21 +122,17 @@ export async function importWorldBooks(data) {
         
                 const confirmed = await showCustomConfirm(
                     "Import Mini Prompts",
-                    "Replace your current Mini Prompts books and categories with this file?",
+                    "Replace your current Mini Prompts books with this file?",
                     { confirmButtonClass: 'btn-danger', confirmText: '确认覆盖' }
                 );
         
                 if (!confirmed) return;
         
-                await runtime.db.transaction('rw', runtime.db.worldBooks, runtime.db.worldBookCategories, async tx => {
+                await runtime.db.transaction('rw', runtime.db.worldBooks, async tx => {
                     await tx.worldBooks.clear();
-                    await tx.worldBookCategories.clear();
                     
                     if (Array.isArray(data.books)) {
-                        await tx.worldBooks.bulkPut(data.books);
-                    }
-                    if (Array.isArray(data.categories)) {
-                        await tx.worldBookCategories.bulkPut(data.categories);
+                        await tx.worldBooks.bulkPut(data.books.map(({ categoryId, ...book }) => book));
                     }
                 });
         
