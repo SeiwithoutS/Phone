@@ -2,6 +2,7 @@ import { open, chmod, mkdir, readFile, rename, unlink } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
+import { inspect, stripVTControlCharacters } from 'node:util'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { schema } from '../shared/storage.js'
 import type { Snapshot, TableName, Tables } from '../shared/storage.js'
@@ -77,8 +78,33 @@ function assertLocalRequest(request: IncomingMessage, allowedHosts: ReadonlySet<
   if (site && site !== 'same-origin' && site !== 'none') throw new HttpError(403, 'Cross-origin access is disabled.')
 }
 
+function logConnectionEvent(event: Record<string, unknown>) {
+  if ((event.provider !== 'openai' && event.provider !== 'gemini') ||
+      (event.detail !== undefined && typeof event.detail !== 'string') ||
+      (event.status !== undefined && (!Number.isInteger(event.status) || Number(event.status) < 100 || Number(event.status) > 599))) {
+    throw new HttpError(400, 'Invalid connection diagnostics.')
+  }
+  const provider = event.provider === 'gemini' ? 'Gemini' : 'OpenAI-compatible'
+  const http = event.status ? ` · HTTP ${event.status}` : ''
+  const log = event.result === 'ok' ? console.info : console.warn
+  if (event.action === 'connection.test') {
+    if (typeof event.model !== 'string') throw new HttpError(400, 'Invalid test model.')
+    log(`[EPhone] ${provider} · Test Message · ${inspect(event.model)} · ${event.result}${http}`)
+  } else {
+    if (event.models !== undefined && (!Array.isArray(event.models) || !event.models.every(model => typeof model === 'string'))) {
+      throw new HttpError(400, 'Invalid model list.')
+    }
+    log(`[EPhone] ${provider} · Fetch Models · ${event.result}${http}`)
+    if (Array.isArray(event.models)) log('Available models: ' + inspect(event.models, { maxArrayLength: null }))
+  }
+  if (typeof event.detail === 'string' && event.detail) {
+    log(stripVTControlCharacters(event.detail).replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, ''))
+  }
+}
+
 async function replaceSnapshot(temporary: string, filename: string) {
-  let retries = process.platform === 'win32' ? 4 : 0
+  // A Windows file reader can briefly hold the previous snapshot open.
+  let retries = process.platform === 'win32' ? 6 : 0
   for (let wait = 20; ; wait *= 2) {
     try {
       await rename(temporary, filename)
@@ -186,13 +212,17 @@ export function createStorageHandler(directory: string, host = localAddress().ho
       if (path === '/api/activity-log') {
         if (request.method !== 'POST') throw new HttpError(405, 'Method not allowed.')
         if (request.headers['content-type']?.split(';')[0] !== 'application/json') throw new HttpError(415, 'Expected JSON.')
-        const event = await readJson(request, 1024)
-        if (!isObject(event) || !['completion', 'bank.transfer', 'backup.restore'].includes(String(event.action)) ||
-          !['ok', 'failed'].includes(String(event.result))) throw new HttpError(400, 'Invalid activity event.')
-        const duration = typeof event.milliseconds === 'number' && Number.isFinite(event.milliseconds)
-          ? ' · ' + Math.max(0, Math.round(event.milliseconds)) + 'ms' : ''
-        if (event.result === 'ok') console.info('[EPhone]', event.action, 'ok' + duration)
-        else console.warn('[EPhone]', event.action, 'failed' + duration)
+        const event = await readJson(request, 512 * 1024)
+        if (!isObject(event) || !['ok', 'failed'].includes(String(event.result))) throw new HttpError(400, 'Invalid activity event.')
+        if (event.action === 'connection.test' || event.action === 'connection.models') {
+          logConnectionEvent(event)
+        } else {
+          if (!['completion', 'bank.transfer', 'backup.restore'].includes(String(event.action))) throw new HttpError(400, 'Invalid activity event.')
+          const duration = typeof event.milliseconds === 'number' && Number.isFinite(event.milliseconds)
+            ? ' · ' + Math.max(0, Math.round(event.milliseconds)) + 'ms' : ''
+          if (event.result === 'ok') console.info('[EPhone]', event.action, 'ok' + duration)
+          else console.warn('[EPhone]', event.action, 'failed' + duration)
+        }
         response.writeHead(204).end()
         return
       }

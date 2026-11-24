@@ -88,12 +88,12 @@
 :is(.market-gift-preview, .market-gift-card)[data-gift-style=Blush] { --card-tint: color-mix(in srgb, var(--ui-surface) 83%, #db7590); }
 :is(.market-gift-preview, .market-gift-card)[data-gift-style=Mint] { --card-tint: var(--ui-positive-soft); }
 :is(.market-gift-preview, .market-gift-card) em { white-space: pre-wrap; color: var(--ui-muted); }
-.market-editor {
+:is(.market-editor, .bank-balance-editor) {
   width: min(420px, calc(100% - 32px)); max-height: calc(100dvh - 36px); box-sizing: border-box;
   background: var(--ui-surface); color: var(--ui-text); border: 1px solid var(--ui-divider); border-radius: 18px; padding: 14px 17px 18px;
 }
-.market-editor::backdrop { background: #16152c99; }
-.market-editor h2 { margin: 0; font-size: 1.08rem; }
+:is(.market-editor, .bank-balance-editor)::backdrop { background: #16152c99; }
+:is(.market-editor, .bank-balance-editor) h2 { margin: 0; font-size: 1.08rem; }
 .market-image-preview { height: 110px; display: grid; place-items: center; color: var(--ui-muted); background: var(--ui-canvas); border-radius: 12px; }
 .market-image-preview img { width: 100%; height: 110px; object-fit: contain; }
 .market-image-preview .ui-icon { width: 30px; height: 30px; }

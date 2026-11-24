@@ -1,3 +1,5 @@
+import { localClock } from './location'
+
 const relativeTime = new Intl.RelativeTimeFormat('en', { numeric: 'always' })
 const monthDay = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' })
 const fullDate = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -34,11 +36,14 @@ function datedTime(timestamp: number, labelToday: boolean) {
   return `${formatter.format(date)} ${time}`
 }
 
-export const formatTimestampForAI = (timestamp: number) => datedTime(timestamp, true)
+export const formatTimestampForAI = (timestamp: number, timeZone?: string) =>
+  timeZone && Number.isFinite(timestamp) ? localClock(timeZone, timestamp) : datedTime(timestamp, true)
 export const formatSystemTimestamp = (timestamp: number) => datedTime(timestamp, false)
 
-export function getTimeOfDayGreeting(date = new Date()) {
-  const hour = date.getHours()
+export function getTimeOfDayGreeting(date = new Date(), timeZone?: string) {
+  const hour = timeZone
+    ? Number(new Intl.DateTimeFormat('en', { timeZone, hour: '2-digit', hourCycle: 'h23' }).format(date))
+    : date.getHours()
   if (hour < 5) return 'Late night'
   if (hour < 9) return 'Early morning'
   if (hour < 13) return 'Midday'

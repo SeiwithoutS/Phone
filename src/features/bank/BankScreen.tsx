@@ -1,12 +1,14 @@
 import { Fragment, useContext, useEffect, useId, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BackButton, Screen, ScreenContext, ScreenHeader } from '../../components/phone'
+import { PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
 import { Icon, IconButton } from '../../components/icons'
 import { showScreen } from '../../app/routes'
 import type { LocalDatabase } from '../../storage/database'
+import type { StoredRow } from '../../../shared/storage'
 import { runtime } from '../../legacy/runtime/state.js'
-import { balanceFor, bankAmount, bankCurrencies, setBankCurrency, marketMerchant, transferEvent } from './bank'
+import { balanceFor, bankAmount, bankBalanceEvent, bankCurrencies, bankOpeningBalance, setBankCurrency, marketMerchant, transferEvent } from './bank'
 import type { BankCurrency, Transfer } from './bank'
+import { BankBalanceEditor } from './BankBalanceEditor'
 import { useBankCurrency } from './useBankCurrency'
 
 const filters = ['All', 'Received', 'Sent', 'Orders'] as const
@@ -19,31 +21,40 @@ export function BankView({ actorId, database, back }: {
   const currency = useBankCurrency(database)
   const format = (cents: number) => bankAmount(cents, currency)
   const [savingCurrency, setSavingCurrency] = useState(false)
-  const [transfers, setTransfers] = useState<Transfer[]>([])
+  const [bankData, setBankData] = useState<{ accounts: StoredRow[]; transfers: Transfer[] }>()
   const [readAt, setReadAt] = useState(0)
   const [failed, setFailed] = useState(false)
   const [filter, setFilter] = useState<typeof filters[number]>('All')
   const [query, setQuery] = useState('')
   const [period, setPeriod] = useState('all')
   const [balanceVisible, setBalanceVisible] = useState(true)
+  const [editingBalance, setEditingBalance] = useState(false)
   const key = 'bank-read:' + actorId
   useEffect(() => {
     if (!database) return
     let active = true
     setReadAt(Number(database.getPreference(key)) || 0)
-    const refresh = () => void database.bankTransfers.toArray().then(rows => {
-      if (active) setTransfers(rows as Transfer[])
-    }).catch(() => { if (active) setFailed(true) })
+    const refresh = () => void Promise.all([database.bankAccounts.toArray(), database.bankTransfers.toArray()])
+      .then(([accounts, transfers]) => {
+        if (active) setBankData({ accounts, transfers: transfers as Transfer[] })
+      }).catch(() => { if (active) setFailed(true) })
     refresh()
     window.addEventListener(transferEvent, refresh)
-    return () => { active = false; window.removeEventListener(transferEvent, refresh) }
+    window.addEventListener(bankBalanceEvent, refresh)
+    return () => {
+      active = false
+      window.removeEventListener(transferEvent, refresh)
+      window.removeEventListener(bankBalanceEvent, refresh)
+    }
   }, [database, key])
 
+  const transfers = bankData?.transfers ?? []
+  const openingBalance = (id: string) => bankOpeningBalance(bankData?.accounts.find(account => account.id === id))
   const history = transfers.filter(entry => entry.from === actorId || entry.to === actorId)
     .sort((a, b) => b.timestamp - a.timestamp || b.id.localeCompare(a.id))
   const unread = history.filter(entry => entry.to === actorId && entry.timestamp > readAt)
   const actorName = (id: string) => id === 'user' ? 'You' : id === marketMerchant ? 'Marketplace' : runtime.state.chats[id]?.name || 'Character'
-  const available = balanceFor(actorId, transfers)
+  const available = balanceFor(actorId, transfers, openingBalance(actorId))
   const today = new Date()
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).getTime()
   const monthly = history.filter(entry => entry.timestamp >= startOfMonth)
@@ -63,7 +74,9 @@ export function BankView({ actorId, database, back }: {
       `${counterparty} ${entry.note} ${entry.id}`.toLowerCase().includes(needle)
   })
   return <div className="bank-app phone-feature">
-    <ScreenHeader className="phone-feature-header"><BackButton onClick={back} /><span>Bank</span><Icon name="bank" /></ScreenHeader>
+    <PhoneFeatureHeader title="Bank" onBack={back}
+      actions={<IconButton icon="settings" label="Set opening balance" aria-haspopup="dialog" disabled={!bankData}
+        onClick={() => setEditingBalance(true)} />} />
     <div className="phone-app-scroll phone-app-stack">
       <div className="bank-balance"><div className="bank-row"><span>{actorName(actorId)} · Simulated account</span>
         <IconButton icon={balanceVisible ? 'eye-off' : 'eye'} label={balanceVisible ? 'Hide available balance' : 'Show available balance'}
@@ -132,6 +145,11 @@ export function BankView({ actorId, database, back }: {
       </section>
       {failed && <p role="alert">Bank data could not be read or saved.</p>}
     </div>
+    {editingBalance && database && <BankBalanceEditor database={database} actorId={actorId}
+      accounts={actorId === 'user' ? [{ id: 'user', name: 'You' }, ...Object.values(runtime.state.chats)
+        .flatMap(chat => chat && !chat.isGroup ? [{ id: chat.id, name: chat.name }] : [])
+        .sort((a, b) => a.name.localeCompare(b.name))] : [{ id: actorId, name: actorName(actorId) }]}
+      openingBalance={openingBalance} transfers={transfers} currency={currency} close={() => setEditingBalance(false)} />}
   </div>
 }
 

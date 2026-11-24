@@ -1,26 +1,7 @@
-#phone-screen.dark-mode #char-diary-list .list-item .item-content,
 #phone-screen.dark-mode #char-browser-history .char-browser-item .url,
 #phone-screen.dark-mode #char-usage-list .usage-item-category,
 #phone-screen.dark-mode #char-music-list .music-item-artist {
     color: #a0a0a0; 
-}
-
-#phone-screen.dark-mode #char-diary-detail-content .diary-highlight {
-    background-color: rgba(255, 223, 100, 0.2); 
-    color: #FFD700; 
-}
-
-#phone-screen.dark-mode #char-diary-detail-content .diary-underline {
-    border-bottom-color: #FF85B3; 
-}
-
-#phone-screen.dark-mode #char-diary-detail-content .diary-emphasis {
-    color: #FF85B3; 
-}
-
-#phone-screen.dark-mode #char-diary-detail-content .diary-handwritten,
-#phone-screen.dark-mode #char-diary-detail-content .diary-messy {
-    color: #dcdcdc; 
 }
 
 #phone-screen.dark-mode .spoiler {

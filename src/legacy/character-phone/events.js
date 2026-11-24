@@ -1,7 +1,7 @@
 import { renderWallpaperScreen } from '../appearance/wallpaper.js'
 import { switchToCharScreen } from './launcher.js'
 import { closeCharMusicPlayer } from './music.js'
-import { handleGenerateSimulatedDiaries, handleWriteNewDiaryEntry, openMemoEditor, toggleDiaryFavorite, toggleMemoFavorite } from './notes.js'
+import { openMemoEditor, toggleMemoFavorite } from './notes.js'
 import { handleContinueRealConversationFromCPhone, handleGenerateAmapHistory, handleGenerateAppUsage, handleGenerateBrowserHistory, handleGenerateSimulatedAlbum, handleGenerateSimulatedMemos, handleGenerateSimulatedMusic, handleGenerateSimulatedQQ, handleGenerateTaobaoHistory, loadMoreMirroredMessages, openCharSimulatedConversation, openCharWallet, toggleBrowserArticleFavorite } from './simulation.js'
 import { importSingleChat } from '../chat/import.js'
 import { showCustomAlert } from '../dialogs/dialogs.js'
@@ -20,8 +20,6 @@ export function bindCharacterPhoneEvents() {
 
 document.getElementById('add-char-memo-btn').addEventListener('click', () => openMemoEditor());
 
-
-document.getElementById('favorite-diary-btn').addEventListener('click', toggleDiaryFavorite);
 
 document.getElementById('favorite-article-btn').addEventListener('click', toggleBrowserArticleFavorite);
 
@@ -118,12 +116,6 @@ window.openCharWallet = openCharWallet;
 document.getElementById('regenerate-char-memo-btn').addEventListener('click', handleGenerateSimulatedMemos);
 
 document.getElementById('char-memo-detail-back-btn').addEventListener('click', () => switchToCharScreen('char-memo-screen'));
-
-document.getElementById('regenerate-char-diary-btn').addEventListener('click', handleGenerateSimulatedDiaries);
-
-document.getElementById('add-char-diary-btn').addEventListener('click', handleWriteNewDiaryEntry);
-
-document.getElementById('char-diary-detail-back-btn').addEventListener('click', () => switchToCharScreen('char-diary-screen'));
 
 document.getElementById('regenerate-char-amap-btn').addEventListener('click', handleGenerateAmapHistory);
 

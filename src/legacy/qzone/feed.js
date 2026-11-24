@@ -444,7 +444,7 @@ export async function sendQzoneStickerComment(postId, sticker) {
             for (const chatId in runtime.state.chats) {
                 const chat = runtime.state.chats[chatId];
                 if (!chat.isGroup) {
-                    const intelligentPrompt = `[系统提示：'${runtime.state.qzoneSettings.nickname}' 在你的动态(ID: ${postId}, 内容摘要: “${postSummary}”)下发送了一个表情评论，意思是：“${sticker.name}”。请你对此作出回应。]`;
+                    const intelligentPrompt = `[System notice: "${runtime.state.qzoneSettings.nickname}" replied with a sticker meaning "${sticker.name}" on your post (ID: ${postId}): "${postSummary}". Respond in character.]`;
                     
                     const historyMessage = { 
                         role: 'system', 

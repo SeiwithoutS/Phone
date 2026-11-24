@@ -15,7 +15,7 @@ const categories = {
   'Stickers and frames': ['userStickers', 'stickerCategories', 'customAvatarFrames'],
   'Home and appearance': ['homeWidgets', 'appearancePresets', 'globalSettings'],
   'Shopping': ['shoppingProducts', 'shoppingCategories'],
-  'Bank and order history': ['bankTransfers', 'marketOrders'],
+  'Bank and orders': ['bankAccounts', 'bankTransfers', 'marketOrders'],
   'Music and reading': ['musicLibrary', 'readingLibrary'],
   'API and device settings': ['apiConfig', 'apiPresets', 'deviceSettings'],
 } as const satisfies Record<string, readonly TableName[]>

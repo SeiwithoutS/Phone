@@ -62,14 +62,14 @@ if (deleteBtn) {
             const stickerMatch = runtime.state.userStickers.find(s => s.url === deletedComment.text);
 
             if (stickerMatch) {
-                 notificationText = `用户'${userNickname}'刚刚在你的动态“${postSummary}”下，发送了一个表情评论，意思是：“${stickerMatch.name}”。`;
+                 notificationText = `The user "${userNickname}" posted a sticker meaning "${stickerMatch.name}" on your post "${postSummary}".`;
             } else if (deletedComment.replyTo) {
                  const repliedToDisplayName = getDisplayNameByOriginalName(deletedComment.replyTo);
-                 notificationText = `用户'${userNickname}'刚刚在你的动态“${postSummary}”下，回复了'${repliedToDisplayName}'的评论，内容是：“${deletedComment.text}”。`;
+                 notificationText = `The user "${userNickname}" replied to "${repliedToDisplayName}" on your post "${postSummary}": "${deletedComment.text}".`;
             } else {
-                 notificationText = `用户'${userNickname}'刚刚评论了你的动态“${postSummary}”，内容是：“${deletedComment.text}”。`;
+                 notificationText = `The user "${userNickname}" commented on your post "${postSummary}": "${deletedComment.text}".`;
             }
-            const fullSystemContent = `[系统提示：${notificationText}请你对此作出回应。]`;
+            const fullSystemContent = `[System notice: ${notificationText} Respond in character.]`;
 
             
             for (const aiId of aiToNotifyIds) {
@@ -233,12 +233,12 @@ if (deleteBtn) {
                     const chat = runtime.state.chats[aiId];
                     if (chat && !chat.isGroup) {
                         const stickerMatch = runtime.state.userStickers.find(s => s.url === commentText);
-                        let notificationText = stickerMatch ? `用户'${userNickname}'刚刚在你的动态“${postSummary}”下，发送了一个表情评论，意思是：“${stickerMatch.name}”。`
-                            : newComment.replyTo ? `用户'${userNickname}'刚刚在你的动态“${postSummary}”下，回复了'${runtime.currentQzoneReplyContext.replyToDisplayName}'的评论，内容是：“${commentText}”。`
-                            : `用户'${userNickname}'刚刚评论了你的动态“${postSummary}”，内容是：“${commentText}”。`;
+                        let notificationText = stickerMatch ? `The user "${userNickname}" posted a sticker meaning "${stickerMatch.name}" on your post "${postSummary}".`
+                            : newComment.replyTo ? `The user "${userNickname}" replied to "${runtime.currentQzoneReplyContext.replyToDisplayName}" on your post "${postSummary}": "${commentText}".`
+                            : `The user "${userNickname}" commented on your post "${postSummary}": "${commentText}".`;
                         const historyMessage = { 
                             role: 'system', 
-                            content: `[系统提示：${notificationText}请你对此作出回应。]`, 
+                            content: `[System notice: ${notificationText} Respond in character.]`,
                             timestamp: Date.now(), 
                             isHidden: true 
                         };

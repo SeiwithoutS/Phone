@@ -3,8 +3,6 @@ import { applyCustomFont, resetToDefaultFont } from '../appearance/fonts.js'
 import { toggleTheme } from '../appearance/theme.js'
 import { showCallTranscript } from '../calls/calls.js'
 import { renderCallHistoryScreen } from '../chat/attachments.js'
-import { renderChatInterface } from '../chat/conversation.js'
-import { renderChatList } from '../chat/list.js'
 import { sendLocationShare } from '../chat/messages.js'
 import { openShareLinkModal, sendUserLinkShare } from '../chat/sharing.js'
 import { showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
@@ -16,28 +14,6 @@ import { controls } from '../runtime/state.js'
 import { runtime } from '../runtime/state.js'
 
 export function bindQzonePostEditor() {
-  document.getElementById('selection-erase-btn').addEventListener('click', async () => {
-            if (runtime.selectedMessages.size === 0) return;
-            const confirmed = await showCustomConfirm(
-                "Delete Messages Permanently", 
-                `Permanently delete ${runtime.selectedMessages.size} selected messages from the chat history?`, 
-                { confirmButtonClass: 'btn-danger', confirmText: '确认抹除' }
-            );
-            if (confirmed) {
-                const chat = runtime.state.chats[runtime.state.activeChatId];
-                
-                
-                chat.history = chat.history.filter(msg => !runtime.selectedMessages.has(msg.timestamp));
-                
-                
-                await runtime.db.chats.put(chat);
-                
-                
-                renderChatInterface(runtime.state.activeChatId);
-                renderChatList();
-            }
-        });
-
 controls.fontUrlInput = document.getElementById('font-url-input')
 
 controls.fontUrlInput.addEventListener('input', () => applyCustomFont(controls.fontUrlInput.value.trim(), true));

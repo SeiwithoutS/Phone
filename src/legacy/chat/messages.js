@@ -102,34 +102,98 @@ export async function sendLocationShare() {
             renderChatList();
         }
 
-export function enterSelectionMode(initialMsgTimestamp) { if (runtime.isSelectionMode) return; runtime.isSelectionMode = true; document.getElementById('chat-interface-screen').classList.add('selection-mode'); toggleMessageSelection(initialMsgTimestamp); }
+let deleteMode;
+let rangeStart;
+const deleteSelection = new Set();
+
+function refreshSelection() {
+    const removing = deleteMode ? deleteSelection : runtime.selectedMessages;
+    const removeButton = document.getElementById('selection-erase-btn');
+    document.getElementById('selection-count').textContent = removing.size + ' selected';
+    removeButton.disabled = removing.size === 0 || removeButton.getAttribute('aria-busy') === 'true';
+    removeButton.textContent = deleteMode ? 'Delete (' + removing.size + ')' : 'Delete Permanently';
+    document.querySelectorAll('#chat-messages .qq-message-checkbox').forEach(checkbox => checkbox.syncSelection());
+}
+
+export function enterSelectionMode(initialMessage, mode) {
+    if (runtime.isSelectionMode) return;
+    runtime.isSelectionMode = true;
+    deleteMode = mode;
+    const screen = document.getElementById('chat-interface-screen');
+    screen.classList.add('selection-mode');
+    screen.classList.toggle('qq-delete-mode', Boolean(mode));
+    document.getElementById('qq-delete-hint').textContent = mode === 'range'
+        ? 'Tap the first bubble to delete from that point onward.' : 'Tap the bubbles you want to delete.';
+    if (initialMessage !== undefined) toggleMessageSelection(initialMessage);
+    refreshSelection();
+}
 
 export function exitSelectionMode() {
-            cleanupWaimaiTimers(); 
-         if (!runtime.isSelectionMode) return; runtime.isSelectionMode = false; document.getElementById('chat-interface-screen').classList.remove('selection-mode'); runtime.selectedMessages.forEach(ts => { const bubble = document.querySelector(`.message-bubble[data-timestamp="${ts}"]`); if (bubble) bubble.classList.remove('selected'); }); runtime.selectedMessages.clear(); }
+    cleanupWaimaiTimers();
+    if (!runtime.isSelectionMode) return;
+    runtime.isSelectionMode = false;
+    document.getElementById('chat-interface-screen').classList.remove('selection-mode', 'qq-delete-mode');
+    runtime.selectedMessages.clear();
+    deleteSelection.clear();
+    deleteMode = undefined;
+    rangeStart = undefined;
+    document.getElementById('qq-delete-error').textContent = '';
+    refreshSelection();
+}
 
-export function toggleMessageSelection(timestamp) {
-            
-            const elementToSelect = document.querySelector(
-                `.message-bubble[data-timestamp="${timestamp}"]`
-            );
-        
-            if (!elementToSelect) return;
-        
-            if (runtime.selectedMessages.has(timestamp)) {
-                runtime.selectedMessages.delete(timestamp);
-                elementToSelect.classList.remove('selected');
-            } else {
-                runtime.selectedMessages.add(timestamp);
-                elementToSelect.classList.add('selected');
-            }
-            
-            document.getElementById('selection-count').textContent = `${runtime.selectedMessages.size} selected`;
-            
-            if (runtime.selectedMessages.size === 0) {
-                exitSelectionMode();
-            }
+function toggleMessageSelection(target) {
+    const history = runtime.state.chats[runtime.state.activeChatId]?.history;
+    const message = typeof target === 'number' ? history?.find(item => item.timestamp === target && !item.isHidden) : target;
+    if (!message || !history?.includes(message)) return;
+    if (deleteMode === 'range') {
+        const repeated = rangeStart === message;
+        rangeStart = repeated ? undefined : message;
+        deleteSelection.clear();
+        if (!repeated) {
+            history.slice(history.indexOf(message)).filter(item => !item.isHidden && !item.isTemporary)
+                .forEach(item => deleteSelection.add(item));
         }
+    } else {
+        const selected = deleteMode ? deleteSelection : runtime.selectedMessages;
+        const key = deleteMode ? message : message.timestamp;
+        if (selected.has(key)) selected.delete(key);
+        else selected.add(key);
+    }
+    refreshSelection();
+}
+
+export function messagesSelectedForDeletion(chat) {
+    if (deleteMode === 'range') {
+        const start = chat.history.indexOf(rangeStart);
+        return start >= 0 ? chat.history.slice(start) : [];
+    }
+    return chat.history.filter(message => deleteMode ? deleteSelection.has(message) : runtime.selectedMessages.has(message.timestamp));
+}
+
+export function messageDeletionMode() {
+    return deleteMode;
+}
+
+export function bindMessageSelection(wrapper, bubble, message) {
+    if (message.isHidden || message.isTemporary || message.timestamp == null) return;
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'qq-message-checkbox';
+    checkbox.setAttribute('aria-label', 'Select message');
+    checkbox.syncSelection = () => {
+        checkbox.checked = deleteMode ? deleteSelection.has(message) : runtime.selectedMessages.has(message.timestamp);
+        bubble.classList.toggle('selected', checkbox.checked);
+    };
+    checkbox.syncSelection();
+    checkbox.addEventListener('change', () => toggleMessageSelection(message));
+    wrapper.prepend(checkbox);
+    wrapper.addEventListener('click', event => {
+        if (!runtime.isSelectionMode || event.target === checkbox) return;
+        event.preventDefault();
+        event.stopPropagation();
+        toggleMessageSelection(message);
+    }, true);
+}
 
 export function startReplyToMessage() {
             if (!runtime.activeMessageTimestamp) return;
@@ -211,9 +275,9 @@ export async function recallMessage(timestamp, isUserRecall) {
         
         let recalledContentText = '';
         if (recalledData.originalType === 'sticker') {
-            recalledContentText = `[表情，含义: ${recalledData.originalMeaning || '未知'}]`;
+            recalledContentText = `[Sticker meaning: ${recalledData.originalMeaning || 'unknown'}]`;
         } else if (recalledData.originalType === 'ai_image' || recalledData.originalType === 'user_photo') {
-            recalledContentText = `[图片，描述: ${recalledData.originalContent}]`;
+            recalledContentText = `[Image description: ${recalledData.originalContent}]`;
         } else {
             recalledContentText = `“${String(recalledData.originalContent)}”`;
         }
@@ -221,7 +285,7 @@ export async function recallMessage(timestamp, isUserRecall) {
         
         const hiddenMessageForAI = {
             role: 'system',
-            content: `[系统提示：用户（${myNickname}）刚刚撤回了一条消息。撤回前的内容是：${recalledContentText}。请你对此作出回应，可以表现出好奇、开玩笑（比如'我截图了！'）、或者根据你的人设表示理解或疑惑。]`,
+            content: `[System notice: The user (${myNickname}) recalled a message. Its original content was ${recalledContentText}. React in character with curiosity, a joke such as "I took a screenshot!", understanding, or confusion.]`,
             timestamp: Date.now(),
             isHidden: true 
         };

@@ -40,12 +40,6 @@
     box-shadow: none !important;
 }
 
-#phone-screen {
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-}
-
 #chat-settings-screen {
     display: flex;
     flex-direction: column;

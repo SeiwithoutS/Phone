@@ -1,12 +1,14 @@
 import { IconButton } from '../../components/icons'
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { HeaderSaveButton, PhoneFeatureHeader, FilePicker, Screen } from '../../components/phone'
+import { HeaderSaveButton, PhoneFeatureHeader, FilePicker, Screen, ScreenContext } from '../../components/phone'
 import { Icon } from '../../components/icons'
 import type { IconName } from '../../components/icons'
 import { showScreen } from '../../app/routes'
 import { useNavigate } from 'react-router-dom'
 import { runtime } from '../../legacy/runtime/state.js'
+import { DiaryPanel } from './DiaryPanel'
+import { LocationFields } from './LocationFields'
 
 const chatThemes = [
   ['default', 'Default', '#b7e6a7', '#ffffff'],
@@ -27,11 +29,29 @@ const chatThemes = [
   ['green_black', 'Green / Black', '#e4f6e0', '#212121'],
 ] as const
 
-const settingsTabs = ['Setup', 'Features', 'Appearance'] as const
+const settingsTabs = ['Setup', 'Features', 'Appearance', 'Diary'] as const
+
+function PromptLinkPicker({ kind, title, icon, description }: {
+  kind: 'world-info' | 'mini-prompts'; title: string; icon: IconName; description: string
+}) {
+  return <details id={`chat-${kind}-picker`} className="chat-setting-card chat-prompt-picker">
+    <summary>
+      <span className="chat-setting-icon"><Icon name={icon} /></span>
+      <span className="chat-prompt-picker-heading"><strong>{title}</strong><small data-link-summary>No links</small></span>
+      <Icon name="next" />
+    </summary>
+    <p>{description}</p>
+    <div className="chat-prompt-options" data-link-options role="group" aria-label={title} />
+  </details>
+}
 
 export function ChatSettingsScreen() {
   const navigate = useNavigate()
   const { key } = useLocation()
+  const active = useContext(ScreenContext) === 'chat-settings-screen'
+  const chatId = active && runtime.state.activeChatId
+  const chat = chatId ? runtime.state.chats[chatId] : undefined
+  const character = chat && !chat.isGroup ? chat : undefined
   const [tab, setTab] = useState<typeof settingsTabs[number]>('Setup')
   useEffect(() => { setTab('Setup') }, [key])
   useEffect(() => {
@@ -48,7 +68,7 @@ export function ChatSettingsScreen() {
         <strong id="chat-settings-contact-name" />
       </div>
       <div className="chat-tabs" role="group" aria-label="Chat settings sections">
-        {settingsTabs.map(name => <button key={name} type="button"
+        {settingsTabs.filter(name => name !== 'Diary' || character).map(name => <button key={name} type="button"
           data-settings-tab={name} aria-pressed={name === tab} onClick={() => setTab(name)}>{name}</button>)}
       </div>
       <p id="chat-settings-error" className="chat-settings-error" role="alert" />
@@ -99,33 +119,16 @@ export function ChatSettingsScreen() {
           <p>Choose which sticker groups this chat can use.</p>
           <div id="chat-sticker-groups" />
         </details>
-        <div className="form-group" id="world-book-link-group">
-          {" "}
-          <label>Linked World Info</label>
-          <div className="custom-multiselect">
-            <button type="button" className="select-box" aria-expanded="false" aria-controls="world-book-checkboxes-container">
-              {" "}
-              <span className="selected-options-text">Select entries</span>
-              {" "}
-              <Icon name="next" />
-            </button>
-            <div id="world-book-checkboxes-container" className="checkboxes-container">{" "}</div>
-          </div>
-        </div>
+        <PromptLinkPicker kind="world-info" title="Linked World Info" icon="book"
+          description="Choose lorebooks from World Info. Enabled entries activate by keyword or when set to always on." />
+        <PromptLinkPicker kind="mini-prompts" title="Linked Mini Prompts" icon="spark"
+          description="Choose books from Mini Prompts. Enabled entries are included in the chat context." />
         <div className="chat-setting-card chat-location-card">
           <h2>Location and time zone</h2>
-          <div className="form-group" id="chat-location-group">
-            <label htmlFor="chat-character-location">Character location</label>
-            <input id="chat-character-location" maxLength={100} placeholder="City and country" />
-          </div>
-        <div className="form-group" id="time-zone-group">
-          {" "}
-          <label htmlFor="time-zone-select">Time zone</label>
-          {" "}
-          <input type="search" aria-label="Filter time zones" id="time-zone-search-input" placeholder={"Search time zones, e.g. Shanghai or New York…"} />
-          {" "}
-          <select id="time-zone-select" style={{ width: "100%" }} />
-        </div>
+          <LocationFields prefix="chat-character-location" cityLabel="Character city"
+            zoneLabel={chat?.isGroup ? 'Group time zone' : 'Character time zone'} hideCity={chat?.isGroup} />
+          <LocationFields prefix="chat-user-location" cityLabel="My city" zoneLabel="My time zone" />
+          <p className="phone-app-muted">These settings apply to this chat. Automatic mode uses a recognized city or the device time zone.</p>
         </div>
         <div className="form-group" id="my-persona-group">
           <label htmlFor="my-persona">My Persona</label>
@@ -152,9 +155,10 @@ export function ChatSettingsScreen() {
         <section hidden={tab !== "Features"} aria-label="Chat features">
         <div id="chat-character-features" className="chat-setting-toggles">
           <ChatSwitch icon="feed" id="chat-social-posts" label="Social interaction" hint="Allow this character to publish posts." />
-          <ChatSwitch icon="bag" id="chat-store-purchases" label="Store interaction" hint="Show simulated purchases in Cphone Shopping." />
+          <ChatSwitch icon="bag" id="chat-store-purchases" label="Shopping" hint="Let the character buy items or order food from Market during a reply, using their own balance." />
+          <ChatSwitch icon="bank" id="chat-bank-transfers" label="Banking" hint="Let the character send you simulated transfers from their Bank balance when appropriate." />
           <ChatSwitch icon="profile" id="chat-live-status" label="Character status" hint="Show their status below the chat name." />
-          <ChatSwitch icon="bell" id="chat-auto-messages" label="Scheduled messages" hint="Let the character message you first after the cooldown below, while EPhone is open. Background activity must be enabled here and in API Connections." />
+          <ChatSwitch icon="bell" id="chat-auto-messages" label="Scheduled messages" hint="Let the character message first after a quiet period. Requires both background activity switches and an open EPhone app." />
         <div className="form-group" id="ai-cooldown-group">
           {" "}
           <label htmlFor="ai-action-cooldown-input">
@@ -197,7 +201,7 @@ export function ChatSettingsScreen() {
             {" "}
             <label htmlFor="char-background-activity-switch" style={{ marginBottom: "0" }}>
               {" Enable independent background activity "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Allow background posts and messages for this character. Enable background activity in API Connections as well. "}</p>
+              <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Allow scheduled messages or spontaneous background activity for this character. Also turn on Background Activity in API Connections. "}</p>
               {" "}
             </label>
             <label className="toggle-switch">
@@ -519,6 +523,9 @@ export function ChatSettingsScreen() {
           </div>
         </div>
         </section>
+        {character && <section hidden={tab !== 'Diary'} className="phone-app-stack" aria-label="Diary">
+          <DiaryPanel key={character.id + ':' + key} chat={character} />
+        </section>}
       </div>
     </Screen>
   )

@@ -25,7 +25,7 @@ import { bindChatSettingsEditor, bindChatAppearanceControls } from '../chat/sett
 import { bindChatSharing } from '../chat/sharing.js'
 import { bindTransferEvents } from '../chat/attachments.js'
 import { bindGomokuEvents } from '../gomoku/gomoku.js'
-import { bindPhonePreferences, bindHomeTimeZoneEvents } from '../home/events.js'
+import { bindPhonePreferences } from '../home/events.js'
 import { bindMemoryEditorEvents, bindMemoryNavigation } from '../memories/events.js'
 import { bindMusicPlaybackEvents } from '../music/events.js'
 import { togglePlayerFullscreen, updateListenTogetherIcon } from '../music/player.js'
@@ -267,9 +267,7 @@ runtime.activeCharacterId = null
 
 runtime.editingMemoId = null
 
-runtime.editingDiaryId = null
 
-runtime.activeDiaryForViewing = null
 
 runtime.activeArticleForViewing = null
 
@@ -328,7 +326,6 @@ runtime.DEFAULT_CPHONE_ICONS = {
             'browser': 'https://i.postimg.cc/KzC2gTq6/IMG-7276.jpg',
             'taobao': 'https://i.postimg.cc/L6R7x16R/IMG-7278.jpg',
             'memo': 'https://i.postimg.cc/J0b6Nym4/IMG-7279.jpg',
-            'diary': 'https://i.postimg.cc/DZ541sbt/IMG-7280.jpg',
             'amap': 'https://i.postimg.cc/Jz2Tz0dw/IMG-7281.jpg',
             'usage': 'https://i.postimg.cc/WbF8kzz9/IMG-7282.jpg',
             'music': 'https://is1-ssl.mzstatic.com/image/thumb/Purple112/v4/64/9d/21/649d21e8-a151-6136-3914-256e54f15d9a/AppIcon-0-0-1x_U007emarketing-0-0-0-7-0-0-sRGB-0-0-0-GLES2_U002c0-512MB-85-220-0-0.png/1200x630wa.png',
@@ -549,8 +546,7 @@ async function initialize() {
   bindChatButtonOrder()
   bindDataClearEvents()
   bindNpcEvents()
-  bindHomeTimeZoneEvents()
-  bindDataRepairEvents()
+    bindDataRepairEvents()
   bindWorldBookDeletion()
   bindStickerEvents()
   bindReadingEvents()

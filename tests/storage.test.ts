@@ -8,7 +8,19 @@ import { openLocalStore } from '../server/storage.js'
 import { normalizeWorldInfo } from '../src/features/world-book/model.js'
 import { promptSteps, readTavernPreset } from '../src/features/presets/prompt-order.js'
 import { buildContext, normalizeContext } from '../src/features/context/budget.js'
+import { localDateKey, resolveTimeZone, timeDifference } from '../src/features/chat/location.js'
 import { decodePortable, encodePortable } from '../src/storage/portable.js'
+
+test('locations resolve independently and use daylight-saving offsets for the selected date', () => {
+  assert.equal(resolveTimeZone('Hồ Chí Minh, Việt Nam', '').zone, 'Asia/Ho_Chi_Minh')
+  assert.deepEqual(resolveTimeZone('Berlin', 'Asia/Saigon'), { zone: 'Asia/Saigon', source: 'manual' })
+  assert.equal(resolveTimeZone('Unknown fictional city', 'Invalid/Zone').source, 'device')
+  const january = new Date('2026-01-01T23:30:00Z')
+  const july = new Date('2026-07-01T23:30:00Z')
+  assert.equal(localDateKey('Europe/Berlin', january), '2026-01-02')
+  assert.equal(timeDifference('Europe/Berlin', 'Asia/Ho_Chi_Minh', january), '6h behind your time')
+  assert.equal(timeDifference('Europe/Berlin', 'Asia/Ho_Chi_Minh', july), '5h behind your time')
+})
 
 test('SillyTavern presets preserve ordering, roles, and disabled rows when assembling a prompt', () => {
   const prompts = [

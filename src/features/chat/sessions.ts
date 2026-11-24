@@ -4,6 +4,7 @@ import { renderChatList } from '../../legacy/chat/list.js'
 import { cancelReplyMode } from '../../legacy/chat/attachments.js'
 import { exitSelectionMode } from '../../legacy/chat/messages.js'
 import { openingMessage } from '../characters/characters'
+import { removeBubbles, trimReplyTurns } from './reply-turns'
 import type { ChatMessage, ChatSession } from './model'
 
 type Chat = NonNullable<ReturnType<typeof getActiveChat>>
@@ -115,12 +116,16 @@ function emptySession(): ChatSession {
   }
 }
 
+export function manualMemory(chat: { longTermMemory?: unknown[] }) {
+  return (chat.longTermMemory ?? []).filter(memory => (memory as { source?: string } | null)?.source === 'manual')
+}
+
 function keepHistory(session: ChatSession, history: ChatMessage[]): ChatSession {
   const timestamps = new Set(history.map(message => message.timestamp))
   return {
     ...session,
     history,
-    longTermMemory: session.longTermMemory.filter(memory => (memory as { source?: string } | null)?.source === 'manual'),
+    longTermMemory: manualMemory(session),
     lastMemorySummaryTimestamp: 0,
     announcements: session.announcements?.filter(item => timestamps.has(item.messageTimestamp)),
   }
@@ -138,17 +143,20 @@ function sessionChanges(session: ChatSession): Partial<Chat> {
   }
 }
 
-export async function deleteMessagesFrom(chat: Chat, message: ChatMessage) {
+export async function deleteMessages(chat: Chat, messages: ChatMessage[], notice?: ChatMessage, range = false) {
   await mutateConversation(chat, async () => {
-    const index = chat.history.indexOf(message)
-    if (index < 0) throw new Error('This message is no longer in this chat.')
-    const kept = keepHistory(snapshot(chat), chat.history.slice(0, index))
+    const removed = new Set(messages)
+    const retained = range ? trimReplyTurns(chat.history, chat.history.filter(message => !removed.has(message)))
+      : removeBubbles(chat.history, removed)
+    if (retained.length === chat.history.length) throw new Error('The selected messages are no longer in this chat.')
+    const kept = keepHistory(snapshot(chat), retained)
+    if (notice) kept.history.push(notice)
     await storeConversation(chat, sessionChanges(kept))
     if (getActiveChat() === chat) {
       exitSelectionMode()
       cancelReplyMode()
     }
-    rerenderConversation(chat)
+    rerenderConversation(chat, true)
   })
 }
 
@@ -183,7 +191,7 @@ export async function changeSession(chat: Chat, action: SessionAction) {
         const index = chat.history.indexOf(action.message)
         if (index < 0 || action.message.timestamp === undefined) throw new Error('This message is no longer in this chat.')
         next = {
-          ...keepHistory(current, current.history.slice(0, index + 1)),
+          ...keepHistory(current, trimReplyTurns(current.history, current.history.slice(0, index + 1))),
           ...{ id: crypto.randomUUID(), createdAt: Date.now(), composerDraft: '' },
           branchFrom: { sessionId: current.id, timestamp: action.message.timestamp },
         }

@@ -1,9 +1,13 @@
+import { replyExamples } from '../chat/reply-format'
 import { logActivity } from '../../runtime/activity-log'
 import { runtime } from '../../legacy/runtime/state.js'
 import { getRandomValue } from '../../runtime/helpers'
 import { assembleContext, chatContextScope, contextConfig, recordContext } from '../context/context'
 import { openAiUrl } from './endpoints'
 import { chatFeatureContext } from '../chat/chat-features'
+import { balanceFor, bankCurrency, bankOpeningBalance } from '../bank/bank'
+import type { Transfer } from '../bank/bank'
+import { marketProducts } from '../shopping/market'
 import { maySendImages } from './image-input'
 import type { ContextInput } from '../context/context'
 import type { PromptMessage } from '../context/budget'
@@ -42,15 +46,48 @@ type Connection = { proxyUrl?: string; apiKey?: string; model?: string; provider
 type GeminiPart = { text: string } | { inline_data: { mime_type: string; data: string } }
 type CompletionOptions = {
   connection?: Connection; temperature?: number; onText?: (text: string) => void; signal?: AbortSignal; swipes?: boolean
-  outputTokens?: number
+  outputTokens?: number; onResponse?: (response: Response) => void
+}
+
+export async function planContextCompletion(chat: DirectChat | GroupChat | undefined, input: ContextInput, config = contextConfig()) {
+  const reply = input.task === 'QQ reply'
+  const background = input.task === 'QQ character background'
+  const context = [chatFeatureContext(chat, reply || background)]
+  if (chat && !chat.isGroup && (reply || background)) {
+    const currency = bankCurrency(runtime.db)
+    const banking = chat.settings.allowBankTransfers !== false
+    const shopping = reply && !chat.settings.isOfflineMode && chat.settings.allowStorePurchases === true
+    if (banking || shopping) {
+      const [account, transfers] = await Promise.all([runtime.db.bankAccounts.get(chat.id), runtime.db.bankTransfers.toArray()])
+      const available = balanceFor(chat.id, transfers as Transfer[], bankOpeningBalance(account))
+      context.push('Your current simulated Bank balance is ' + available / 100 + ' ' + currency +
+        '. Only attempt an action if you can afford it. The app reports whether the action succeeded. Do not claim it has completed in a text message in the same reply.')
+    }
+    context.push(banking
+      ? 'Banking is optional. Only send a transfer when it fits this conversation. Use ' + replyExamples.transfer + '. Amounts are in ' + currency + '.'
+      : 'Banking is disabled for this character. Omit transfer actions.')
+    if (shopping) {
+      const products = await marketProducts(runtime.db)
+      context.push('Shopping is optional and uses your own simulated Bank balance. Only place an order if it fits the current conversation. ' +
+        'For a catalog item, use its exact ID: ' + replyExamples.shopping + '. ' +
+        'For an item missing from the catalog, use: ' + replyExamples.shoppingNew + '. Provide either productId or product. ' +
+        'A new product requires a name, a positive unit price in ' + currency + ' with at most two decimal places, a short description, and kind "food" for food or drinks or "goods" for everything else. Seller is optional. ' +
+        'Use a reasonable simulated price and a quantity from 1 to 20. Set recipient to "user" when buying for the user or "self" when buying for yourself. ' +
+        'Marketplace adds the item to the catalog only when the order succeeds. If an item already matches, Marketplace uses its saved price. The app adds delivery and reports the result. Catalog unit prices in ' + currency + ': ' +
+        JSON.stringify(products.slice(0, 60).map(({ id, name, seller, kind, cents }) => ({ id, name, seller, kind, price: cents / 100 }))))
+    } else {
+      context.push('Omit store_purchase and waimai_order actions.')
+    }
+  }
+  const featureContext = context.filter(Boolean).join('\n')
+  return assembleContext(chat, featureContext ? { ...input, instructions: input.instructions + '\n\n' + featureContext } : input, runtime.db, config)
 }
 
 export async function requestContextCompletion(chat: DirectChat | GroupChat | undefined, input: ContextInput, options: CompletionOptions = {}) {
   const scope = input.scope ?? (chat && chatContextScope(chat))
   const config = contextConfig()
   const requestOptions = { ...options, outputTokens: config.response }
-  const featureContext = chatFeatureContext(chat, ['QQ reply', 'QQ character background'].includes(input.task ?? ''))
-  const plan = await assembleContext(chat, featureContext ? { ...input, instructions: input.instructions + '\n\n' + featureContext } : input, runtime.db, config)
+  const plan = await planContextCompletion(chat, input, config)
   if (plan.error) throw new Error(plan.error)
   if (scope) recordContext(scope, plan, input.task ?? 'Chat completion')
   const started = performance.now()
@@ -112,6 +149,7 @@ export async function sendCompletion(messages: PromptMessage[], options: Complet
       frequency_penalty: settings.frequencyPenalty, presence_penalty: settings.presencePenalty, stream: settings.streaming }
   }
   const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: options.signal })
+  options.onResponse?.(response)
   if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream') || !response.body) return response
   const decoder = new TextDecoder()
   const reader = response.body.getReader()

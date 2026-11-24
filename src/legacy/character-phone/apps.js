@@ -1,8 +1,10 @@
 import { escapeHtml } from '../../runtime/files'
+import { bankAmount, bankCurrency } from '../../features/bank/bank'
+import { deliveryStatus } from '../../features/shopping/market'
 import { switchToCharScreen } from './launcher.js'
 import { renderCharMusicScreen } from './music.js'
-import { renderCharDiaryList, renderCharMemoList, renderCharSimulatedQQ } from './notes.js'
-import { renderCharAlbum, renderCharAmap, renderCharAppUsage, renderCharBrowserHistory } from './simulation.js'
+import { renderCharMemoList, renderCharSimulatedQQ } from './notes.js'
+import { renderCharAlbum, renderCharAmap, renderCharAppUsage, renderCharBrowserHistory, taobaoStatusLabel } from './simulation.js'
 import { appendMessage } from '../chat/conversation.js'
 import { createChatListItem } from '../chat/list.js'
 import { showCustomAlert } from '../dialogs/dialogs.js'
@@ -30,16 +32,12 @@ export async function openCharApp(appName) {
                     switchToCharScreen('char-browser-screen');
                     break;
                 case 'taobao':
-                    renderCharTaobao();
+                    await renderCharTaobao();
                     switchToCharScreen('char-taobao-screen');
                     break;
                 case 'memo':
                     renderCharMemoList();
                     switchToCharScreen('char-memo-screen');
-                    break;
-                case 'diary':
-                    renderCharDiaryList();
-                    switchToCharScreen('char-diary-screen');
                     break;
                 case 'amap':
                     renderCharAmap();
@@ -61,13 +59,25 @@ export async function openCharApp(appName) {
             }
         }
 
-export function renderCharTaobao() {
+export async function renderCharTaobao() {
             const gridEl = document.getElementById('char-product-grid');
             gridEl.innerHTML = '';
-            if (!runtime.activeCharacterId) return;
+            const characterId = runtime.activeCharacterId;
+            const char = runtime.state.chats[characterId];
+            if (!char) return;
 
-            const char = runtime.state.chats[runtime.activeCharacterId];
-            const purchases = [...(char.storePurchases || []), ...(char.simulatedTaobaoHistory?.purchases || [])];
+            const orders = await runtime.db.marketOrders.toArray();
+            if (runtime.activeCharacterId !== characterId) return;
+            const purchases = [
+                ...orders.filter(order => order.buyerId === characterId).sort((a, b) => b.timestamp - a.timestamp)
+                    .map(order => ({
+                        itemName: order.items.map(item => item.quantity + ' × ' + item.name).join(', '),
+                        price: order.total / 100, status: deliveryStatus(order), reason: order.note,
+                        image: order.items[0]?.image, marketOrder: true,
+                    })),
+                ...(char.storePurchases || []), ...(char.simulatedTaobaoHistory?.purchases || []),
+            ];
+            gridEl.replaceChildren();
 
             if (purchases.length === 0) {
                 gridEl.innerHTML = "<p style=\"text-align:center; color: var(--text-secondary); padding: 50px 0;\">No orders yet.<br>Use Regenerate to create activity.</p>";
@@ -80,7 +90,9 @@ export function renderCharTaobao() {
                 itemEl.dataset.reason = item.reason;
                 
                 let imageOrTextHtml;
-                if (runtime.state.globalSettings.enableAiDrawing) {
+                if (item.image) {
+                    imageOrTextHtml = `<img src="${escapeHtml(item.image)}" alt="" class="product-image">`;
+                } else if (!item.marketOrder && runtime.state.globalSettings.enableAiDrawing) {
                     const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(item.image_prompt || 'a random product')}`;
                     imageOrTextHtml = `<img src="${imageUrl}" class="product-image">`;
                 } else {
@@ -97,8 +109,8 @@ export function renderCharTaobao() {
                     <div class="product-info">
                         <div class="product-name">${escapeHtml(String(item.itemName || ""))}</div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                            <div class="product-price">${(Number(item.price) || 0).toFixed(2)}</div>
-                            <div class="char-product-status">${escapeHtml(String(item.status || ""))}</div>
+                            <div class="product-price">${escapeHtml(bankAmount(Math.round((Number(item.price) || 0) * 100), bankCurrency(runtime.db)))}</div>
+                            <div class="char-product-status">${escapeHtml(String(taobaoStatusLabel(item.status)))}</div>
                         </div>
                     </div>
                 `;

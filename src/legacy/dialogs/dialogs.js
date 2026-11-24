@@ -138,7 +138,29 @@ export function showChoiceModal(title, options) {
     });
 }
 
-export function addLongPressListener(element, callback) { let pressTimer; const startPress = (e) => { if(runtime.isSelectionMode) return; e.preventDefault(); pressTimer = window.setTimeout(() => callback(e), 500); }; const cancelPress = () => clearTimeout(pressTimer); element.addEventListener('mousedown', startPress); element.addEventListener('mouseup', cancelPress); element.addEventListener('mouseleave', cancelPress); element.addEventListener('touchstart', startPress, { passive: true }); element.addEventListener('touchend', cancelPress); element.addEventListener('touchmove', cancelPress); }
+export function addLongPressListener(element, callback) {
+    let pressTimer;
+    let startX;
+    let startY;
+    const cancelPress = () => clearTimeout(pressTimer);
+    const startPress = event => {
+        if (runtime.isSelectionMode || event.button > 0) return;
+        cancelPress();
+        startX = event.clientX;
+        startY = event.clientY;
+        pressTimer = window.setTimeout(() => {
+            if (window.getSelection()?.isCollapsed !== false) callback(event);
+        }, 500);
+    };
+    element.addEventListener('mousedown', startPress);
+    element.addEventListener('mousemove', event => {
+        if (Math.hypot(event.clientX - startX, event.clientY - startY) > 5) cancelPress();
+    });
+    element.addEventListener('touchstart', startPress, { passive: true });
+    for (const type of ['mouseup', 'mouseleave', 'touchend', 'touchmove', 'touchcancel', 'contextmenu']) {
+        element.addEventListener(type, cancelPress);
+    }
+}
 
 export function showLoader(container, position = 'top') {
     

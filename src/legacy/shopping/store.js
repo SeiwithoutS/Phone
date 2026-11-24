@@ -344,7 +344,7 @@ const itemsForMessage = itemsToSend.map(cartItem => {
                 const recipientDisplayNames = recipients.map(originalName => getDisplayNameInGroup(chat, originalName)).join('、');
                 const hiddenMessage = {
                     role: 'system',
-                    content: `[系统提示：用户 (${chat.settings.myNickname || '我'}) 送出了一份礼物，收礼人是：${recipientDisplayNames}。请收礼的角色表示感谢，其他角色可以自由发挥。]`,
+                    content: `[System notice: The user (${chat.settings.myNickname || 'You'}) sent a gift to ${recipientDisplayNames}. If you received it, thank them. Other characters may react in their own way.]`,
                     timestamp: Date.now() + 1,
                     isHidden: true
                 };
@@ -698,62 +698,32 @@ const existingCategories = await runtime.db.shoppingCategories.toArray();
     let existingCategoriesContext = "";
     if (existingCategories.length > 0) {
         existingCategoriesContext = `
-# 【分类复用铁律 (最高优先级！)】
-在为新商品指定分类时，你【必须】首先检查下面的“已有分类列表”。
--   如果一个新商品可以被归入某个【已存在的分类】，你【必须】复用那个分类的名称，而不是创造一个相似的新分类！
--   只有当你确定商品【绝对】不属于任何一个已有分类时，你才能创造一个新的分类名称。
--   **已有分类列表**: [${existingCategories.map(c => `"${c.name}"`).join(', ')}]
+# Reuse existing categories (highest priority)
+Check these categories first. Reuse an existing name exactly whenever a product fits. Create a new name only if none of these categories fit.
+${existingCategories.map(category => JSON.stringify(category.name)).join(', ')}
 `;
     }    
  
     const userNickname = runtime.state.qzoneSettings.nickname || '我';
     const systemPrompt = `
-# 你的任务
-你是一个虚拟的、极具创造力的商品规划师。你的任务是为下面的角色“${chat.name}”量身打造一个专属的商品列表。
+# Plan products for a character
+Design products and categories for "${chat.name}". Draw on the character's personality, memories, and recent conversations. Choose plausible, varied products they would genuinely want, buy, or make. Use the language established by the character, user, and relevant context.
 
-# 核心规则
-1.  **【角色定制(最高优先级)】**: 你生成的所有商品和分类【必须】深度绑定角色的性格、记忆和最近的对话。它们应该是角色会真正感兴趣、购买或制作的东西。
-2.  **创造性与合理性**: 商品和分类必须合理且多样化。
-3.  **格式铁律 (最高优先级)**: 
-    - 你的回复【必须且只能】是一个【单一的JSON对象】。
-    - 你的回复必须以 \`{\` 开始，并以 \`}\` 结束。
-    - 【绝对禁止】在JSON对象前后添加任何多余的文字、解释或 markdown 标记。
-    - 格式【必须】如下:
-    \`\`\`json
-    {
-      "categories": [
-        {
-          "name": "分类名称1",
-          "products": [
-            {
-              "name": "商品名称1",
-              "price": 99.80,
-              "description": "这是商品的详细描述，不少于50字...",
-              "variations": [
-                { "name": "款式1", "price": 108.80, "image_prompt": "款式1的图片【英文】关键词..." },
-                { "name": "款式2", "price": 118.80, "image_prompt": "款式2的图片【英文】关键词..." }
-              ],
-              "image_prompt": "商品主图的【英文】关键词, 风格为 realistic product photo, high quality, on a clean white background"
-            }
-          ]
-        }
-      ]
-    }
-    \`\`\`
-    - **categories**: 生成 ${categoryCount} 个分类。
-    - **products**: 每个分类下生成 ${productCount} 个商品。
-    - **variations**: 每个商品【必须】包含【2到4个】不同的款式。
+## Output (highest priority)
+Return only a valid JSON object, starting with { and ending with }. Omit surrounding prose, explanation, and Markdown fences.
+{"categories":[{"name":"Category name","products":[{"name":"Product name","price":99.80,"description":"Describe the product in at least 50 characters.","variations":[{"name":"First style","price":108.80,"image_prompt":"English keywords for the first style"},{"name":"Second style","price":118.80,"image_prompt":"English keywords for the second style"}],"image_prompt":"realistic product photo, high quality, on a clean white background"}]}]}
+- Generate ${categoryCount} categories and ${productCount} products per category.
+- Give each product 2–4 variations. Use English keywords for the product and variation images. Use a realistic, high-quality product photo on a clean white background for the main image.
 
-# 角色与上下文 (你的灵感来源)
-- **角色名称**: ${chat.name}
-- **角色人设**: ${chat.settings.aiPersona}
+## Context
+- Character name: ${chat.name}
+- Character persona: ${chat.settings.aiPersona}
 ${existingCategoriesContext}
-- **最近对话摘要**:
-
-现在，请根据以上【所有上下文信息】，开始为“${chat.name}”生成这组【与角色高度相关】的商品数据。`;
+Use the recent conversation supplied for this character.
+`;
 
     try {
-        const messagesForApi = [{ role: 'user', content: "请根据以上设定，生成商品数据。" }];
+        const messagesForApi = [{ role: 'user', content: "Generate the catalog using the character and rules above." }];
         const response = await requestContextCompletion(chat, { instructions: systemPrompt, request: messagesForApi,
             task: 'Shop generation · ' + chat.name, scope: 'shop:' + chat.id });
 

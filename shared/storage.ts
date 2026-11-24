@@ -1,4 +1,5 @@
 export const schema = {
+  bankAccounts: { autoIncrement: false },
   bankTransfers: { autoIncrement: false },
   chats: { autoIncrement: false },
   homeWidgets: { autoIncrement: false },

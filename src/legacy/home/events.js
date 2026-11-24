@@ -117,23 +117,3 @@ document.querySelector('#avatar-frame-modal .modal-body').addEventListener('clic
     }
 });
 }
-
-export function bindHomeTimeZoneEvents() {
-  document.getElementById('time-zone-search-input').addEventListener('input', (e) => {
-    const searchTerm = e.target.value.toLowerCase();
-    const selectEl = document.getElementById('time-zone-select');
-    
-    
-    for (const option of selectEl.options) {
-        const optionText = option.textContent.toLowerCase();
-        
-        
-        if (optionText.includes(searchTerm)) {
-            option.style.display = ''; 
-        } else {
-            
-            option.style.display = 'none';
-        }
-    }
-});
-}

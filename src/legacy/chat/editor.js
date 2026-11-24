@@ -728,13 +728,14 @@ case 'sticker': { // 保留花括号，让作用域更清晰
 
         
         
-        const thoughtForMemory = `[这是你上一轮的内心独白和思考]
-- 心声: ${chat.heartfeltVoice}
-- 散记: ${chat.randomJottings}`;
+        const thoughtForMemory = `[Private thoughts from your previous turn]
+- Private thought: ${chat.heartfeltVoice}
+- Personal notes: ${chat.randomJottings}`;
         
         
         const hiddenThoughtMessage = {
             role: 'system',
+            type: 'private_thoughts',
             content: thoughtForMemory,
             timestamp: Date.now(),
             isHidden: true 
@@ -1073,7 +1074,7 @@ document.getElementById('decline-call-btn').addEventListener('click', async () =
                 
                 const systemNote = {
                     role: 'system',
-                    content: `[系统提示：用户拒绝了通话邀请，但你们可以自己开始。请你们各自决策是否加入。]`,
+                    content: `[System notice: The user declined the invitation. The group can begin without them. Decide individually whether to join.]`,
                     timestamp: Date.now(),
                     isHidden: true
                 };
@@ -1085,7 +1086,7 @@ document.getElementById('decline-call-btn').addEventListener('click', async () =
                 await triggerAiResponse(); 
                 
             } else { 
-                const declineMessage = { role: 'user', content: '我拒绝了你的视频通话请求。', timestamp: Date.now() };
+                const declineMessage = { role: 'user', content: 'I declined your video call.', timestamp: Date.now() };
                 chat.history.push(declineMessage);
                 await runtime.db.chats.put(chat);
                 

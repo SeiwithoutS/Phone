@@ -182,10 +182,7 @@ input, textarea, select {
     font-size: 16px !important;
 }
 
-#favorite-diary-btn.active svg {
-    fill: #ffc107; 
-    color: #ffc107;
-}
+
 
 .favorite-item-card .diary-title {
     font-weight: 600;

@@ -337,7 +337,6 @@
             background-color: var(--secondary-bg);
         }
 
-#api-settings-screen .form-container,
         #font-settings-screen .form-container,
         #wallpaper-screen .form-container {
             padding-top: 100px;

@@ -1,8 +1,10 @@
 import type { DirectChat, GroupChat } from './model'
+import { localClock, localDateKey, resolveTimeZone, timeDifference } from './location'
 
 export const chatFeatureSwitches = {
   'chat-social-posts': ['allowSocialPosts', true],
   'chat-store-purchases': ['allowStorePurchases', false],
+  'chat-bank-transfers': ['allowBankTransfers', true],
   'chat-live-status': ['showCharacterStatus', true],
   'chat-auto-messages': ['scheduledMessages', false],
   'chat-holiday-awareness': ['holidayAwareness', false],
@@ -22,21 +24,23 @@ export function parseCalendarDates(value: string) {
 }
 
 export function chatFeatureContext(chat: DirectChat | GroupChat | undefined, interactive: boolean) {
-  if (!chat || chat.isGroup) return ''
+  if (!chat) return ''
   const settings = chat.settings
   const context: string[] = []
-  if (settings.allowSocialPosts === false) context.push('Do not create or repost Social posts for this character.')
-  if (interactive && settings.allowStorePurchases === true) {
-    context.push('A fictional self-purchase can be recorded as {"type":"store_purchase","itemName":"item","itemPrice":12.50,"reason":"reason"} when appropriate. The record appears in Cphone Shopping.')
+  const charZone = resolveTimeZone(chat.isGroup ? '' : settings.characterLocation, settings.timeZone).zone
+  const userZone = resolveTimeZone(settings.userLocation, settings.userTimeZone).zone
+  if (!chat.isGroup && settings.characterLocation) context.push('Character location: ' + settings.characterLocation)
+  if (settings.userLocation) context.push('User location: ' + settings.userLocation)
+  if (settings.enableTimePerception && (settings.userLocation || settings.userTimeZone || charZone !== userZone)) {
+    const now = new Date()
+    context.push('User local time: ' + localClock(userZone, now) + ' (' + userZone + '). ' +
+      (chat.isGroup ? 'Group clock (' : 'Character clock (') + charZone + '): ' + timeDifference(charZone, userZone, now) + '.')
   }
+  if (chat.isGroup) return context.join('\n')
+  if (settings.allowSocialPosts === false) context.push('Do not create or repost Social posts for this character.')
   if (settings.showCharacterStatus === false) context.push('Omit update_status actions.')
-  if (typeof settings.characterLocation === 'string' && settings.characterLocation) context.push('Character location: ' + settings.characterLocation)
   if (settings.holidayAwareness === true) {
-    let today: string
-    try {
-      today = new Intl.DateTimeFormat('sv-SE', { timeZone: String(settings.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone),
-        year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
-    } catch { today = new Date().toISOString().slice(0, 10) }
+    const today = localDateKey(charZone)
     let entries: ReturnType<typeof parseCalendarDates> = []
     try { entries = parseCalendarDates(String(settings.holidayDates || '')) } catch { /* old malformed values have no usable entries */ }
     const day = entries.filter(entry => entry.date === today)
@@ -61,20 +65,6 @@ export function chatFeatureContext(chat: DirectChat | GroupChat | undefined, int
     }
   }
   return context.join('\n')
-}
-
-export function recordStorePurchase(chat: DirectChat, action: {
-  itemName?: unknown; itemPrice?: unknown; reason?: unknown; image_prompt?: unknown
-}) {
-  const name = typeof action.itemName === 'string' ? action.itemName.trim().slice(0, 120) : ''
-  const price = Number(action.itemPrice)
-  if (chat.settings.allowStorePurchases !== true || !name || !Number.isFinite(price) || price < 0 || price > 1000000) return
-  const current = chat.storePurchases as Record<string, unknown>[] | undefined
-  chat.storePurchases = [{
-    itemName: name, name, status: 'Purchased', price: Math.round(price * 100) / 100, timestamp: Date.now(),
-    reason: typeof action.reason === 'string' ? action.reason.slice(0, 240) : '',
-    image_prompt: typeof action.image_prompt === 'string' ? action.image_prompt.slice(0, 180) : '',
-  }, ...(current || [])].slice(0, 100)
 }
 
 type Votes = Record<string, string[]>

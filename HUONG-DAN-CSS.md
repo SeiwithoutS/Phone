@@ -1,11 +1,12 @@
 # Hướng dẫn tùy chỉnh CSS trong EPhone
 
-EPhone có ba nơi nhập CSS. Chọn nơi nhập theo phần giao diện cần sửa.
+EPhone có bốn nơi nhập CSS. Chọn nơi nhập theo phần giao diện cần sửa.
 
 | Bạn muốn chỉnh | Nơi nhập | Cách lưu |
 | --- | --- | --- |
 | Một widget ở Home | **Widgets → chọn mẫu hoặc sửa widget → Advanced styling** | Bấm icon nhập file `.css` cạnh **Custom CSS** hoặc dán CSS vào ô bên dưới. Xem trước rồi bấm **Save widget**. |
 | Bong bóng tin nhắn của một hội thoại | **Chat Settings → Appearance → Custom CSS** | Dán CSS rồi bấm **Save**. EPhone giới hạn CSS ở vùng tin nhắn và dùng cùng quy tắc cho bản xem trước. |
+| Nhật ký của một char | **QQ → Chat Settings → Diary → Diary CSS** | Chọn **Import CSS** hoặc dán nội dung. Xem trước rồi bấm dấu ✓ trên Chat Settings. |
 | Toàn bộ giao diện điện thoại | **Appearance → Global Custom CSS** | Dán CSS rồi bấm **Save Appearance Settings**. Nút nhập **Appearance JSON** dùng để nhập preset giao diện JSON. |
 
 File widget dùng UTF-8, phần mở rộng `.css` và chỉ chứa quy tắc CSS. Ô nhập CSS cũng nhận trực tiếp phần nội dung này.
@@ -109,3 +110,8 @@ Dùng những selector sau trong ô **Chat Settings → Appearance → Custom CS
 ```
 
 Nếu CSS không có hiệu lực, kiểm tra selector trên đúng loại widget hoặc màn hình và lưu lại sau khi xem trước. Xóa nội dung CSS tùy chỉnh rồi lưu để trở về kiểu mặc định. Mã đánh dấu widget nằm trong [HomeWidgets.tsx](src/features/home/HomeWidgets.tsx), màu dùng chung nằm trong [theme.css](src/styles/theme.css).
+
+
+## CSS cho Diary
+
+Dùng `.diary-entry` cho toàn trang nhật ký, `.diary-title` cho tiêu đề, `.diary-content` cho nội dung và `.diary-highlight` cho đoạn tô sáng. **Reset CSS** khôi phục kiểu mặc định của trình đọc. Bấm ✓ để lưu thay đổi cho char đang mở.

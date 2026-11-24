@@ -224,16 +224,16 @@
 
 #char-app-grid { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
 
-#char-qq-screen, #char-memo-screen, #char-diary-screen, #char-usage-screen, 
+#char-qq-screen, #char-memo-screen, #char-usage-screen,
 #char-album-screen, #char-browser-screen, #char-taobao-screen {
      background-color: var(--secondary-bg);
 }
 
-.memo-item, .diary-item, .usage-item { padding: 15px 20px; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+.memo-item, .usage-item { padding: 15px 20px; border-bottom: 1px solid var(--border-color); cursor: pointer; }
 
-.memo-item .content, .diary-item .content { font-size: 16px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.memo-item .content { font-size: 16px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.diary-item .date, .usage-item .timestamp { font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; }
+.usage-item .timestamp { font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; }
 
 .usage-item .action { font-size: 15px; color: var(--text-primary); }
 
@@ -362,7 +362,6 @@
 
 #char-qq-screen, 
 #char-memo-screen, 
-#char-diary-screen, 
 #char-usage-screen, 
 #char-album-screen, 
 #char-browser-screen, 
@@ -414,103 +413,6 @@
     font-size: 17px; 
     line-height: 1.7; 
     color: var(--text-primary);
-}
-
-#char-diary-detail-screen {
-    background-color: #FDFBF5; 
-}
-
-#phone-screen.dark-mode #char-diary-detail-screen {
-    background-color: #2c2c2e; 
-}
-
-#char-diary-detail-content-wrapper {
-    padding: 0;
-    overflow-y: auto; 
-}
-
-#char-diary-detail-content {
-    padding: 25px 20px; 
-    font-family: Georgia, 'Times New Roman', Times, serif; 
-    font-size: 16px;
-    line-height: 1.8; 
-    color: #383838; 
-}
-
-#phone-screen.dark-mode #char-diary-detail-content {
-    color: #e0e0e0;
-}
-
-#char-diary-detail-content > p:first-of-type {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-#char-diary-detail-content strong {
-    font-weight: 600; 
-}
-
-#char-diary-detail-content .spoiler {
-    background-color: #333;
-    color: #333;
-    padding: 0 4px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-}
-
-#char-diary-detail-content .spoiler:hover {
-    background-color: #e0e0e0;
-    color: inherit;
-}
-
-#char-diary-detail-content .diary-highlight {
-    background-color: #FFFACD; 
-    padding: 1px 4px;
-    border-radius: 3px;
-    margin: 0 2px;
-}
-
-#char-diary-detail-content .diary-underline {
-    border-bottom: 2px dotted #FFB6C1; 
-    text-decoration: none; 
-    padding-bottom: 1px;
-}
-
-#char-diary-detail-content .diary-emphasis {
-    color: #DB7093; 
-    font-weight: bold;
-}
-
-#char-diary-detail-content .diary-handwritten {
-    font-family: 'Zhi Mang Xing', cursive; 
-    font-size: 1.1em; 
-    color: #1a1a1a; 
-}
-
-#char-diary-detail-content .diary-messy {
-    font-family: 'Zhi Mang Xing', cursive;
-    font-size: 1.1em;
-    color: #1a1a1a;
-    transform: rotate(-2deg); 
-    display: inline-block; 
-    margin: 0 2px;
-}
-
-#char-diary-detail-content .diary-censored {
-    background-color: #222;
-    color: #222; 
-    user-select: none; 
-    padding: 0 3px;
-    border-radius: 2px;
-}
-
-.diary-censored:hover, .diary-censored:active {
-  background-color: #E0E0E0; 
-  color: inherit; 
-  cursor: pointer; 
 }
 
 #char-amap-screen {

@@ -4,7 +4,7 @@ import { showScreen } from '../../app/routes'
 
 export function ApiSettingsScreen() {
   return (
-    <Screen id="api-settings-screen">
+    <Screen id="api-settings-screen" className="phone-feature">
       <PhoneFeatureHeader title="API Connections" onBack={() => showScreen('home-screen')}
         actions={<HeaderSaveButton id="save-api-settings-btn" label="Save API settings" />} />
       <div className="form-container">
@@ -40,18 +40,20 @@ export function ApiSettingsScreen() {
         <FormField id="api-key" label="API Key">
           <input type="password" id="api-key" placeholder="sk-..." />
         </FormField>
-        <div className="form-group">
-          {" "}
-          <label htmlFor="model-select">Model</label>
-          {" "}
-          <input id="model-select" list="model-select-options" placeholder="Enter a model ID" autoComplete="off" />
-          <datalist id="model-select-options" />
-          {" "}
+        <div className="api-connection-actions">
+          <button className="form-button" id="fetch-models-btn" type="button">Fetch Models</button>
+          <button className="form-button form-button-secondary" id="test-api-connection-btn" type="button">Test Message</button>
         </div>
-        {" "}
-        <button className="form-button" id="fetch-models-btn" type="button">Connect / Fetch Models</button>
-        <button className="form-button form-button-secondary" id="test-api-connection-btn" type="button">Test Connection</button>
         <p id="api-connection-status" role="status" />
+        <div id="api-external-model-field" className="form-group" hidden>
+          <label htmlFor="api-external-models">Model</label>
+          <select id="api-external-models" defaultValue="">
+            <option value="" disabled>Choose a provider model</option>
+          </select>
+        </div>
+        <FormField id="model-select" label="Model ID (manual entry)">
+          <input id="model-select" placeholder="Select a fetched model or enter its ID" autoComplete="off" />
+        </FormField>
         <div className="form-group api-image-input-setting">
           <label htmlFor="send-images-to-ai-switch">Send images to AI
             <small>Off by default. Chat and Social use written photo descriptions. Enable this for a model that supports images.</small>
@@ -88,7 +90,7 @@ export function ApiSettingsScreen() {
           {" "}
           <label htmlFor="background-activity-switch" style={{ marginBottom: "0" }}>
             {" Enable background character activity "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "#ff6b6b", marginTop: "5px" }}>{" Background activity increases API usage and costs. "}</p>
+            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Master switch for character activity while EPhone is open. Set permissions and scheduled messages per character in QQ → Chat Settings → Features. Background requests count toward API usage. "}</p>
           </label>
           {" "}
           <input type="checkbox" id="background-activity-switch" style={{ width: "auto", height: "20px" }} />
@@ -98,7 +100,7 @@ export function ApiSettingsScreen() {
           {" "}
           <label htmlFor="background-interval-input" style={{ marginBottom: "0" }}>
             {" Check interval (seconds) "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Suggested range 60–300. Longer intervals reduce costs and slow character activity. "}</p>
+            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" How often EPhone checks whether an activity is due. Suggested range 60–300 seconds. "}</p>
             {" "}
           </label>
           {" "}
@@ -243,7 +245,7 @@ export function ApiSettingsScreen() {
         <summary>Data maintenance</summary>
         <div className="settings-tools"><span>Legacy JSON backup</span><IconButton icon="import" id="import-btn" label="Import legacy JSON backup" /></div>
         <button className="form-button form-button-secondary" id="cleanup-data-btn" style={{ backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)", marginTop: "10px" }} type="button">Clean Up Unused Data</button>
-        <button className="form-button form-button-secondary" id="delete-world-books-btn" style={{ backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)", marginTop: "10px" }} type="button">Delete World Info</button>
+        <button className="form-button form-button-secondary" id="delete-world-books-btn" style={{ backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)", marginTop: "10px" }} type="button">Delete Mini Prompts</button>
         <button className="form-button form-button-secondary" id="clear-specific-data-btn" style={{ backgroundColor: "var(--ui-danger-soft)", color: "var(--ui-danger)", borderColor: "var(--ui-divider)", marginTop: "10px" }} type="button">Advanced Data Cleanup</button>
         <button className="form-button form-button-secondary" id="check-and-fix-data-btn" style={{ backgroundColor: "var(--ui-accent-soft)", color: "var(--ui-accent)", borderColor: "var(--ui-divider)", marginTop: "10px" }} type="button">Check and Repair Data</button>
         {" "}

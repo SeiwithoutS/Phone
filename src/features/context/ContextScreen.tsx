@@ -3,13 +3,16 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { HeaderSaveButton, PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
 import { showScreen } from '../../app/routes'
 import { runtime } from '../../legacy/runtime/state.js'
-import { characterPrompt } from '../characters/characters'
-import { assembleContext, chatContextScope, contextConfig, lastContext, recentContexts } from './context'
+import { buildQQReplyInput } from '../../legacy/chat/ai/context.js'
+import { planContextCompletion } from '../api/completion'
+import { chatContextScope, contextConfig, lastContext, recentContexts } from './context'
 import { budgetSources, contextKey, normalizeContext, promptText, sourceLabels, wholeSources } from './budget'
+import { ReplyRulesEditor, replyRulesForm } from './ReplyRulesEditor'
 import type { ContextPlan, Source } from './budget'
 import type { LocalDatabase } from '../../storage/database'
 
 const tokens = (count: number) => count.toLocaleString() + ' tokens'
+const contextTabs = [['context', 'Context'], ['reply-rules', 'Reply Rules']] as const
 
 export function ContextScreen({ database }: { database?: LocalDatabase }) {
   const active = useContext(ScreenContext) === 'context-screen'
@@ -22,6 +25,7 @@ export function ContextScreen({ database }: { database?: LocalDatabase }) {
 function ContextEditor({ database, fromChat }: { database: LocalDatabase; fromChat?: string }) {
   const navigate = useNavigate()
   const chats = Object.values(runtime.state.chats).flatMap(chat => chat ? [chat] : [])
+  const [tab, setTab] = useState<(typeof contextTabs)[number][0]>('context')
   const [choice, setChoice] = useState(fromChat ?? runtime.state.activeChatId ?? chats[0]?.id ?? '')
   const [config, setConfig] = useState(() => contextConfig(database))
   const [mode, setMode] = useState<'preview' | 'last'>('preview')
@@ -38,15 +42,12 @@ function ContextEditor({ database, fromChat }: { database: LocalDatabase; fromCh
   useEffect(() => {
     let active = true
     setPreview(undefined)
-    const system = recorded?.plan.sections.find(section => section.id === 'instructions')?.messages[0]
-    const instructions = system ? promptText(system) : chat ? [
-      'Reply as ' + chat.name + '.', characterPrompt(chat), chat.settings.myPersona,
-    ].filter(Boolean).join('\n\n') : ''
-    void assembleContext(chat, { instructions }, database, normalizeContext(config)).then(result => {
+    if (!chat || tab !== 'context') return
+    void buildQQReplyInput(chat).then(({ input }) => planContextCompletion(chat, input, normalizeContext(config))).then(result => {
       if (active) setPreview(result)
     }).catch(() => { if (active) setError('Could not build the context preview.') })
     return () => { active = false }
-  }, [chat, config, database, recorded])
+  }, [chat, config, tab])
 
   function setSource(id: Source, change: Partial<typeof config.sources[Source]>) {
     setStatus('')
@@ -66,9 +67,26 @@ function ContextEditor({ database, fromChat }: { database: LocalDatabase; fromCh
   }
 
   return <>
-    <PhoneFeatureHeader title="Context" onBack={() => fromChat ? void navigate(-1) : showScreen('home-screen')}
-      actions={<HeaderSaveButton form="context-settings-form" label="Save Context" disabled={busy} />} />
-    <div className="phone-app-scroll phone-app-stack context-editor">
+    <PhoneFeatureHeader title="Context" backDisabled={busy} onBack={() => fromChat ? void navigate(-1) : showScreen('home-screen')}
+      actions={<HeaderSaveButton form={tab === 'context' ? 'context-settings-form' : replyRulesForm}
+        label={tab === 'context' ? 'Save Context' : 'Save reply rules'} disabled={busy} />} />
+    <div className="context-tabs" role="tablist" aria-label="Context settings">
+      {contextTabs.map(([id, label], index) => <button type="button" key={id} role="tab"
+        id={'context-tab-' + id} aria-controls={'context-panel-' + id} aria-selected={tab === id}
+        className="phone-app-button" tabIndex={tab === id ? 0 : -1} disabled={busy}
+        onClick={() => setTab(id)} onKeyDown={event => {
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? contextTabs.length - 1
+            : event.key === 'ArrowLeft' ? (index - 1 + contextTabs.length) % contextTabs.length
+            : event.key === 'ArrowRight' ? (index + 1) % contextTabs.length : undefined
+          if (next === undefined) return
+          event.preventDefault()
+          const target = contextTabs[next][0]
+          setTab(target)
+          document.getElementById('context-tab-' + target)?.focus()
+        }}>{label}</button>)}
+    </div>
+    <div id="context-panel-context" role="tabpanel" aria-labelledby="context-tab-context"
+      className="phone-app-scroll phone-app-stack context-editor" hidden={tab !== 'context'}>
       <form id="context-settings-form" className="phone-app-stack" onSubmit={event => { event.preventDefault(); void save() }}>
         <div className="phone-app-two">
           <label>Context Size (tokens)<input type="number" min={1024} max={2000000} required value={config.size || ''}
@@ -120,6 +138,10 @@ function ContextEditor({ database, fromChat }: { database: LocalDatabase; fromCh
           </div>) : <p className="phone-app-muted">No entries included.</p>}
         </details>)}
       </>}
+    </div>
+    <div id="context-panel-reply-rules" role="tabpanel" aria-labelledby="context-tab-reply-rules"
+      className="phone-app-scroll phone-app-stack context-editor" hidden={tab !== 'reply-rules'}>
+      <ReplyRulesEditor database={database} characters={chats.filter(chat => !chat.isGroup)} fromChat={fromChat} busy={busy} setBusy={setBusy} />
     </div>
   </>
 }
