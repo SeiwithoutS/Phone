@@ -68,7 +68,7 @@ export async function handleConfirmWorldBookDeletion() {
         return;
     }
 
-    const idsToDelete = Array.from(selectedItems).map(item => item.dataset.bookId);
+    const idsToDelete = new Set(Array.from(selectedItems).map(item => item.dataset.bookId));
     
     const confirmed = await showCustomConfirm(
         "Confirm Cleanup",
@@ -81,28 +81,25 @@ export async function handleConfirmWorldBookDeletion() {
     await showCustomAlert("Please wait…", "Deleting…");
 
     try {
-        await runtime.db.transaction('rw', runtime.db.worldBooks, runtime.db.chats, async tx => {
-            
-            await tx.worldBooks.bulkDelete(idsToDelete);
-
-            
-            const allChats = await tx.chats.toArray();
-            for (const chat of allChats) {
-                if (chat.settings && Array.isArray(chat.settings.linkedWorldBookIds)) {
-                    const originalCount = chat.settings.linkedWorldBookIds.length;
-                    
-                    chat.settings.linkedWorldBookIds = chat.settings.linkedWorldBookIds.filter(id => !idsToDelete.includes(id));
-                    
-                    
-                    if (chat.settings.linkedWorldBookIds.length < originalCount) {
-                        await tx.chats.put(chat);
-                    }
-                }
+        const changes = await runtime.db.transaction('rw', runtime.db.worldBooks, runtime.db.chats, async tx => {
+            const storedBooks = await tx.worldBooks.toArray();
+            await tx.worldBooks.bulkDelete(storedBooks.filter(book => idsToDelete.has(String(book.id))).map(book => book.id));
+            const links = new Map();
+            for (const chat of await tx.chats.toArray()) {
+                const current = chat.settings?.linkedWorldBookIds;
+                if (!Array.isArray(current)) continue;
+                const linkedWorldBookIds = current.filter(id => !idsToDelete.has(String(id)));
+                if (linkedWorldBookIds.length === current.length) continue;
+                await tx.chats.update(chat.id, { settings: { ...chat.settings, linkedWorldBookIds } });
+                links.set(chat.id, linkedWorldBookIds);
             }
+            return links;
         });
-        
-        
-        runtime.state.worldBooks = runtime.state.worldBooks.filter(book => !idsToDelete.includes(book.id));
+        for (const [id, links] of changes) {
+            const chat = runtime.state.chats[id];
+            if (chat) chat.settings.linkedWorldBookIds = links;
+        }
+        runtime.state.worldBooks = runtime.state.worldBooks.filter(book => !idsToDelete.has(String(book.id)));
         
         document.getElementById('delete-world-books-modal').classList.remove('visible');
         await showCustomAlert("Deleted", `Deleted ${selectedItems.length} Mini Prompts books.`);

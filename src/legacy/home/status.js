@@ -96,34 +96,29 @@ export function formatReadingStateForAI(chatId) {
         return "";
     }
 
-    const title = session.title || '未知书籍';
+    const title = session.title || 'Untitled book';
     let contentForAI = '';
     let contextLabel = '';
 
     
     if (session.currentSnippet && session.currentSnippet.trim()) {
         contentForAI = session.currentSnippet;
-        contextLabel = '你正在阅读的段落';
+        contextLabel = 'Passage you are reading';
     } else if (session.contentLines.length > 0) {
         const startLine = session.currentPage * session.linesPerPage;
         const endLine = startLine + session.linesPerPage;
         contentForAI = session.contentLines.slice(startLine, endLine).join('\n').substring(0, 200);
-        contextLabel = '当前页内容摘要';
+        contextLabel = 'Current page excerpt';
     } else {
-        contentForAI = '(无内容)';
-        contextLabel = '内容';
+        contentForAI = '(No text)';
+        contextLabel = 'Content';
     }
     return `
-    - **书名**: 《${title}》
+    - **Book**: ${title}
     - **${contextLabel}**: "${contentForAI}..."
-    #一起读书模式 | 行为铁律
-    1.  **角色定位**: 你【不是】书中的任何角色，你是【你自己】(${runtime.state.chats[chatId]?.originalName || 'AI角色'})，正在和用户一起【阅读和讨论】这本书。
-    2.  **行为准则**: 你的回复【必须】是作为读者的【感想、评论、提问或联想】。你可以：
-        -   分享你对当前段落的看法。
-        -   对书中的角色或情节发表评论。
-        -   向用户提问，询问TA对内容的看法。
-        -   根据书本内容，联想到你自己的经历或记忆。
-    3.  **严禁**: 你的回复【绝对禁止】使用书中角色的口吻和人称！【绝对禁止】扮演书中的任何角色！【绝对禁止】续写或模仿书中的情节！你必须时刻记住，你只是一个读者。    
+    # Reading together
+    Discuss the book with the user as yourself (${runtime.state.chats[chatId]?.originalName || 'the character'}). Speak as a reader. React to the passage or the book's characters and plot, ask the user what they think, or connect the passage to one of your own experiences or memories.
+    Never impersonate a character in the book, use their voice or point of view, or continue or imitate the book's plot.
 `;
 }
 

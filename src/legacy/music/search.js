@@ -5,9 +5,11 @@ import { saveGlobalPlaylist, applyStatusBarVisibility, cleanupInvalidSongs, togg
 import { runtime } from '../runtime/state.js'
 import { openClearPostsSelectorModal } from '../qzone/feed.js'
 
-export async function Http_Get(url) { const response = await fetch(url);
-  if (!response.ok) throw new Error(`Music request failed (HTTP ${response.status}).`);
-  return response.text(); }
+export async function Http_Get(url) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Music request failed (HTTP ${response.status}).`);
+    return response.json();
+}
 
 export function checkAudioAvailability(url) {
     return new Promise(resolve => {

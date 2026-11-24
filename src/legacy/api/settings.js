@@ -2,10 +2,12 @@ import { startBackgroundSimulation, stopBackgroundSimulation } from '../npc/simu
 import { openAiUrl } from '../../features/api/endpoints'
 import { contextConfig } from '../../features/context/context'
 import { contextKey, normalizeContext } from '../../features/context/budget'
-import { geminiModelsUrl, generationSettings, sendCompletion, usesGemini } from '../../features/api/completion'
+import { completionText, geminiModelsUrl, generationSettings, sendCompletion, usesGemini } from '../../features/api/completion'
 import { preferences } from '../storage/preferences.js'
 import { displayTotalImageSize } from '../backup/media.js'
-import { showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
+import { showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
+import { logConnectionActivity } from '../../runtime/activity-log'
+import { escapeHtml } from '../../runtime/files'
 import { getRandomValue } from '../../runtime/helpers'
 import { runtime } from '../runtime/state.js'
 
@@ -134,7 +136,8 @@ export async function deleteApiPreset() {
             }
         }
 
-export function renderApiSettings() { 
+export function renderApiSettings() {
+            resetModelList();
             
             field('proxy-url').value = runtime.state.apiConfig.proxyUrl || '';
             field('api-provider').value = usesGemini(runtime.state.apiConfig.proxyUrl, runtime.state.apiConfig.provider) ? 'gemini' : 'openai';
@@ -171,36 +174,108 @@ document.getElementById('minimax-model-select').value = runtime.state.apiConfig.
            displayTotalImageSize();
         }
 
-async function fetchModels(urlInputId, keyInputId, modelId) {
-  const isGemini = text('api-provider') === 'gemini';
-  const base = isGemini ? geminiModelsUrl : text(urlInputId);
-  const key = document.getElementById(keyInputId).value.trim();
-  if (!base || (isGemini && !key)) return showConnectionStatus('Enter the Base URL and API key first.');
-  showConnectionStatus('Connecting…');
+let modelRequest;
 
+function resetModelList() {
+  modelRequest?.abort();
+  modelRequest = undefined;
+  const select = field('api-external-models');
+  select.replaceChildren(select.options[0]);
+  select.value = '';
+  field('api-external-model-field').hidden = true;
+  field('fetch-models-btn').disabled = false;
+  showConnectionStatus('');
+}
+
+function syncModelSelect() {
+  const select = field('api-external-models');
+  select.value = text('model-select');
+  if (select.selectedIndex < 0) select.value = '';
+}
+
+function redactConnectionKeys(value, keys) {
+  for (const key of keys.split(',').map(part => part.trim()).filter(Boolean)) {
+    for (const form of new Set([key, JSON.stringify(key).slice(1, -1)])) {
+      value = value.replaceAll(form, '[redacted]');
+    }
+  }
+  return value;
+}
+
+function formatProviderBody(value, keys) {
+  const body = redactConnectionKeys(value, keys);
+  try { return redactConnectionKeys(JSON.stringify(JSON.parse(body), null, 2), keys); }
+  catch { return body; }
+}
+
+async function fetchModels() {
+  const isGemini = text('api-provider') === 'gemini';
+  const provider = isGemini ? 'gemini' : 'openai';
+  const base = text('proxy-url');
+  const key = text('api-key');
+  if (isGemini && !key) return showConnectionStatus('Enter your Gemini API key first.');
+  if (!isGemini && !base) return showConnectionStatus('Enter the Base URL first.');
+  resetModelList();
+  const request = new AbortController();
+  modelRequest = request;
+  field('fetch-models-btn').disabled = true;
+  showConnectionStatus('Fetching models...');
+
+  let status;
+  let providerBody;
   try {
     const apiKey = key ? getRandomValue(key) : '';
     const endpoint = isGemini ? geminiModelsUrl : openAiUrl(base, 'models');
     const headers = isGemini ? { 'x-goog-api-key': apiKey } : apiKey ? { Authorization: 'Bearer ' + apiKey } : {};
-    const response = await fetch(endpoint, { headers });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    const names = isGemini ? data.models?.map(model => model.name?.replace(/^models\//, '')) :
-      data.data?.map(model => model.id);
-    if (!Array.isArray(names)) throw new Error('Invalid model list.');
-    const models = [...new Set(names.filter(name => typeof name === 'string' && name.length))];
-    const field = document.getElementById(modelId);
-    const options = document.getElementById(`${modelId}-options`);
-    options.replaceChildren(...models.map(name => {
-      const option = document.createElement('option');
-      option.value = name;
-      return option;
-    }));
-    if (!field.value) field.value = models[0] ?? '';
-    showConnectionStatus(models.length ? 'Connected. ' + models.length + ' models available.' : 'Connected. Enter a model ID manually.');
-    if (models.length) field.focus();
+    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(20000)]);
+    const models = new Set();
+    const pageTokens = new Set();
+    let pageToken = '';
+    do {
+      const url = new URL(endpoint);
+      if (pageToken) url.searchParams.set('pageToken', pageToken);
+      const response = await fetch(url.href, { headers, signal });
+      status = response.status;
+      const body = await response.text();
+      if (!response.ok) {
+        providerBody = body;
+        throw new Error('HTTP ' + status);
+      }
+      let data;
+      try { data = JSON.parse(body); }
+      catch { providerBody = body; throw new Error('The provider returned invalid JSON.'); }
+      const entries = isGemini ? data?.models : data?.data;
+      if (!Array.isArray(entries)) { providerBody = body; throw new Error('Invalid model list.'); }
+      for (const entry of entries) {
+        if (!entry || (isGemini && Array.isArray(entry.supportedGenerationMethods) &&
+          !entry.supportedGenerationMethods.includes('generateContent'))) continue;
+        const id = isGemini ? entry.name : entry.id;
+        if (typeof id === 'string' && id.trim()) models.add(isGemini ? id.trim().replace(/^models\//, '') : id.trim());
+      }
+      pageToken = isGemini && typeof data.nextPageToken === 'string' ? data.nextPageToken : '';
+      if (pageTokens.has(pageToken)) break;
+      pageTokens.add(pageToken);
+    } while (pageToken);
+    if (modelRequest !== request) return;
+    const select = field('api-external-models');
+    const ids = [...models].sort((a, b) => a.localeCompare(b));
+    for (const id of ids) select.add(new Option(id, id));
+    syncModelSelect();
+    field('api-external-model-field').hidden = !models.size;
+    showConnectionStatus(models.size ? models.size + ' models available. Open Model to choose one.' : 'No models returned. Enter a model ID manually.');
+    logConnectionActivity({ action: 'connection.models', provider, status, result: 'ok', models: ids.map(id => redactConnectionKeys(id, key)) });
   } catch (error) {
-    showConnectionStatus('Failed to fetch models: ' + error.message);
+    if (modelRequest === request) {
+      const reason = error.name === 'TimeoutError' ? 'Request timed out.' : redactConnectionKeys(error.message, key);
+      showConnectionStatus('Could not fetch models. ' + reason + ' You can enter a model ID manually.');
+      logConnectionActivity({ action: 'connection.models', provider, status, result: 'failed',
+        detail: providerBody ? reason + '\n' + formatProviderBody(providerBody, key) : reason });
+    }
+  } finally {
+    if (modelRequest === request) {
+      modelRequest = undefined;
+      field('fetch-models-btn').disabled = false;
+    }
   }
 }
 
@@ -229,19 +304,43 @@ function renderGenerationSettings() {
 }
 async function testApiConnection() {
   const button = field('test-api-connection-btn');
+  const provider = text('api-provider') === 'gemini' ? 'gemini' : 'openai';
+  const proxyUrl = provider === 'gemini' ? geminiModelsUrl : text('proxy-url');
+  const apiKey = text('api-key');
+  const model = text('model-select');
   button.disabled = true;
   showConnectionStatus('Testing model…');
+  let status;
+  let statusText;
+  let responseBody;
+  let reason;
   try {
-    const provider = text('api-provider');
-    const response = await sendCompletion([{ role: 'user', content: 'Reply with OK.' }], { connection: {
-      provider, proxyUrl: provider === 'gemini' ? geminiModelsUrl : text('proxy-url'), apiKey: text('api-key'), model: text('model-select'),
-    }, outputTokens: 16, signal: AbortSignal.timeout(15000) });
-    if (!response.ok) throw Error('HTTP ' + response.status);
-    const result = await response.json();
-    if (!result.choices?.length && !result.candidates?.length) throw Error('The model returned no completion.');
-    showConnectionStatus('Connection successful.');
-  } catch (error) { showConnectionStatus('Connection test failed: ' + error.message); }
-  finally { button.disabled = false; }
+    const response = await sendCompletion([{ role: 'user', content: 'Reply with OK.' }], {
+      connection: { provider, proxyUrl, apiKey, model }, outputTokens: 16, signal: AbortSignal.timeout(15000),
+      onResponse: received => {
+        status = received.status;
+        statusText = redactConnectionKeys(received.statusText, apiKey);
+        responseBody = received.clone().text().catch(() => undefined);
+      },
+    });
+    if (!response.ok) throw new Error('HTTP ' + response.status + (statusText ? ' ' + statusText : ''));
+    let data;
+    try { data = await response.json(); }
+    catch { throw new Error('The provider did not return valid JSON or the response was interrupted.'); }
+    if (!completionText(data ?? {})?.trim()) throw new Error('The model returned no reply text.');
+  } catch (error) {
+    reason = error.name === 'TimeoutError' ? 'Request timed out.' : redactConnectionKeys(error.message, apiKey);
+  }
+  const raw = await responseBody;
+  const body = raw ? formatProviderBody(raw, apiKey) : status ?
+    (raw === '' ? 'The response body was empty.' : 'The response body could not be read.') : 'No HTTP response was available to the browser.';
+  const summary = reason ? 'Connection test failed: ' + reason : 'Connection successful.';
+  const heading = status && !reason?.startsWith('HTTP ') ? 'HTTP ' + status + (statusText ? ' ' + statusText : '') + '\n' + summary : summary;
+  showConnectionStatus(summary);
+  logConnectionActivity({ action: 'connection.test', provider, model: redactConnectionKeys(model, apiKey), status,
+    result: reason ? 'failed' : 'ok', detail: (reason ? reason + '\n' : '') + body });
+  button.disabled = false;
+  void showCustomAlert('Test Message', escapeHtml(heading) + '<pre class="api-test-response">' + escapeHtml(body) + '</pre>');
 }
 export function bindApiSettingsEvents() {
   const save = field('save-api-settings-btn')
@@ -313,9 +412,15 @@ export function bindApiSettingsEvents() {
     }
   })
 
-  field('api-provider').addEventListener('change', updateProviderFields)
-  field('test-api-connection-btn').addEventListener('click', testApiConnection)
-  field('fetch-models-btn').addEventListener('click', () => {
-    void fetchModels('proxy-url', 'api-key', 'model-select')
+  field('api-provider').addEventListener('change', () => {
+    updateProviderFields()
+    resetModelList()
   })
+  for (const id of ['proxy-url', 'api-key']) field(id).addEventListener('input', resetModelList)
+  field('api-external-models').addEventListener('change', event => {
+    field('model-select').value = event.target.value
+  })
+  field('model-select').addEventListener('input', syncModelSelect)
+  field('test-api-connection-btn').addEventListener('click', testApiConnection)
+  field('fetch-models-btn').addEventListener('click', fetchModels)
 }

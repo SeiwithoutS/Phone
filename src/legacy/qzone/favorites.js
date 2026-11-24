@@ -1,3 +1,4 @@
+import { escapeHtml, imageSource } from '../../runtime/files'
 import { getDisplayNameByOriginalName } from '../chat/groups.js'
 import { parseMarkdown } from '../rendering/markup.js'
 import { runtime } from '../runtime/state.js'
@@ -153,21 +154,21 @@ export function displayFilteredFavorites(items) {
                       
         else if (item.type === 'char_diary') {
             const diary = item.content;
-            sourceText = `来自 ${diary.characterName} 的日记`;
+            sourceText = `来自 ${escapeHtml(String(diary.characterName ?? ''))} 的日记`;
 
             const charChat = runtime.state.chats[diary.characterId];
             const authorAvatar = charChat ? charChat.settings.aiAvatar : runtime.defaultAvatar;
             
-            headerHtml = `<img src="${authorAvatar}" class="avatar"><div class="info"><div class="name">${diary.characterName}</div></div>`;
+            headerHtml = `<img src="${escapeHtml(imageSource(String(authorAvatar ?? '')))}" class="avatar"><div class="info"><div class="name">${escapeHtml(String(diary.characterName ?? ''))}</div></div>`;
             
             
             const fullDiaryContent = diary.content || '';
             
-            const formattedContent = parseMarkdown(fullDiaryContent).replace(/\n/g, '<br>');
+            const formattedContent = parseMarkdown(escapeHtml(String(fullDiaryContent))).replace(/\n/g, '<br>');
 
             
             contentHtml = `
-                <span class="diary-title">${diary.title}</span>
+                <span class="diary-title">${escapeHtml(String(diary.title ?? ''))}</span>
                 <div class="fav-card-content-full">${formattedContent}</div>
             `;
         }  

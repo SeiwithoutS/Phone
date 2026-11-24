@@ -128,6 +128,7 @@ export class Table {
   }
 
   clear() { return this.write(table => { table.rows = [] }) }
+  restore(rows: InputRow[], nextId?: number) { return this.#save(rows, false, { nextId }) }
   update(key: Key, changes: Record<string, unknown>) {
     return this.write(table => {
       const row = table.rows.find(item => item.id === key)
@@ -137,9 +138,13 @@ export class Table {
     })
   }
 
-  #save(rows: InputRow[], addOnly: boolean) {
+  #save(rows: InputRow[], addOnly: boolean, restore?: { nextId?: number }) {
     const records = structuredClone(rows)
     return this.write(table => {
+      if (restore) {
+        table.rows = []
+        if (this.definition.autoIncrement && restore.nextId != null) table.nextId = Math.max(table.nextId, restore.nextId)
+      }
       const index = new Map(table.rows.map((row, position) => [row.id, position]))
       let key: Key | undefined
       for (const row of records) {

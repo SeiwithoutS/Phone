@@ -266,7 +266,7 @@
   border: 1px solid var(--border-color);
   background: var(--secondary-bg);
 }
-:is(.qq-chat-menu-button, .qq-message-button) svg {
+:is(.qq-chat-menu-button, .qq-message-button, .qq-message-menu-trigger, .qq-message-menu-action) svg {
   width: 19px;
   height: 19px;
   fill: none;
@@ -316,18 +316,61 @@
 .qq-file-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px; }
 .qq-file-row .session-history-row { min-width: 0; }
 .qq-delete-file { grid-column: 1 / -1; }
-.qq-delete-file p, .qq-delete-instructions { margin: 0; font-size: .88rem; }
-.qq-delete-file p { flex-basis: 100%; }
-.qq-delete-list { display: flex; flex-direction: column; gap: 6px; }
-.qq-delete-list button[data-in-range=true] { border-color: var(--feature-error); background: #ef687325; }
-.qq-delete-list button[aria-pressed=true] { outline: 2px solid var(--feature-error); outline-offset: -2px; }
+.qq-delete-file p { flex-basis: 100%; margin: 0; font-size: .88rem; }
+
+.qq-message-checkbox, #qq-delete-hint, #qq-delete-error { display: none; }
+#chat-interface-screen.selection-mode .qq-message-checkbox {
+  display: block;
+  align-self: center;
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  margin: 0 5px;
+  accent-color: var(--ui-accent);
+  cursor: pointer;
+}
+#chat-interface-screen.selection-mode .message-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+#chat-interface-screen.selection-mode .message-bubble.selected::after { content: none; }
+#chat-interface-screen.selection-mode .message-bubble.selected > .content {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+#chat-interface-screen.qq-delete-mode :is(#selection-share-btn, #selection-screenshot-btn, #selection-soft-delete-btn) {
+  display: none;
+}
+#chat-interface-screen.qq-delete-mode #chat-input-area { display: none !important; }
+#chat-interface-screen.qq-delete-mode #qq-delete-hint,
+#chat-interface-screen.selection-mode #qq-delete-error:not(:empty) {
+  display: block;
+  margin: 0;
+  padding: 6px 12px;
+  background: var(--ui-surface);
+  color: var(--ui-muted);
+  font-size: .78rem;
+}
+#chat-interface-screen.selection-mode #qq-delete-error { color: var(--ui-danger); }
+#selection-erase-btn { color: var(--ui-danger); white-space: nowrap; }
+#selection-erase-btn:disabled { opacity: .5; cursor: default; }
 
 #chat-messages .has-qq-message-tools { display: flex; flex-wrap: wrap; flex-shrink: 0; gap: 3px 7px; max-width: 94%; }
 #chat-messages .has-qq-message-tools > .sender-name { flex-basis: 100%; }
-.qq-message-tools, .qq-message-error { flex-basis: 100%; }
-.qq-message-tools { display: flex; align-items: center; gap: 3px; }
-.message-wrapper.user > .qq-message-tools { justify-content: flex-end; }
-.message-wrapper.ai > .qq-message-tools { padding-inline-start: 18px; }
+.qq-message-error { flex-basis: 100%; }
+#chat-messages .has-qq-message-tools > .message-bubble {
+  position: relative;
+  display: grid;
+  grid-template: "avatar body" auto / auto minmax(0, 1fr);
+  align-items: start;
+}
+#chat-messages .has-qq-message-tools.user > .message-bubble { grid-template: "body avatar" auto / minmax(0, 1fr) auto; }
+#chat-messages .has-qq-message-tools .message-bubble > .avatar-group { grid-area: avatar; }
+#chat-messages .has-qq-message-tools .message-bubble > .content { grid-area: body; }
+#chat-interface-screen:not(.selection-mode) .has-qq-message-tools:not(.qq-editing) .message-bubble > .content { padding-inline-end: 28px; }
+.qq-message-tools { position: absolute; grid-area: body; inset-block-start: 2px; inset-inline-end: 3px; display: flex; }
 #chat-interface-screen.selection-mode .qq-message-tools,
 #chat-interface-screen.selection-mode .qq-inline-edit { display: none; }
 .qq-message-button {
@@ -342,5 +385,52 @@
 }
 .qq-message-button:disabled { opacity: .48; }
 .qq-message-button svg { width: 15px; height: 15px; }
+.qq-message-menu-trigger {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-secondary);
+}
+.qq-message-menu-trigger svg { width: 16px; height: 16px; stroke-width: 3; }
+.qq-message-menu-trigger:is(:hover, :focus-visible) { color: var(--text-primary); }
+.qq-message-menu {
+  position: fixed;
+  inset: auto;
+  width: max-content;
+  max-width: calc(100vw - 12px);
+  max-height: calc(100dvh - 12px);
+  overflow: auto;
+  margin: 0;
+  border: 1px solid var(--ui-divider);
+  border-radius: 10px;
+  padding: 4px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  box-shadow: 0 8px 24px #0004;
+}
+.qq-message-menu:popover-open { display: grid; gap: 2px; }
+.qq-message-menu-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  height: auto;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: .8rem;
+  text-align: start;
+}
+.qq-message-menu-action:hover { background: var(--secondary-bg); }
+.qq-message-menu-action svg { width: 15px; height: 15px; flex: none; }
+.qq-message-menu-action:disabled { opacity: .48; }
+.qq-message-swipe { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 3px; }
 .qq-swipe-count, .qq-message-error { font-size: .75rem; color: var(--text-primary); background: var(--secondary-bg); border-radius: 5px; padding: 2px 5px; }
 .qq-message-error:empty { display: none; }

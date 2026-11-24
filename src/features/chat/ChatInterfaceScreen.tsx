@@ -151,16 +151,18 @@ export function ChatInterfaceScreen() {
             <span id="selection-share-btn" className="action-btn">Share</span>
             {" "}
             <span id="selection-soft-delete-btn" className="action-btn">Delete and Notify AI</span>
-            <span id="selection-erase-btn" className="action-btn" style={{ color: "#ff3b30" }}>Delete Permanently</span>
+          <button id="selection-erase-btn" className="phone-button action-btn" type="button" disabled>Delete Permanently</button>
             {" "}
           </div>
         </div>
       </ScreenHeader>
+      <div id="qq-delete-hint" />
+      <p id="qq-delete-error" role="alert" />
       <div id="chat-messages" onClick={event => {
         const target = event.target
-        if (!(target instanceof Element)) return
+        if (!(target instanceof Element) || event.currentTarget.closest('.selection-mode')) return
         const order = target.closest<HTMLButtonElement>('[data-market-order]')?.dataset.marketOrder
-        if (order && !event.currentTarget.closest('.selection-mode') && runtime.state.activeChatId) {
+        if (order && runtime.state.activeChatId) {
           void navigate({ pathname: screenPaths['market-screen'], search: new URLSearchParams({ order }).toString() },
             { state: { from: 'chat', chatId: runtime.state.activeChatId } })
           return

@@ -91,7 +91,7 @@ export async function handleLocalAvatarUpload(event) {
 export async function getAvatarDescriptionFromApi(base64Url) {
             if (!maySendImages()) throw new Error("Enable image input in API Connections to use AI vision.");
             
-            const prompt = "请为这张图片起一个简洁的、适合作为头像库标签的名字。例如：“微笑自拍”、“阳光下的猫咪”、“蓝发动漫少女”。请直接回答名字，不要加任何多余的解释。";
+            const prompt = 'Give this image a short label for an avatar library, such as "Smiling selfie", "Cat in sunlight", or "Blue-haired anime character". Reply with only the label.';
             
             const response = await requestContextCompletion(undefined, { instructions: '', standalone: true,
                 task: 'Avatar description', scope: 'avatar', request: [{ role: 'user', content: [

@@ -4,14 +4,14 @@ import { ScreenContext, BackButton } from '../../components/phone'
 import { IconButton } from '../../components/icons'
 import { resolveScreen, showScreen } from '../../app/routes'
 import { greetingOptions } from '../characters/characters'
-import { canChangeOpening, changeSession, deleteMessagesFrom, getActiveChat, getDirectChat, getSessions } from './sessions'
+import { canChangeOpening, changeSession, getActiveChat, getDirectChat, getSessions } from './sessions'
 import { regenerateReply } from './replies'
-import type { ChatMessage } from './model'
+import { enterSelectionMode } from '../../legacy/chat/messages.js'
 
-type View = 'menu' | 'history' | 'new' | 'change-opening' | 'delete-messages'
+type View = 'menu' | 'history' | 'new' | 'change-opening'
 const titles: Record<View, string> = {
   menu: 'Chat actions', history: 'Manage chat files', new: 'New chat',
-  'change-opening': 'Choose opening', 'delete-messages': 'Delete messages',
+  'change-opening': 'Choose opening',
 }
 
 export function ChatSessions({ onOpen }: { onOpen: () => void }) {
@@ -27,7 +27,6 @@ function SessionControls({ id, onOpen }: { id: string; onOpen: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [deleteFile, setDeleteFile] = useState<string>()
-  const [cut, setCut] = useState<ChatMessage>()
   const panel = useRef<HTMLDialogElement>(null)
   const opener = useRef<HTMLButtonElement>(null)
   const chat = view && getActiveChat(id)
@@ -62,7 +61,6 @@ function SessionControls({ id, onOpen }: { id: string; onOpen: () => void }) {
     if (next && !getActiveChat(id)) return
     setView(next)
     setOption(0)
-    setCut(undefined)
     setDeleteFile(undefined)
     setError('')
   }
@@ -83,9 +81,11 @@ function SessionControls({ id, onOpen }: { id: string; onOpen: () => void }) {
   }
 
   const openings = directChat && (view === 'new' || view === 'change-opening') ? greetingOptions(directChat) : []
-  const visible = chat ? chat.history.filter(message => !message.isHidden && !message.isTemporary) : []
-  const cutIndex = cut ? visible.indexOf(cut) : -1
-  const cutCount = cutIndex >= 0 ? visible.length - cutIndex : 0
+  const canDelete = chat && chat.history.some(message => !message.isHidden && !message.isTemporary)
+  function selectToDelete(mode: 'selected' | 'range') {
+    open()
+    enterSelectionMode(undefined, mode)
+  }
 
   return <>
     <button type="button" id="qq-chat-sessions-btn" ref={opener} className="phone-button qq-chat-menu-button"
@@ -108,7 +108,8 @@ function SessionControls({ id, onOpen }: { id: string; onOpen: () => void }) {
             </button>
             <button className="phone-app-button" type="button" disabled={busy} onClick={() => open('new')}>New chat</button>
             <button className="phone-app-button" type="button" disabled={busy} onClick={() => open('history')}>Manage chat files</button>
-            <button className="phone-app-button danger" type="button" disabled={busy || !visible.length} onClick={() => open('delete-messages')}>Delete messages</button>
+            <button className="phone-app-button danger" type="button" disabled={busy || !canDelete} onClick={() => selectToDelete('selected')}>Delete selected messages</button>
+            <button className="phone-app-button danger" type="button" disabled={busy || !canDelete} onClick={() => selectToDelete('range')}>Delete from a message onward</button>
             <button className="phone-app-button" type="button" disabled={busy} onClick={() => {
               open()
               document.getElementById('chat-settings-btn')?.click()
@@ -155,22 +156,6 @@ function SessionControls({ id, onOpen }: { id: string; onOpen: () => void }) {
             <button type="button" className="phone-app-button primary" disabled={busy}
               onClick={() => void apply(() => changeSession(chat, { type: view, greeting: openings[option] ?? '' }))}>
               {view === 'new' ? 'Start chat' : 'Use opening'}
-            </button>
-          </>}
-          {view === 'delete-messages' && <>
-            <p className="qq-delete-instructions">Select the first message to delete. This also deletes every message after it.</p>
-            <div className="qq-delete-list" aria-label="Messages">
-              {visible.map((message, index) => <button type="button" key={index} className="phone-app-button phone-app-list-row"
-                aria-pressed={cut === message} data-in-range={cutIndex >= 0 && index >= cutIndex} disabled={busy}
-                onClick={() => setCut(message)}>
-                <span><strong>{message.role === 'user' ? 'You' : message.senderName || (message.role === 'system' ? 'System' : chat.name)}</strong>
-                  <span className="session-excerpt">{typeof message.content === 'string' && message.content.trim()
-                    ? message.content : message.type?.replaceAll('_', ' ') || 'Attachment'}</span></span>
-              </button>)}
-            </div>
-            <button type="button" className="phone-app-button danger" disabled={!cut || !cutCount || busy}
-              onClick={() => { if (cut) void apply(() => deleteMessagesFrom(chat, cut)) }}>
-              {cutCount ? 'Permanently delete ' + cutCount + (cutCount === 1 ? ' message' : ' messages') : 'Select a starting message'}
             </button>
           </>}
         </div>

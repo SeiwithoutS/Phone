@@ -1,3 +1,5 @@
+import { newReplyTurn, replyTimestamp } from '../../features/chat/reply-turns'
+import { withConversationRequest } from '../../features/chat/sessions'
 import { requestContextCompletion } from '../../features/api/completion'
 import { getGeminiResponseText, parseAiResponse } from '../api/client.js'
 import { renderCharTaobao } from './apps.js'
@@ -149,90 +151,57 @@ export async function handleGenerateSimulatedQQ() {
         return;
     }
     
-    const userDisplayNameForAI = runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname ? '用户' : runtime.state.qzoneSettings.nickname;
+    const userDisplayNameForAI = runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname ? 'the user' : runtime.state.qzoneSettings.nickname;
     const userNicknameInThisChat = chat.settings.myNickname || userDisplayNameForAI;
 
     const characterOriginalName = chat.originalName || chat.name;
     const stickerContext = getGroupStickerContextForPrompt(chat);
     
     const systemPrompt = `
-# 你的任务
-你是一个虚拟社交生活模拟器，扮演角色“${chat.name}”。你的任务是虚构出【5到7段】TA最近的QQ聊天记录。
+# Simulated QQ history
+Portray "${chat.name}". Invent 5–7 recent QQ conversations, each with 8–15 messages. Use the language established by the character, user, and relevant context.
 
-# 核心规则
-1.  **【NPC唯一性铁律】**: 在你本次生成的所有对话中（包括私聊和群聊），每一个NPC的名字【必须是独一-无二的】。绝对禁止出现重名的NPC，禁止出现重复群聊。
-2.  **【NPC来源】**: 你应该优先从“你的社交圈 (绑定的NPC)”和“世界书”中寻找角色作为聊天对象。如果不够，你也可以自由创造全新的NPC，对话内容要多样化，反映角色的生活。
-3.  **关联性**: 对话内容应巧妙地反映角色的长期记忆、世界观，以及与用户互动可能带来的心情变化。
-4.  **简洁性**: 每段对话的总长度应在8到15句之间。
-# 格式铁律 (最高优先级)
-- 你的回复【必须且只能】是一个JSON数组格式的字符串，以 \`[\` 开始，并以 \`]\` 结束。
-- 【绝对禁止】在JSON数组前后添加任何多余的文字、解释、或 markdown 标记。
-- 数组中的每个元素都代表一段对话，且【必须】是以下两种格式之一：
+## Who appears and what they discuss
+- NPC names must be unique across this batch, including private and group chats. Do not repeat groups.
+- Draw participants first from the character's linked NPCs and World Info. Invent new NPCs only as needed. Give the chats enough variety to reflect the character's life.
+- Weave in long-term memories, their worldview, and any changes in mood caused by recent interactions with the user.
 
+## Output (highest priority)
+Return only a valid JSON array, starting with [ and ending with ]. Omit surrounding prose, explanation, and Markdown fences. Use one of these two shapes per conversation. Supply avatar_prompt only for newly invented NPCs, in English keywords for anime or illustrated avatars. Do not depict real people.
 
+Private chat
+{"type":"private_npc","participant":{"name":"NPC name","avatar_prompt":"anime portrait, dark hair, warm lighting"},"messages":[{"sender":"${characterOriginalName}","content":"First message"},{"sender":"NPC name","content":"Reply"},{"sender":"${characterOriginalName}","type":"sticker","meaning":"Exact sticker meaning from the list"}]}
 
-### 格式 A：与NPC的私聊
-\`\`\`json
-{
-  "type": "private_npc",
-  "participant": {
-    "name": "NPC的名字",
-    "avatar_prompt": "(仅当NPC是新创造时提供)一段用于生成头像的【英文】关键词, 风格为动漫/插画/二次元等, 禁止真人"
-  },
-"messages": [
-  {"sender": "${characterOriginalName}", "content": "对话内容1"},
-  {"sender": "NPC的名字", "content": "对话内容2"},
-  {"sender": "${characterOriginalName}", "type": "sticker", "meaning": "表情的含义(从可用表情列表选择)"}
-]
-}
-\`\`\`
+Group chat
+{"type":"group","groupName":"Invented group name","participants":[{"name":"First NPC","avatar_prompt":"anime portrait, red scarf"},{"name":"Second NPC","avatar_prompt":"anime portrait, round glasses"}],"messages":[{"sender":"${characterOriginalName}","content":"Message to the group"},{"sender":"First NPC","content":"Reply"},{"sender":"Second NPC","type":"sticker","meaning":"Exact sticker meaning from the list"}]}
 
-### 格式 B：群聊
-\`\`\`json
-{
-  "type": "group",
-  "groupName": "一个虚构的群名",
-  "participants": [
-    {"name": "NPC成员1", "avatar_prompt": "(仅当NPC是新创造时提供) 成员1头像【英文】关键词"},
-    {"name": "NPC成员2", "avatar_prompt": "(仅当NPC是新创造时提供) 成员2头像【英文】关键词"}
-  ],
-"messages": [
-  {"sender": "${characterOriginalName}", "content": "我在群里说的话"},
-  {"sender": "NPC成员1", "content": "成员1回复我"},
-  {"sender": "NPC成员2", "type": "sticker", "meaning": "表情的含义(从可用表情列表选择)"}
-]
-}
-\`\`\`
-
-# 角色与上下文
-- **你的角色设定**: ${chat.settings.aiPersona}
-# 可用表情包 (必须严格遵守！)
-- 当你需要发送表情时，你【必须】从下面的列表中【精确地选择一个】含义（meaning）。
-- 【绝对禁止】使用任何不在列表中的表情含义！
+## Character and stickers
+${chat.settings.aiPersona}
+Choose exactly one listed meaning when sending a sticker.
 ${stickerContext}
-现在，请严格按照格式铁律，生成聊天记录的JSON数组。`;
+`;
   
             
     try {
-        const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成模拟聊天记录。" }];
+        const messagesForApi = [{ role: 'user', content: "Generate the simulated QQ conversations in character." }];
         const response = await requestContextCompletion(chat, { instructions: systemPrompt,
             request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
 
-        if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
+        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
         
         const data = await response.json();
         const aiResponseContent = getGeminiResponseText(data);
         
         const jsonMatch = aiResponseContent.match(/(\[[\s\S]*\])/);
         if (!jsonMatch || !jsonMatch[0]) {
-            throw new Error(`AI返回的内容中未找到有效的JSON数组。原始返回: ${aiResponseContent}`);
+            throw new Error(`The AI reply did not contain a valid JSON array. Raw reply: ${aiResponseContent}`);
         }
         const cleanedJsonString = jsonMatch[0];
         let simulatedConversations;
         try {
             simulatedConversations = JSON.parse(cleanedJsonString);
         } catch (e) {
-            throw new Error(`解析AI返回的JSON时出错: ${e.message}\n\nAI原始返回内容:\n${aiResponseContent}`);
+            throw new Error(`Could not read the AI reply as JSON: ${e.message}\n\nRaw AI reply:\n${aiResponseContent}`);
         }
         
         chat.simulatedConversations = simulatedConversations;
@@ -243,7 +212,7 @@ ${stickerContext}
         
         const hiddenMessage = {
             role: 'system',
-            content: `[系统指令：你刚刚在自己的手机上活动了一番（和朋友聊天、逛群等）。现在请根据你的角色设定，主动给用户发一条消息，可以聊聊你刚才看到或聊到的趣事，或者仅仅是问候一下。]`,
+            content: `[System instruction: You just spent time on your phone chatting with friends or in groups. Send the user one message in character. Mention something interesting you saw or talked about, or simply say hello.]`,
             timestamp: Date.now(),
             isHidden: true
         };
@@ -257,9 +226,13 @@ ${stickerContext}
     }
 }
 
-export async function handleContinueRealConversationFromCPhone() {
-    if (!runtime.activeCharacterId) return;
-    const chat = runtime.state.chats[runtime.activeCharacterId];
+export function handleContinueRealConversationFromCPhone() {
+    const chatId = runtime.activeCharacterId;
+    return withConversationRequest(chatId, () => continueRealConversation(chatId));
+}
+
+async function continueRealConversation(chatId) {
+    const chat = runtime.state.chats[chatId];
     if (!chat) return;
 
 
@@ -282,30 +255,20 @@ export async function handleContinueRealConversationFromCPhone() {
         
     const stickerContext = getStickerContextForPrompt(chat);        
         const systemPrompt = `
-# 你的核心任务
-你正在扮演角色“${chat.originalName}”。用户刚刚在TA的手机（CPhone）上点击了一个按钮，希望你能继续你们之前的对话。你的任务是根据上下文，生成【3到5条】符合你人设的、简短的、连续的新回复。
+# Continue the QQ conversation
+You are "${chat.originalName}". The user used Cphone to ask you to continue your previous conversation. Use the latest exchange and send 3–5 new, short consecutive replies in character. Use the language established by the character, user, and relevant context.
 
-# 输出格式铁律 (最高优先级)
-- 你的回复【必须】是一个JSON数组，每个对象代表一条消息。
-- 格式: \`[{"type": "text", "content": "第一句话"}, {"type": "text", "content": "第二句话"}, {"type": "sticker", "meaning": "表情的含义(从可用表情列表选择)"}]\`
-- 你可以自由组合使用 "text", "sticker", "ai_image", "voice_message" 等多种消息类型。
-请根据当前情景和你的情绪，从列表中【选择一个最合适的】表情含义来使用 "sticker" 指令。尽量让你的表情丰富多样，避免重复。
-# 你的角色设定
-${chat.settings.aiPersona}
-# 可用表情包 (必须严格遵守！)
-- 当你需要发送表情时，你【必须】从下面的列表中【精确地选择一个】含义（meaning）。
-- 【绝对禁止】使用任何不在列表中的表情含义！
+## Output (highest priority)
+Return only a valid JSON array, starting with [ and ending with ]. Omit surrounding prose, explanation, and Markdown fences. Each object represents one message. You can combine "text", "sticker", "ai_image", and "voice_message".
+[{"type":"text","content":"First message"},{"type":"text","content":"Second message"},{"type":"sticker","meaning":"Exact sticker meaning from the list"}]
+For a sticker, choose exactly one meaning from this list. Match the moment and your mood and vary your choices.
 ${stickerContext}
 
-# 你的聊天对象（用户）的人设
-${userPersona}  
-
-# 供你参考的上下文
-- **你的本名**: "${chat.originalName}"
-- **用户的备注**: "${myNickname}"
-- **你们最后的对话**:
-
-现在，请继续这场对话。
+## Context
+- Your original name: "${chat.originalName}"
+- The user's nickname: "${myNickname}"
+- Your persona: ${chat.settings.aiPersona}
+- The user's persona: ${chat.settings.myPersona}
 `;
 
         const response = await requestContextCompletion(chat, { instructions: systemPrompt,
@@ -323,9 +286,10 @@ ${userPersona}
         }
 
         let newMessagesCount = 0;
-        let messageTimestamp = Date.now();
+        const turn = newReplyTurn();
+        let messageTimestamp = replyTimestamp(chat.history);
         for (const msgData of messagesArray) {
-            const baseMessage = { role: 'assistant', senderName: chat.originalName, timestamp: messageTimestamp++ };
+            const baseMessage = { role: 'assistant', senderName: chat.originalName, timestamp: messageTimestamp++, ...turn };
             let aiMessage = null;
             switch(msgData.type) {
                 case 'text':
@@ -606,49 +570,36 @@ export async function handleGenerateSimulatedAlbum() {
         return;
     }
 
-    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
+    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? 'the user' : runtime.state.qzoneSettings.nickname;
     
 
 
     
     const systemPrompt = `
-# 你的任务
-你是一个虚拟生活模拟器。你的任务是扮演角色“${chat.name}”，并根据其人设、记忆和最近的互动，构思出【8到10张】TA最近可能会拍摄或珍藏在手机相册里的照片。
+# Simulated photo album
+Portray "${chat.name}". Imagine 8–10 recent photos the character took or kept. Use their persona, memories, and recent interactions. Make the photos fit their personality, interests, work, and surroundings. Vary the subjects, such as selfies, scenery, food, pets, photos with friends, or work scenes.
 
-# 核心规则
-1.  **创造性与合理性**: 照片内容必须完全符合角色的性格、爱好、职业和生活环境。
-2.  **多样性**: 照片主题要丰富，可以包括自拍、风景、食物、宠物、朋友合影、工作场景等。
-3.  **格式铁律 (最高优先级)**: 
-    - 你的回复【必须且只能】是一个JSON数组格式的字符串。
-    - 你的回复必须以 \`[\` 开始，并以 \`]\` 结束。
-    - 【绝对禁止】在JSON数组前后添加任何多余的文字、解释、或 markdown 标记 (如 \`\`\`json)。
-    - 数组中的每个元素都是一个对象，代表一张照片，格式【必须】如下:
-    \`\`\`json
-    [
-      {
-        "description": "这是照片背后的故事或角色的心情日记，必须使用第一人称“我”来写。",
-        "image_prompt": "一段用于生成这张照片的、详细的【英文】关键词。"
-      }
-    ]
-    \`\`\`
-    - **【image_prompt 绝对禁止】**: 绝对禁止包含任何中文字符、句子、特殊符号、或任何可能涉及敏感（NSFW）、暴力、血腥、政治的内容！也禁止真人！
-    - **【image_prompt 必须是】**: 必须是纯英文的、用逗号分隔的【关键词组合】 (e.g., "1boy, solo, basketball jersey, in locker room, smiling, selfie")。
-    - **【画风指令】**: 在 prompt 的末尾，总是加上画风指令，例如： \`best quality, masterpiece, anime style, cinematic lighting\`
+## Output (highest priority)
+Return only a valid JSON array, starting with [ and ending with ]. Omit surrounding prose, explanation, and Markdown fences. Each object represents a photo.
+[{"description":"I wanted to remember how quiet the gym was that evening.","image_prompt":"1boy, solo, basketball jersey, locker room, smiling, selfie, best quality, masterpiece, anime style, cinematic lighting"}]
 
-# 供你参考的上下文
-- **你的角色设定**: ${chat.settings.aiPersona}
-- **你最近和“${userDisplayNameForAI}”的对话摘要**:
+- In "description", write the story or feeling behind the photo from the character's first-person perspective. Use the language established by the character, user, and relevant context.
+- In "image_prompt", use detailed comma-separated English keywords without full sentences, Chinese characters, or special symbols. Keep out NSFW, violence, gore, politics, and real people.
+- Always end the image prompt with art-style tags such as "best quality, masterpiece, anime style, cinematic lighting".
 
-现在，请开始生成这组照片的描述和绘画指令。`;
+# Context
+- Character persona: ${chat.settings.aiPersona}
+- Recent conversation with "${userDisplayNameForAI}", saved memories, and other supplied context.
+`;
       
 
     try {
-        const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的相册内容。" }];
+        const messagesForApi = [{ role: 'user', content: "Generate the photo album entries in character." }];
         const response = await requestContextCompletion(chat, { instructions: systemPrompt,
             request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
           
 
-        if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
+        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
         
         const data = await response.json();
         const aiResponseContent = getGeminiResponseText(data);
@@ -656,14 +607,14 @@ export async function handleGenerateSimulatedAlbum() {
         
         const jsonMatch = aiResponseContent.match(/(\[[\s\S]*\])/);
         if (!jsonMatch || !jsonMatch[0]) {
-            throw new Error(`AI返回的内容中未找到有效的JSON数组。原始返回: ${aiResponseContent}`);
+            throw new Error(`The AI reply did not contain a valid JSON array. Raw reply: ${aiResponseContent}`);
         }
         const cleanedJsonString = jsonMatch[0];
         let simulatedAlbumData;
         try {
             simulatedAlbumData = JSON.parse(cleanedJsonString);
         } catch (e) {
-            throw new Error(`解析AI返回的JSON时出错: ${e.message}\n\nAI原始返回内容:\n${aiResponseContent}`);
+            throw new Error(`Could not read the AI reply as JSON: ${e.message}\n\nRaw AI reply:\n${aiResponseContent}`);
         }
           
         
@@ -691,52 +642,33 @@ export async function handleGenerateBrowserHistory() {
         return;
     }
     
-    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
+    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? 'the user' : runtime.state.qzoneSettings.nickname;
 
 
 
-const userPersona = chat.settings.myPersona || '(未设置)';    
+    const userPersona = chat.settings.myPersona || '(not set)';
     const systemPrompt = `
-# 你的任务
-你是一个虚拟生活模拟器。你的任务是扮演角色“${chat.name}”，并根据其人设、记忆和最近的互动，虚构出【10到20条】TA最近的浏览器搜索/浏览记录。
+# Simulated browser history
+Portray "${chat.name}". Invent 10–20 recent browsing or search records that fit the character's personality, interests, work, and surroundings. Vary the material across posts, articles, news, Q&A, or other plausible sources. Use the language established by the character, user, and relevant context.
 
-# 核心规则
-1.  **创造性与合理性**: 记录必须完全符合角色的性格、爱好、职业和生活环境。
-2.  **多样性**: 记录类型要丰富，可以是帖子、文章、新闻、问答等。
-3.  **【格式 (最高优先级)】**: 
-    - 你的回复【必须且只能】是一个JSON数组格式的字符串。
-    - 你的回复必须以 \`[\` 开始，并以 \`]\` 结束。
-    - 【绝对禁止】在JSON数组前后添加任何多余的文字、解释、或 markdown 标记 (如 \`\`\`json)。
-    - 数组中的每个元素都代表一条浏览记录，并且【必须】使用以下格式:
-    \`\`\`json
-    [
-      {
-        "type": "text",
-        "title": "一个引人注目的文章或搜索标题",
-        "url": "一个虚构的、看起来很真实的网址",
-        "content": "一篇200-400字的、详细的文章或帖子正文，支持换行符\\n。"
-      }
-    ]
-    \`\`\`
-    
-    **【绝对禁止】**: 你的回复中【绝对不能】包含 "type": "image" 的对象。所有记录都必须是文字内容。
+## Output (highest priority)
+Return only a valid JSON array, starting with [ and ending with ]. Omit surrounding prose, explanation, and Markdown fences. Every record must have "type": "text". Never return "type": "image". Write 200–400 characters of detailed article or post content per record. Use escaped newlines where needed. Use an invented but credible URL and an engaging title.
+[{"type":"text","title":"An engaging title","url":"https://example.com/sample","content":"Write the full body here.\\nUse another paragraph where appropriate."}]
 
-# 供你参考的上下文
-- **你的角色设定**: ${chat.settings.aiPersona}
-- ** 你的聊天对象（用户）的人设**:${userPersona}
-- **你的长期记忆**:
-- **你最近和“${userDisplayNameForAI}”的对话摘要**:
-
-现在，请开始生成这组【纯文本】的浏览记录。`;
+# Context
+- Character persona: ${chat.settings.aiPersona}
+- Recent conversation with "${userDisplayNameForAI}", saved memories, and other supplied context.
+- User persona: ${userPersona}
+`;
       
 
     try {
-        const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的浏览器记录。" }];
+        const messagesForApi = [{ role: 'user', content: "Generate the browser history in character." }];
         const response = await requestContextCompletion(chat, { instructions: systemPrompt,
             request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
           
 
-        if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
+        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
         
         const data = await response.json();
         const aiResponseContent = getGeminiResponseText(data);
@@ -744,14 +676,14 @@ const userPersona = chat.settings.myPersona || '(未设置)';
         
         const jsonMatch = aiResponseContent.match(/(\[[\s\S]*\])/);
         if (!jsonMatch || !jsonMatch[0]) {
-            throw new Error(`AI返回的内容中未找到有效的JSON数组。原始返回: ${aiResponseContent}`);
+            throw new Error(`The AI reply did not contain a valid JSON array. Raw reply: ${aiResponseContent}`);
         }
         const cleanedJsonString = jsonMatch[0];
         let simulatedHistory;
         try {
             simulatedHistory = JSON.parse(cleanedJsonString);
         } catch (e) {
-            throw new Error(`解析AI返回的JSON时出错: ${e.message}\n\nAI原始返回内容:\n${aiResponseContent}`);
+            throw new Error(`Could not read the AI reply as JSON: ${e.message}\n\nRaw AI reply:\n${aiResponseContent}`);
         }
           
         
@@ -840,6 +772,17 @@ export function renderCharArticle(articleData) {
             
         }
 
+const taobaoStatusLabels = new Map([
+    ['已签收', 'Delivered'],
+    ['待发货', 'Awaiting shipment'],
+    ['运输中', 'In transit'],
+    ['待评价', 'Awaiting review'],
+]);
+
+export function taobaoStatusLabel(status) {
+    return taobaoStatusLabels.get(status) ?? status ?? '';
+}
+
 export async function handleGenerateTaobaoHistory() {
     if (!runtime.activeCharacterId) return;
     const chat = runtime.state.chats[runtime.activeCharacterId];
@@ -853,53 +796,33 @@ export async function handleGenerateTaobaoHistory() {
         return;
     }
     
-    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
+    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? 'the user' : runtime.state.qzoneSettings.nickname;
 
 
 
     
     const systemPrompt = `
-# 你的任务
-你是一个虚拟生活模拟器。你的任务是扮演角色“${chat.name}”，并根据其人设、记忆和最近的互动，虚构出TA最近的淘宝购物记录和账户余额。
+# Simulated Taobao purchases
+Portray "${chat.name}". Use the character's persona, saved memories, and recent interactions to invent recent Taobao purchases and a balance. Match the items to their personality, interests, and means. Choose a new plausible balance that reflects their finances. A wealthy character should have a higher balance, while a student or character with little money should have a lower one.
 
-# 核心规则
-1.  **余额铁律 (最高优先级)**: 你【必须】根据角色的【经济状况】设定一个合理的 \`totalBalance\` (总余额)。例如，富有的角色应该有更高的余额，而学生或经济拮据的角色则应该有较低的余额。
-2.  **合理性**: 购买记录必须完全符合角色的性格、爱好和经济状况。
-3.  **格式铁律 (最高优先级)**: 
-    - 你的回复【必须且只能】是一个【单一的JSON对象】。
-    - 你的回复必须以 \`{\` 开始，并以 \`}\` 结束。
-    - 【绝对禁止】在JSON数组前后添加任何多余的文字、解释、或 markdown 标记。
-    - 格式【必须】如下:
-    \`\`\`json
-    {
-      "totalBalance": 12345.67, // (这是一个示例数字，你必须根据角色的经济状况生成一个全新的、合理的余额！)
-      "purchases": [
-        {
-          "itemName": "一个具体、生动的商品名称",
-          "price": 128.80,
-          "status": "已签收",
-          "reason": "这是角色购买这件商品的内心独白或理由，必须使用第一人称“我”来写。",
-          "image_prompt": "一段用于生成这张商品图片的、详细的【英文】关键词, 风格为 realistic product photo, high quality, on a clean white background"
-        }
-      ]
-    }
-    \`\`\`
-    - **purchases**: 一个包含12到15个商品对象的数组。
-    - **status (订单状态)**: 只能从 "已签收", "待发货", "运输中", "待评价" 中选择。
+## Output (highest priority)
+Return only a valid JSON object, starting with { and ending with }. Omit surrounding prose, explanation, and Markdown fences.
+{"totalBalance":12345.67,"purchases":[{"itemName":"A specific product name","price":128.80,"status":"Delivered","reason":"I bought it to replace my old travel mug.","image_prompt":"realistic product photo, high quality, travel mug on a clean white background"}]}
+- Include 12–15 purchases. Each item's "reason" is a first-person thought or reason for buying it. Use the language established by the character, user, and relevant context.
+- For "status", choose only "Delivered", "Awaiting shipment", "In transit", or "Awaiting review".
+- Write detailed English keywords for a realistic high-quality product photo on a clean white background.
 
-# 供你参考的上下文
-- **你的角色设定**: ${chat.settings.aiPersona}
-- **你的长期记忆**:
-- **你最近和“${userDisplayNameForAI}”的对话摘要**:
-
-现在，请生成包含总余额和购买记录的JSON对象。`;
+# Context
+- Character persona: ${chat.settings.aiPersona}
+- Recent conversation with "${userDisplayNameForAI}", saved memories, and other supplied context.
+`;
 
     try {
-        const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的淘宝购买记录和余额。" }];
+        const messagesForApi = [{ role: 'user', content: "Generate the Taobao purchases and balance in character." }];
         const response = await requestContextCompletion(chat, { instructions: systemPrompt,
             request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
 
-        if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
+        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
         
         const data = await response.json();
         const aiResponseContent = getGeminiResponseText(data);
@@ -979,7 +902,7 @@ export function renderCharWallet() {
         itemEl.innerHTML = `
             <div>
                 <p style="font-weight: 500; margin: 0 0 4px 0;">${item.itemName}</p>
-                <p style="font-size: 12px; color: #8a8a8a; margin: 0;">${item.status}</p>
+                <p style="font-size: 12px; color: #8a8a8a; margin: 0;">${taobaoStatusLabel(item.status)}</p>
             </div>
             <div style="font-weight: 600; font-size: 16px; color: #ff5722;">- ¥${(item.price || 0).toFixed(2)}</div>
         `;
@@ -1000,42 +923,28 @@ export async function handleGenerateSimulatedMemos() {
         return;
     }
 
-    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
+    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? 'the user' : runtime.state.qzoneSettings.nickname;
 
 
 
-const userPersona = chat.settings.myPersona || '(未设置)';    
+    const userPersona = chat.settings.myPersona || '(not set)';
     const systemPrompt = `
-# 你的任务
-你是一个虚拟生活模拟器。你的任务是扮演角色“${chat.name}”，并根据其人设、记忆和最近的互动，虚构出【12到20条】TA最近可能会写在手机备忘录里的内容。
+# Simulated phone memos
+Portray "${chat.name}". Create 12–20 recent memos that fit the character's personality, interests, job, and surroundings. Use their memories and recent interactions. Possible subjects include shopping lists, tasks, ideas, reflections, or drafts. Use the language established by the character, user, and relevant context.
 
-# 核心规则
-1.  **创造性与合理性**: 备忘录内容必须完全符合角色的性格、爱好、职业和生活环境。可以是购物清单、待办事项、灵感片段、一些随笔和感悟、草稿等。
-2.  **格式铁律 (最高优先级)**: 
-    - 你的回复【必须且只能】是一个JSON数组格式的字符串。
-    - 你的回复必须以 \`[\` 开始，并以 \`]\` 结束。
-    - 【绝对禁止】在JSON数组前后添加任何多余的文字、解释、或 markdown 标记 (如 \`\`\`json)。
-    - 数组中的每个元素都是一个对象，代表一条备忘录，格式【必须】如下:
-    \`\`\`json
-    [
-      {
-        "title": "备忘录的标题，例如：购物清单 或 周末计划",
-        "content": "备忘录的详细内容，必须支持换行符\\n。"
-      }
-    ]
-    \`\`\`
+## Output (highest priority)
+Return only a valid JSON array, starting with [ and ending with ]. Omit surrounding prose, explanation, and Markdown fences. Include a title and detailed content in each object. Use escaped newlines when needed.
+[{"title":"Weekend plans","content":"Pick up groceries.\\nCheck whether the exhibit is still open."}]
 
-# 供你参考的上下文
-- **你的角色设定**: ${chat.settings.aiPersona}
-- ** 你的聊天对象（用户）的人设**:${userPersona}
-- **你的长期记忆**:
-- **你最近和“${userDisplayNameForAI}”的对话摘要**:
-
-现在，请开始生成这组备忘录。`;
+# Context
+- Character persona: ${chat.settings.aiPersona}
+- Recent conversation with "${userDisplayNameForAI}", saved memories, and other supplied context.
+- User persona: ${userPersona}
+`;
       
 
     try {
-        const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的备忘录内容。" }];
+        const messagesForApi = [{ role: 'user', content: "Generate the memos in character." }];
         const response = await requestContextCompletion(chat, { instructions: systemPrompt,
             request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
           
@@ -1043,7 +952,7 @@ const userPersona = chat.settings.myPersona || '(未设置)';
         if (!response.ok) {
              const errorData = await response.json().catch(() => null);
              const errorMessage = errorData?.error?.message || response.statusText;
-             throw new Error(`API 错误: ${response.status} - ${errorMessage}`);
+             throw new Error(`API error: ${response.status} - ${errorMessage}`);
         }
         
         const data = await response.json();
@@ -1052,14 +961,14 @@ const userPersona = chat.settings.myPersona || '(未设置)';
    
         const jsonMatch = aiResponseContent.match(/(\[[\s\S]*\])/);
         if (!jsonMatch || !jsonMatch[0]) {
-            throw new Error(`AI返回的内容中未找到有效的JSON数组。原始返回: ${aiResponseContent}`);
+            throw new Error(`The AI reply did not contain a valid JSON array. Raw reply: ${aiResponseContent}`);
         }
         const cleanedJsonString = jsonMatch[0];
         let simulatedMemos;
         try {
             simulatedMemos = JSON.parse(cleanedJsonString);
         } catch (e) {
-            throw new Error(`解析AI返回的JSON时出错: ${e.message}\n\nAI原始返回内容:\n${aiResponseContent}`);
+            throw new Error(`Could not read the AI reply as JSON: ${e.message}\n\nRaw AI reply:\n${aiResponseContent}`);
         }
           
         
@@ -1095,55 +1004,35 @@ export async function handleGenerateAmapHistory() {
         return;
     }
     
-    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
+    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? 'the user' : runtime.state.qzoneSettings.nickname;
 
 
     const systemPrompt = `
-# 你的任务
-你是一个虚拟生活模拟器。你的任务是扮演角色“${chat.name}”，并根据其人设、记忆和最近的互动，虚构出【12到20条】TA最近的“高德地图”出行足迹。
+# Simulated Amap visits
+Portray "${chat.name}". Invent 12–20 recent visits that fit the character's persona, memories, interactions, and everyday setting. Vary the places, such as restaurants, malls, parks, offices, or friends' homes.
 
-# 核心规则
-1.  **【时间 (最高优先级)】**:
-    -   今天的日期是 **${new Date().toISOString()}**。
-    -   你生成的【所有】足迹的 \`timestamp\` 字段，【必须】是今天或今天以前的日期。
-    -   【绝对禁止】生成任何未来的日期！
-    -   请生成一个看起来像是过去几周内的、时间【从新到旧】排列的足迹列表。
-2.  **创造性与合理性**: 足迹必须完全符合角色的性格、爱好、职业和生活环境。
-3.  **多样性**: 地点类型要丰富，可以包括餐厅、商场、公园、公司、朋友家等。
-4.  **【格式铁律 (最高优先级)】**: 
-    - 你的回复【必须且只能】是一个JSON数组格式的字符串。
-    - 你的回复必须以 \`[\` 开始，并以 \`]\` 结束。
-    - 【绝对禁止】在JSON数组前后添加任何多余的文字、解释、或 markdown 标记 (如 \`\`\`json)。
-    - 数组中的每个元素都是一个对象，代表一条足迹，格式【必须】如下:
-    \`\`\`json
-    [
-      {
-        "locationName": "一个具体、生动的地点名称",
-        "address": "一个虚构但看起来很真实的详细地址",
-        "comment": "这是角色对这次出行或这个地点的内心独白或评论，必须使用第一人称“我”来写。",
-        "image_prompt": "(可选)一段用于生成这张地点照片的、详细的【英文】关键词, 风格为 realistic photo, high quality",
-        "timestamp": "符合 ISO 8601 格式的日期时间字符串 (例如: '2025-09-25T18:30:00Z')"
-      }
-    ]
-    \`\`\`
-    - **重要**: 大约有【三分之一】的足迹需要包含 \`image_prompt\` 字段来生成一张照片。
-    - **图片**: image_prompt 生成的图片【绝对禁止包含真人】。如果地点是室内，可以生成空无一人的场景；如果是室外，可以只有风景或建筑。
+## Date and order (highest priority)
+Today is ${new Date().toISOString()}. Place all visits in the past few weeks, including today if appropriate. Never use a future date. Sort from newest to oldest. Use ISO 8601 timestamps.
 
-# 供你参考的上下文
-- **你的角色设定**: ${chat.settings.aiPersona}
-- **你的长期记忆**:
-- **你最近和“${userDisplayNameForAI}”的对话摘要**:
+## Output (highest priority)
+Return only a valid JSON array, starting with [ and ending with ]. Omit surrounding prose, explanation, and Markdown fences.
+[{"locationName":"A specific place name","address":"A detailed, invented but plausible address","comment":"I stopped here on the way home.","image_prompt":"realistic photo, high quality, empty reading room","timestamp":"2025-09-25T18:30:00Z"}]
+- Write each comment from the character's first-person perspective. Use the language established by the character, user, and relevant context.
+- Include "image_prompt" for about a third of the visits. Use detailed English keywords for a realistic, high-quality photo. Never depict real people. Empty interiors, outdoor scenery, and buildings are suitable.
 
-现在，请开始生成这组足迹记录。`;
+# Context
+- Character persona: ${chat.settings.aiPersona}
+- Recent conversation with "${userDisplayNameForAI}", saved memories, and other supplied context.
+`;
       
 
     try {
-        const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的高德地图足迹。" }];
+        const messagesForApi = [{ role: 'user', content: "Generate the Amap visits in character." }];
         const response = await requestContextCompletion(chat, { instructions: systemPrompt,
             request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
           
 
-        if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
+        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
         
         const data = await response.json();
         const aiResponseContent = getGeminiResponseText(data);
@@ -1151,14 +1040,14 @@ export async function handleGenerateAmapHistory() {
         
         const jsonMatch = aiResponseContent.match(/(\[[\s\S]*\])/);
         if (!jsonMatch || !jsonMatch[0]) {
-            throw new Error(`AI返回的内容中未找到有效的JSON数组。原始返回: ${aiResponseContent}`);
+            throw new Error(`The AI reply did not contain a valid JSON array. Raw reply: ${aiResponseContent}`);
         }
         const cleanedJsonString = jsonMatch[0];
         let simulatedAmapData;
         try {
             simulatedAmapData = JSON.parse(cleanedJsonString);
         } catch (e) {
-            throw new Error(`解析AI返回的JSON时出错: ${e.message}\n\nAI原始返回内容:\n${aiResponseContent}`);
+            throw new Error(`Could not read the AI reply as JSON: ${e.message}\n\nRaw AI reply:\n${aiResponseContent}`);
         }
           
         
@@ -1232,48 +1121,31 @@ export async function handleGenerateAppUsage() {
         return;
     }
     
-    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
+    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? 'the user' : runtime.state.qzoneSettings.nickname;
 
 
   
     const systemPrompt = `
-# 你的任务
-你是一个虚拟生活模拟器。你的任务是扮演角色“${chat.name}”，并根据其人设、记忆和最近的互动，虚构出TA最近一天的【手机App屏幕使用时间】记录，总共约20条。
+# Simulated app usage
+Portray "${chat.name}". Invent about 20 screen-time records from the character's most recent day. Reflect their personality, interests, work, and surroundings in the apps and time spent. You may include apps beyond the Cphone home screen, such as Instagram, Genshin Impact, Honor of Kings, Douyin, YouTube, or tools for study and work.
 
-# 核心规则
-1.  **创造性与多样性**: 生成的App列表【不必局限于】Cphone主屏幕上已有的App。你可以自由地虚构TA可能使用的其他App，例如 Instagram, 各种游戏 (如：原神, 王者荣耀), 视频App (如：抖音, YouTube), 学习或工作软件等，这能更好地体现角色的隐藏兴趣和生活习惯。
-2.  **合理性**: 使用时长和App类型必须完全符合角色的性格、爱好、职业和生活环境。
-3.  **格式铁律 (最高优先级)**: 
-    - 你的回复【必须且只能】是一个JSON数组格式的字符串。
-    - 你的回复必须以 \`[\` 开始，并以 \`]\` 结束。
-    - 【绝对禁止】在JSON数组前后添加任何多余的文字、解释、或 markdown 标记 (如 \`\`\`json)。
-    - 数组中的每个元素都是一个对象，代表一个App的使用记录，格式【必须】如下:
-    \`\`\`json
-    [
-      {
-        "appName": "App的名称 (例如: 微信, 微博, 原神)",
-        "usageTimeMinutes": 125,
-        "category": "App的分类 (例如: 社交, 游戏, 影音, 工具, 阅读, 购物)",
-        "image_prompt": "一段用于生成这个App【图标】的、简洁的【英文】关键词。风格必须是 modern app icon, flat design, simple, clean background"
-      }
-    ]
-    \`\`\`
+## Output (highest priority)
+Return only a valid JSON array, starting with [ and ending with ]. Omit surrounding prose, explanation, and Markdown fences. Each object represents an app. Use an appropriate category, such as social, games, media, utility, reading, or shopping. Write a concise English image prompt for a modern flat app icon on a clean, simple background.
+[{"appName":"An app name","usageTimeMinutes":125,"category":"Social","image_prompt":"modern app icon, flat design, simple, clean background"}]
 
-# 供你参考的上下文
-- **你的角色设定**: ${chat.settings.aiPersona}
-- **你的长期记忆**:
-- **你最近和“${userDisplayNameForAI}”的对话摘要**:
-
-现在，请开始生成这组App使用记录。`;
+# Context
+- Character persona: ${chat.settings.aiPersona}
+- Recent conversation with "${userDisplayNameForAI}", saved memories, and other supplied context.
+`;
       
 
     try {
-        const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的App使用记录。" }];
+        const messagesForApi = [{ role: 'user', content: "Generate the app usage records in character." }];
         const response = await requestContextCompletion(chat, { instructions: systemPrompt,
             request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
           
 
-        if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
+        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
         
         const data = await response.json();
         const aiResponseContent = getGeminiResponseText(data);
@@ -1305,47 +1177,32 @@ export async function handleGenerateSimulatedMusic() {
         return;
     }
     
-    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? '用户' : runtime.state.qzoneSettings.nickname;
+    const userDisplayNameForAI = (runtime.state.qzoneSettings.nickname === '{{user}}' || !runtime.state.qzoneSettings.nickname) ? 'the user' : runtime.state.qzoneSettings.nickname;
 
 
 
  
     const systemPrompt = `
-# 你的任务
-你是一个虚拟音乐品味模拟器。你的任务是扮演角色“${chat.name}”，并根据其人设、记忆和最近的互动，挑选出【14到18首】最能代表TA此刻心情或品味的歌曲。
+# Simulated playlist
+Portray "${chat.name}". Based on the character's persona, memories, and recent interactions, choose 14–18 songs that fit their current mood or taste. Match their personality, interests, and background. Include varied genres where they form a coherent playlist.
 
-# 核心规则
-1.  **创造性与合理性**: 歌单必须完全符合角色的性格、爱好和生活背景。
-2.  **多样性**: 歌曲风格可以多样，但必须逻辑自洽。
-3.  **格式铁律 (最高优先级)**: 
-    - 你的回复【必须且只能】是一个JSON数组格式的字符串。
-    - 你的回复必须以 \`[\` 开始，并以 \`]\` 结束。
-    - 【绝对禁止】在JSON数组前后添加任何多余的文字、解释、或 markdown 标记 (如 \`\`\`json)。
-    - 数组中的每个元素都是一个对象，代表一首歌，格式【必须】如下:
-    \`\`\`json
-    [
-      {
-        "songName": "歌曲的准确名称",
-        "artistName": "歌曲的准确艺术家/歌手名"
-      }
-    ]
-    \`\`\`
+## Output (highest priority)
+Return only a valid JSON array, starting with [ and ending with ]. Omit surrounding prose, explanation, and Markdown fences. Use accurate, searchable song and artist names.
+[{"songName":"Exact song title","artistName":"Exact artist name"}]
 
-# 供你参考的上下文
-- **你的角色设定**: ${chat.settings.aiPersona}
-- **你的长期记忆**:
-- **你最近和“${userDisplayNameForAI}”的对话摘要**:
-
-现在，请生成这份歌单。`;
+# Context
+- Character persona: ${chat.settings.aiPersona}
+- Recent conversation with "${userDisplayNameForAI}", saved memories, and other supplied context.
+`;
       
 
     try {
-        const messagesForApi = [{ role: 'user', content: "请根据你的设定，生成你的歌单。" }];
+        const messagesForApi = [{ role: 'user', content: "Generate the playlist in character." }];
         const response = await requestContextCompletion(chat, { instructions: systemPrompt,
             request: messagesForApi, task: 'Cphone generation · ' + chat.name, scope: 'cphone:' + chat.id });
           
 
-        if (!response.ok) throw new Error(`API 错误: ${response.statusText}`);
+        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
         
         const data = await response.json();
         const aiResponseContent = getGeminiResponseText(data);

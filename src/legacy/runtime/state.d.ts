@@ -13,7 +13,7 @@ export const runtime: {
     chats: Record<string, DirectChat | GroupChat | undefined>
     activeChatId: string | null
     userStickers: Sticker[]
-    personaPresets: Array<{ id: string; name?: string; avatar: string; persona: string }>
+    personaPresets: Array<{ id: string; name?: string; avatar: string; persona: string; location?: string; timeZone?: string }>
     worldBooks?: Array<{ id: string | number; name?: string; content?: Array<{ enabled?: boolean; content?: string; comment?: string }> }>
     presets?: Array<{ id: string | number; name?: string; content?: Array<{ enabled?: boolean; content?: string; comment?: string }> }>
     lorebooks?: LoreBook[]

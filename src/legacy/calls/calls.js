@@ -35,9 +35,10 @@ export async function handleInitiateCall() {
             
             const requestMessage = {
                 role: 'system',
+                type: 'video_call_requested',
                 content: chat.isGroup 
-                    ? `[系统提示：用户 (${chat.settings.myNickname || '我'}) 发起了群视频通话请求。请你们各自决策，并使用 "group_call_response" 指令，设置 "decision" 为 "join" 或 "decline" 来回应。]`
-                    : `[系统提示：用户向你发起了视频通话请求。请根据你的人设，使用 "video_call_response" 指令，并设置 "decision" 为 "accept" 或 "reject" 来回应。]`,
+                    ? `[System notice: The user (${chat.settings.myNickname || 'You'}) started a group video call. Decide individually with "group_call_response" and set "decision" to "join" or "decline".]`
+                    : '[System notice: The user started a video call. Decide in character with "video_call_response" and set "decision" to "accept" or "reject".]',
                 timestamp: Date.now(),
                 isHidden: true,
             };
@@ -72,7 +73,7 @@ export function startVideoCall() {
                 }).catch(() => {});
             }
             
-            document.getElementById('video-call-main').innerHTML = `<em>${runtime.videoCallState.isGroupCall ? '群聊已建立...' : '正在接通...'}</em>`;
+            document.getElementById('video-call-main').innerHTML = `<em>${runtime.videoCallState.isGroupCall ? 'Group call connected…' : 'Connecting…'}</em>`;
             showScreen('video-call-screen');
         
             document.getElementById('user-speak-btn').style.display = runtime.videoCallState.isUserParticipating ? 'block' : 'none';
@@ -90,8 +91,8 @@ export async function endVideoCall() {
     runtime.videoCallState.isEnding = true;
 
     const duration = Math.floor((Date.now() - runtime.videoCallState.startTime) / 1000);
-    const durationText = `${Math.floor(duration / 60)}分${duration % 60}秒`;
-    const endCallText = `通话结束，时长 ${durationText}`;
+    const durationText = `${Math.floor(duration / 60)}m ${duration % 60}s`;
+    const endCallText = `Call ended · ${durationText}`;
 
     const chat = runtime.state.chats[runtime.videoCallState.activeChatId];
     let transcript = '';
@@ -142,7 +143,8 @@ export async function endVideoCall() {
         
         const hiddenReactionInstruction = {
             role: 'system',
-            content: `[系统指令：视频通话刚刚结束。请你以角色的口吻，向用户主动发送一两条消息，来自然地总结这次通话的要点、确认达成的约定，或者表达你的感受。]`,
+            type: 'video_call_ended',
+            content: '[System instruction: The video call just ended. Send the user one or two natural messages in character to recap the key points, confirm an agreement, or say how you feel.]',
             timestamp: Date.now() + 1, 
             isHidden: true 
         };
@@ -229,7 +231,7 @@ export function handleUserJoinCall() {
             document.getElementById('join-call-btn').style.display = 'none';
         
             
-            triggerAiInCallAction("[系统提示：用户加入了通话]");
+            triggerAiInCallAction("[System notice: The user joined the call.]");
         }
 
 export function updateCallTimer() {
@@ -294,36 +296,33 @@ export async function triggerAiInCallAction(userInput = null) {
                     participantNames.unshift(userNickname);
                 }
                 inCallPrompt = `
-        # 你的任务
-        你是一个群聊视频通话的导演。你的任务是扮演所有【除了用户以外】的AI角色，并以【第三人称旁观视角】来描述他们在通话中的所有动作和语言。
-        # 核心规则
-        1.  **【【【身份铁律】】】**: 用户的身份是【${userNickname}】。你【绝对不能】生成 \`name\` 字段为 **"${userNickname}"** 的发言。
-        2.  **【【【视角铁律】】】**: 你的回复【绝对不能】使用第一人称“我”。
-        3.  **格式**: 你的回复【必须】是一个JSON数组，每个对象代表一个角色的发言，格式为：\`{"name": "角色名", "speech": "*他笑了笑* 大家好啊！"}\`。
-        4.  **角色扮演**: 严格遵守每个角色的设定。
-        # 当前情景
-        你们正在一个群视频通话中。
-        **通话前的聊天摘要**:
-        **当前参与者**: ${participantNames.join('、 ')}。
-        **通话刚刚开始...**
-        现在，请根据【通话前摘要】和下面的【通话实时记录】，继续进行对话。
-        `;
+# Group video call
+Portray every character on the call except the user. Describe their actions and speech from a third-person observer's perspective. Do not use first-person narration. Follow each character's persona closely. Use the language established by the character, user, and relevant context.
+
+## Output
+Return a JSON array. Each object contains one character's contribution as "name" and "speech". Never use the user's name, "${userNickname}", in "name".
+[{"name":"Character name","speech":"*He smiles.* Hey, everyone!"}]
+
+## Current situation
+The group call has just begun. Participants: ${participantNames.join(', ')}.
+Continue using the pre-call summary and the live transcript.
+`;
             } else { 
                 let openingContext = runtime.videoCallState.initiator === 'user'
-                    ? `你刚刚接听了用户的视频通话请求。`
-                    : `用户刚刚接听了你主动发起的视频通话。`;
+                    ? `You just answered the user’s video call.`
+                    : `The user just answered the video call you started.`;
                 inCallPrompt = `
-        # 你的任务
-        你现在是一个场景描述引擎。你的任务是扮演 ${chat.name} (${characterPrompt(chat)})，并以【第三人称旁观视角】来描述TA在视频通话中的所有动作和语言。
-        # 核心规则
-        1.  **【【【视角铁律】】】**: 你的回复【绝对不能】使用第一人称“我”。必须使用第三人称，如“他”、“她”、或直接使用角色名“${chat.name}”。
-        2.  **格式**: 你的回复【必须】是一段描述性的文本。
-        # 当前情景
-        你正在和用户（${userNickname}，人设: ${chat.settings.myPersona}）进行视频通话。
-        **${openingContext}**
-        **通话前的聊天摘要 (这是你们通话的原因，至关重要！)**:
-        现在，请根据【通话前摘要】和下面的【通话实时记录】，继续进行对话。
-        `;
+# One-to-one video call
+Portray ${chat.name} (${characterPrompt(chat)}). Describe the character's actions and speech from a third-person observer's perspective. Do not use first person. Use "he", "she", or the character's name as appropriate. Use the language established by the character, user, and relevant context.
+
+## Output
+Write a single passage of descriptive text.
+
+## Current situation
+You are on a video call with ${userNickname}. The user's persona is ${chat.settings.myPersona}.
+${openingContext}
+Use the pre-call summary to understand why the call is happening. Continue using that summary and the live transcript.
+`;
             }
             
             // 3. 构建发送给API的 messages 数组
@@ -331,6 +330,8 @@ export async function triggerAiInCallAction(userInput = null) {
             const currentSpeech = userInput && runtime.videoCallState.isUserParticipating ? transcript.at(-1) : undefined;
             const previousSpeech = currentSpeech ? transcript.slice(0, -1) : transcript;
             const turns = previousSpeech.map(message => '[Current call] ' + (message.role === 'user' ? userNickname : chat.name) + ': ' + message.content);
+            const preCall = runtime.videoCallState.preCallContext;
+            if (preCall) turns.unshift('[Before the call]\n' + preCall);
             try {
                     const response = await requestContextCompletion(chat, { instructions: inCallPrompt, activity: turns,
                         extraMessages: transcript, task: 'Video call · ' + chat.name, scope: 'call:' + chat.id,

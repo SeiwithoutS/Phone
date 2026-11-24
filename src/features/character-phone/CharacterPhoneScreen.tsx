@@ -51,12 +51,6 @@ export function CharacterPhoneScreen({ database }: { database?: LocalDatabase })
               </div>
               <span className="label">Notes</span>
             </AppShortcut>
-            <AppShortcut className="app-icon" onClick={() => { void screenActions.openCharApp("diary") }}>
-              <div className="icon-bg">
-                <img id="cphone-icon-img-diary" alt={""} /><span aria-hidden="true" data-app-initial />
-              </div>
-              <span className="label">Diary</span>
-            </AppShortcut>
             <AppShortcut className="app-icon" onClick={() => { void screenActions.openCharApp("amap") }}>
               <div className="icon-bg">
                 <img id="cphone-icon-img-amap" alt={""} /><span aria-hidden="true" data-app-initial />
@@ -306,51 +300,6 @@ export function CharacterPhoneScreen({ database }: { database?: LocalDatabase })
           {" "}
           <textarea id="char-memo-detail-content" readOnly />
           {" "}
-        </div>
-      </div>
-      <div id="char-diary-screen" className="char-screen">
-        <ScreenHeader>
-          {" "}
-          <BackButton onClick={() => { void screenActions.switchToCharHomeScreen() }} />
-          {" "}
-          <span>Diary</span>
-          <div className="header-actions">
-            {" "}
-            <span className="action-btn" id="regenerate-char-diary-btn" title="Regenerate diary">
-              {" "}
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4" />
-                <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
-              </svg>
-              {" "}
-            </span>
-            {" "}
-            <span className="action-btn" id="add-char-diary-btn">+</span>
-            {" "}
-          </div>
-        </ScreenHeader>
-        <div id="char-diary-list" className="list-container" />
-      </div>
-      <div id="char-diary-detail-screen" className="char-screen">
-        <ScreenHeader>
-          {" "}
-          <span className="back-btn" id="char-diary-detail-back-btn">{"‹ "}</span>
-          {" "}
-          <span id="char-diary-detail-title" />
-          <div className="header-actions">
-            {" "}
-            <span className="action-btn" id="favorite-diary-btn" title="Save to Favorites">
-              {" "}
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-              </svg>
-              {" "}
-            </span>
-            {" "}
-          </div>
-        </ScreenHeader>
-        <div id="char-diary-detail-content-wrapper" className="list-container">
-          <div id="char-diary-detail-content">{" "}</div>
         </div>
       </div>
       <div id="char-usage-screen" className="char-screen">

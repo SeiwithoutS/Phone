@@ -6,6 +6,6 @@ export const launcherLabels = {
 } as const
 
 export const cphoneLabels = {
-  qq: 'QQ', album: 'Album', browser: 'Browser', taobao: 'Shopping', memo: 'Notes', diary: 'Diary',
+  qq: 'QQ', album: 'Album', browser: 'Browser', taobao: 'Shopping', memo: 'Notes',
   amap: 'Maps', usage: 'App Activity', music: 'Music', bank: 'Bank', ephone: 'EPhone',
 } as const

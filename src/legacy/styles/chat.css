@@ -212,6 +212,21 @@
 
 .custom-modal-body p { margin: 0; margin-bottom: 12px; }
 
+#custom-modal:has(.api-test-response) { width: min(540px, calc(100% - 24px)); }
+
+.api-test-response {
+    max-height: 45vh;
+    overflow: auto;
+    margin: 10px 0 0;
+    padding: 10px;
+    border: 1px solid var(--ui-divider);
+    border-radius: 8px;
+    text-align: left;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: text;
+}
+
 .custom-modal-body input {
             width: 100%;
             padding: 8px 12px; 

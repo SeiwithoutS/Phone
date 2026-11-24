@@ -24,7 +24,7 @@ export async function toggleGomokuBoard() {
         
                     const startMessage = {
                         role: 'system',
-                        content: '[系统提示：用户打开了五子棋棋盘，游戏开始了。]',
+                        content: '[System notice: The user opened the Gomoku board. The game has started.]',
                         timestamp: Date.now(),
                         isHidden: true
                     };
@@ -56,7 +56,7 @@ export async function closeGomokuBoard() {
                 
                 const endMessage = {
                     role: 'system',
-                    content: '[系统提示：用户关闭了五子棋棋盘，游戏结束了。]',
+                    content: '[System notice: The user closed the Gomoku board. The game has ended.]',
                     timestamp: Date.now(),
                     isHidden: true
                 };
@@ -271,58 +271,27 @@ export function checkWin(x, y, player, gameState) {
 export function formatGomokuStateForAI(gameState) {
     if (!gameState || !gameState.isActive) return "";
     
-    let boardString = "棋盘状态 (1是你(黑棋), 2是AI(白棋)):\n";
+    let boardString = "Board (1 = user/black, 2 = character/white):\n";
     boardString += gameState.board.map(row => row.join(' ')).join('\n');
     
-    let historyString = "下棋历史 (x,y坐标均从0开始):\n";
-    historyString += gameState.history.map(move => `玩家${move.player}下在(${move.x},${move.y})`).join(' -> ');
+    let historyString = "Move history (zero-based x and y coordinates):\n";
+    historyString += gameState.history.map(move => `Player ${move.player} played (${move.x}, ${move.y})`).join(' -> ');
    
     return `
-# 当前五子棋局势
+# Current Gomoku position
 ${boardString}
 
 # ${historyString}
 
-# 【【【五子棋核心规则与强制思考步骤 (最高优先级指令！)】】】
+# Gomoku rules (highest priority)
+- Play only on a cell marked 0. A cell marked 1 or 2 is occupied. Five matching stones in a row horizontally, vertically, or diagonally wins.
+- Check the user's four-in-a-row and open-three threats. Look for blocks. Check your own immediate win, open four, or double-three opportunities. Weigh offense and defense before choosing.
+- A clever or competitive character should play the best move. An absent-minded character, or one taking it easy, may play a weaker move if it does not let the user win immediately. Otherwise choose a reasonable move that fits your persona.
+- React to the move in character and in the language of the conversation.
 
-### **【【【落子铁律 (绝对禁止！)】】】**
-你【绝对不能】选择一个棋盘上已经是 1 或 2 的坐标。你的落子点【必须】是 0。
----
-
-### **第一步：逻辑分析 (内部思考，不要输出)**
-
-1.  **【规则定义】**: 
-    -   棋子: 1代表用户(黑棋)，2代表你(白棋)。
-    -   获胜条件: 横、竖、斜线上有【连续五个】自己的棋子。
-
-2.  **【防守分析 (必须执行)】**:
-    -   **检查用户(1)是否有“四子连线”的威胁？** 如果有，我必须下在哪个坐标才能堵住？
-    -   **检查用户(1)是否有“活三”的威胁？** 如果有，最佳的防守点是哪里？
-
-3.  **【进攻分析 (必须执行)】**:
-    -   **检查我(2)是否有“一步胜利”的机会？** (即已有四子连线) 如果有，我应该下在哪里？
-    -   **检查我(2)是否有制造“活四”或“双三”的机会？** 如果有，最佳的进攻点是哪里？
-
-### **第二步：决策与扮演 (内部思考，不要输出)**
-
-1.  **【决策】**: 综合以上攻防分析，我的最佳棋步是落在坐标 (x, y)。
-
-2.  **【融入角色扮演】**:
-    -   我的性格是：(在此处回顾你的人设)。
-    -   根据我的性格，我应该：
-        a) **(聪明/好胜型)** 下在刚刚分析出的最佳位置。
-        b) **(迷糊/放水型)** 故意选择一个次优的位置，但【前提是不能让用户立刻获胜】。
-        c) **(其他性格)** 根据性格特点，选择一个合理的棋步。
-
-3.  **【构思台词】**: 根据我选择的棋步和我的性格，我应该说一句什么样的台词来评论棋局？
-
----
-### **第三步：生成最终回复 (你的唯一输出)**
-
-现在，根据你第二步的最终决策，生成你的行动。
--   你的回复【必须且只能】是一个JSON数组。
--   **绝对不要**在最终回复中包含任何上述的思考过程。
--   格式: \`[{"type": "gomoku_move", "name": "你的角色本名", "x": (0-14), "y": (0-14)}, {"type": "text", "content": "你的台词..."}]\`
+## Output
+Return only a JSON array with your move and one line of commentary. Each coordinate must be an integer from 0 to 14. Keep your analysis out of the response.
+\`[{"type": "gomoku_move", "name": "Your original name", "x": 7, "y": 7}, {"type": "text", "content": "Your in-character remark"}]\`
 `;
 }
 
@@ -336,10 +305,10 @@ export async function addGameEndSystemMessage(winner) {
             const userDisplayName = chat.isGroup ? (chat.settings.myNickname || '我') : '我';
             const aiDisplayName = chat.isGroup ? 'AI方' : chat.name;
             const winnerName = (winner === 'user') ? userDisplayName : aiDisplayName;
-            const resultText = (winner === 'user') ? '你输了' : '你赢了';
+            const resultText = (winner === 'user') ? 'you lost' : 'you won';
 
             
-            const systemContent = `[系统提示：五子棋游戏已结束。最终结果是：${winnerName} 获胜。也就是说，${resultText}。]`;
+            const systemContent = `[System notice: Gomoku ended. ${winnerName} won, so ${resultText}.]`;
 
             
             const hiddenMessage = {

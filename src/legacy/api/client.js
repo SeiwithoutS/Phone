@@ -216,40 +216,33 @@ export async function summarizeExistingLongTermMemory(chatId) {
     if (!confirmed) return;
 
     const memoryContent = memoriesToRefine.map(mem => `- ${mem.content}`).join('\n');
-    const userNickname = runtime.state.qzoneSettings.nickname || '用户';
+    const userNickname = runtime.state.qzoneSettings.nickname || 'the user';
 
 
-    const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+    const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const systemPrompt = `
-# 你的任务
-你就是角色“${targetChatForRefine.originalName}”。请你回顾一下你和“${userNickname}”的所有长期记忆，然后将它们梳理、整合并精炼成一段更加连贯、客观的核心记忆摘要。
+# Refine saved memories
+You are "${targetChatForRefine.originalName}". Combine your saved memories with "${userNickname}" into one coherent, factual core memory. Write as the character in the first person ("I"). Use the language established by the character, user, and relevant context.
 
-# 当前时间
-- **今天是：${today}**
+## What to keep
+- Link the individual memories in chronological order.
+- Retain important shared events, decisions, and agreed plans. Identify any plans or tasks still outstanding.
+- Today is ${today}. Convert relative times such as "tomorrow" or "next week" to exact calendar dates.
+- Write a clear personal record or event recap. Remove repetition, trivial details, and venting. Keep what matters to the story and relationship.
+- Aim for about ${wordCount} characters.
 
-# 核心规则
-1.  **【视角铁律】**: 你的总结【必须】使用【主观的第一人称视角 ("我")】来写。
-2.  **【内容核心 (最高优先级)】**: 你的总结【必须】专注于梳理以下几点：
-    *   **建立时间线**: 将所有独立的记忆点串联起来，形成一个有时间顺序的事件脉络。
-    *   **整合关键信息**: 总结出我们共同经历的关键事件、做出的重要决定、以及约定好的未来计划。
-    *   **识别未完成项**: 明确指出哪些计划或任务尚未完成。
-3.  **【时间转换铁律 (必须遵守)】**: 如果记忆中提到了相对时间（如“明天”、“下周”），你【必须】结合“今天是${today}”这个信息，将其转换为【具体的公历日期】。
-4.  **【风格要求】**: 你的总结应该像一份清晰的个人档案或事件回顾，而不是一篇情感散文。请删除重复、琐碎或纯粹的情感宣泄，只保留对情节和关系发展至关重要的部分。
-5.  **【【【长度铁律】】】**: 你的总结【必须】非常精炼，总长度应控制在 **${wordCount} 字左右**。
-6.  **【输出格式】**: 你的回复【必须且只能】是一个JSON对象，格式如下：
-    \`{"summary": "在这里写下你以第一人称视角，总结好的核心事实与计划。"}\`
+## Output
+Return only a valid JSON object, starting with { and ending with }. Omit surrounding prose, explanation, and Markdown fences.
+{"summary":"Write the essential facts and plans in the first person."}
 
-# 你的角色设定 (必须严格遵守)
-${targetChatForRefine.settings.aiPersona}
+## Context
+- Your persona: ${targetChatForRefine.settings.aiPersona}
+- The user's persona: ${targetChatForRefine.settings.myPersona}
 
-# 你的聊天对象（用户）的人设
-${targetChatForRefine.settings.myPersona}
-
-# 待整合的记忆要点列表
+## Memories to combine
 ${memoryContent}
-
-现在，请以“${targetChatForRefine.originalName}”的身份，开始你的回忆梳理与精炼。`;
+`;
 
       
     await showCustomAlert("Please wait…", "Asking the AI to refine the memories…");

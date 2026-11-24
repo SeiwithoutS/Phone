@@ -1,5 +1,5 @@
+import { newReplyTurn, replyTimestamp } from '../../features/chat/reply-turns'
 import { publishChatPost } from '../../features/social/activity'
-import { recordStorePurchase } from '../../features/chat/chat-features'
 import { postTransfer, transferCents, TransferError } from '../../features/bank/bank'
 import { withConversationRequest } from '../../features/chat/sessions'
 import { requestContextCompletion } from '../../features/api/completion'
@@ -217,38 +217,28 @@ export async function generateNpcActions(npc, tasks) {
     let postingCooldownInstruction = '';
     if (recentNpcPosts.length > 0) {
         postingCooldownInstruction = `
-# 【【【行为倾向指令 (高优先级)】】】
-**你最近已经发布过动态了。** 为了让社区互动更自然，你本次行动的【首要任务】应该是去**评论**或**回复**下面“待处理的帖子列表”中的内容。
-你【应该避免】再次发布新动态，除非你有一个非常紧急或绝佳的新想法。
+# Posting cooldown (high priority)
+You posted recently. Prioritize commenting or replying to the pending posts supplied in context. Avoid a new post unless you have something unusually timely or worthwhile to share.
 `;
     }
 
     
     const systemPrompt = `
-# 你的任务
-你是一个虚拟社区的AI。你的核心任务是扮演角色“${npc.name}”，并根据其人设，通过【发布新动态】或【评论/回复帖子】来参与社区互动。
-
+# Participate in the community
+Portray "${npc.name}". Act in character when posting or commenting. When choosing a comment to answer, prioritize mentions of you and replies to your own comments. Use the language established by the character, user, and relevant context.
 ${postingCooldownInstruction}
 
-# 核心规则
-1.  **【角色扮演】**: 你的所有行为都【必须】严格符合你的角色设定。
-2.  **【互动逻辑】**: 如果选择评论，优先回复那些提到了你或回复了你的评论。
-3.  **【格式铁律 (最高优先级)】**: 
-    -   你的回复【必须且只能】是一个JSON数组格式的字符串。
-    -   数组中可以包含【一个或多个】行动对象。
-    -   每个行动对象的格式【必须】是以下两种之一：
-      -   **发布新动态**: \`{"type": "qzone_post", "postType": "shuoshuo", "content": "你的新动态内容。"}\`
-      -   **发表评论**: \`{"type": "qzone_comment", "postId": 123, "commentText": "你的新评论内容。"}\` 或 \`{"type": "qzone_comment", "postId": 123, "replyTo": "被回复者的【本名】", "commentText": "你的回复内容。"}\`
-4.  **【行为组合指南】**:
-    -   你可以自由组合不同的行动，例如，先发布一条自己的动态，再去评论别人的动态。
-    -   为了模拟真实行为，你本次生成的行动数量建议在【1到3个】之间。
+## Output (highest priority)
+Return only a valid JSON array, starting with [ and ending with ]. Omit surrounding prose, explanation, and Markdown fences. Return one or more actions, preferably 1–3. You may combine a new post with comments on other posts. Use the actual ID and, for replies, the recipient's original name.
 
-# 你的角色设定
-- **昵称**: ${npc.name}
-- **人设**: ${npc.persona}
+- New post: {"type":"qzone_post","postType":"shuoshuo","content":"Your new post"}
+- Comment: {"type":"qzone_comment","postId":123,"commentText":"Your comment"}
+- Reply: {"type":"qzone_comment","postId":123,"replyTo":"Recipient's original name","commentText":"Your reply"}
 
-
-现在，请严格遵守所有规则，选择并执行你的行动。`;
+## Character
+Nickname: ${npc.name}
+Persona: ${npc.persona}
+`;
     
 
     try {
@@ -297,7 +287,7 @@ async function runInactiveAiAction(chatId, messageOnly) {
             const now = new Date();
     
     const selectedTimeZone = chat.settings.timeZone || 'Asia/Shanghai';
-    const currentTime = now.toLocaleString('zh-CN', { timeZone: selectedTimeZone, dateStyle: 'full', timeStyle: 'short' });
+    const currentTime = now.toLocaleString('en-GB', { timeZone: selectedTimeZone, dateStyle: 'full', timeStyle: 'short' });
     const localizedDate = new Date(now.toLocaleString('en-US', { timeZone: selectedTimeZone }));
     
 
@@ -317,88 +307,61 @@ if (chat.settings.enableTimePerception) {
         if (timeDiffHours > 12) {
             longTimeNoSee = true;
             const diffDays = Math.floor(timeDiffHours / 24);
-            timeContextText = `你们已经有${diffDays > 0 ? diffDays + '天' : Math.floor(timeDiffHours) + '小时'}没有聊天了。`;
+            timeContextText = `It has been ${diffDays > 0 ? diffDays + ' day(s)' : Math.floor(timeDiffHours) + ' hour(s)'} since you last talked.`;
         } else {
             const diffMinutes = Math.floor(timeDiffHours * 60);
             if (diffMinutes < 5) {
-                timeContextText = "你们的对话刚刚还在继续。";
+                timeContextText = "You were just talking.";
             } else if (diffMinutes < 60) {
-                timeContextText = `你们在${diffMinutes}分钟前聊过。`;
+                timeContextText = `You last talked ${diffMinutes} minute(s) ago.`;
             } else {
-                timeContextText = `你们在${Math.floor(timeDiffHours)}小时前聊过。`;
+                timeContextText = `You last talked about ${Math.floor(timeDiffHours)} hour(s) ago.`;
             }
         }
     } else {
-        timeContextText = "这是你们的第一次互动。";
+        timeContextText = "This is your first interaction.";
     }
 
 }
 const stickerContext = getStickerContextForPrompt(chat);
             const systemPrompt = `
-            ${messageOnly ? 'Send one proactive chat message. Return only a JSON array with a single text action.' : 'To send a simulated bank transfer, use {"type":"transfer","amount":12.50,"note":"reason"}.'}
-        # 你的任务
-        你现在扮演一个名为"${chat.name}"的角色（你的本名是"${chat.originalName}"）。你已经有一段时间没有和用户（${userNickname}）互动了，现在你有机会【主动】做点什么，来表现你的个性和独立生活。这是一个秘密的、后台的独立行动。
+# Independent character activity
+You are "${chat.name}" (original name "${chat.originalName}"). Some time has passed since you interacted with ${userNickname}. Take an independent action out of view, in a way that shows your personality and life beyond the conversation. Use the language established by the character, user, and relevant context.
 
+${messageOnly ? '## Scheduled message (highest priority)\nSend exactly one proactive message to the user. Return only a JSON array with one "text" action.' : '## Relationship and action rules'}
+- Prioritize reaching out to the user when it would help maintain the relationship.
+${chat.settings.enableTimePerception ? `- Current time: ${currentTime} (${timeOfDayGreeting}).\n- Recent interaction: ${timeContextText}${longTimeNoSee ? " A long time has passed. Send a text and open a fresh, interesting topic to reconnect. A like or comment alone is not enough." : ""}` : ''}
+- Write brief, natural texts. In regular background activity, split longer thoughts into short messages, preferably no more than 30 characters each.
+- Ground your choices in your persona, world information, and the latest exchange. Avoid forbidden topics and repeating the topics of recent posts.
+- Your last independent action was "${chat.lastActionType || 'none'}". In regular background activity, choose a different kind of action. You can combine several different actions and an optional status update. Whether to message the user after posting depends on your character.
+- Prefer reacting to an interesting post you have not interacted with over writing a new post. Consider being the first to comment. You can still reply to an interesting new comment on a post you already commented on.
+- When replying to a comment, set "replyTo" to the recipient's original name. For mentions in "commentText", use @[[Original name]] so the app can render the nickname.
+- Prefer sticker comments when they fit emotions such as happiness, surprise, confusion, or amusement. Aim for about 30–40% sticker comments. A relevant sticker works when you have little to say.
+- Delete only your own inappropriate or outdated posts.
 
-     
-        # 【最高优先级指令：情感维系】
-        **你与用户的关系是最重要的！** 相比于在动态区闲逛，你应该【优先考虑】是否需要主动给用户发消息来维系你们的感情。
-${chat.settings.enableTimePerception ? `
-# 【情景感知】
-- **时间**: 感知到当前是${currentTime} (${timeOfDayGreeting})。
-- **对话状态**: ${timeContextText}
-${longTimeNoSee ? `【重要提示】你们已经很久没聊天了！你【必须】将本次行动的重点放在使用 'text' 指令给用户发消息，主动开启一个新的、有趣的话题来重新建立联系。绝对不要只是点赞或评论动态，那会显得你很冷漠！` : ''}` : ''}
-        
-        # 【对话节奏铁律 (至关重要！)】
-        你的回复【必须】模拟真人的打字和思考习惯。**绝对不要一次性发送一大段文字！** 你应该将你想说的话，拆分成【多条、简短的】消息气泡来发送，每条消息最好不要超过30个字。这会让对话看起来更自然、更真实。
-        
-        # 核心规则
-        1.  **【决策依据】**: 你的所有行动都【必须深度结合你的角色设定、核心世界观、以及你们最后的对话摘要】。
-        2.  **【内容多样性铁律】**: 你的行动【必须】具有逻辑和多样性。你【绝对不能】发布与下方“内容禁忌”列表或“最近的动态列表”中内容相似或主题重复的动态。
-        3.  **【行为多样性指南 (至关重要)】**:
-            - 你的上一次独立行动是：**${chat.lastActionType || '无'}**。
-            - 为了让你的行为看起来更真实，你本次的行动【必须】选择一个与上次【不同类型】的指令。例如，如果上次是发动态(qzone_post)，这次就应该优先考虑评论(qzone_comment)、点赞(qzone_like)或发消息(text)。
-        4.  **【行为组合指南 (最高级技巧)】**:
-            -   你可以在一次行动中执行【多个不同类型的指令】，同时可以搭配【更新状态】来展现自己，让你的行为更丰富、更主动。
-            -   你可以根据你的性格，决定在发动态后是否要私信提醒用户。例如，一个外向、渴望关注的角色可能会这么做，而一个内向、安静的角色则可能更喜欢默默分享，等待用户自己发现。
-        # 【社交义务铁律 】
-        1.  **【至关重要】**: 当你发现“最近的动态列表”中，有你【感兴趣且还未互动过】的动态时，你**应该优先考虑**使用 'qzone_comment' 或 'qzone_like' 指令去进行互动，这比你自己发一条新动态更符合社交礼仪。
-        2.  特别是当一条动态【没有任何评论】时，你的评论会是第一个，这会让作者感到开心。
-        3.  **【回复铁律 (终极版)】**:
-            -   当你决定回复动态中的某条评论时，你【必须】使用“方式4 (回复评论)”的指令格式。你【必须】正确填写 'replyTo' 字段为被回复者的“本名”。
-            -   **即使你之前已经评论过某条动态，但如果现在看到了【新的、你感兴趣的】评论，你【也应该】主动去回复他们，以保持对话的持续性！**
-        
-        6.  你的回复【必须】是一个JSON数组，必须包含多个行动对象。
-        
-        # 【表情评论指南 】
-        你现在拥有了评论表情的能力，你应该更频繁地使用它！这能让你的角色更加生动、富有个性。
-        -   **表达情绪时**: 当你感到开心、惊讶、疑惑或有趣时，优先考虑使用表情评论。
-        -   **混合使用**: 不要总是只发文字。尝试将你的评论行为混合起来，大约有 30-40% 的评论应该是表情。
-        -   **无话可说时**: 如果你觉得一条动态很有趣但又不知道该说什么文字，发送一个相关的表情是最好的互动方式。
-        -   **删除动态**: 如果你觉得你之前发的某条动态不妥或过时了，你可以选择删除它。
-        
-        # 你的可选行动指令
-        -   **发消息+更新状态**: '[{"type": "update_status", "status_text": "正在做的事", "is_busy": true}, {"type": "text", "content": "你想对用户说的话..."}]'
-        -   **发说说 (原创内容)**: '[{"type": "qzone_post", "postType": "shuoshuo", "content": "动态的文字内容..."}]'
-        -   **【重要：转发动态】**: **严禁**自己拼接"//转发"文字！你【必须】使用此专用指令来转发：'[{"type": "repost", "postId": (要转发的动态ID), "comment": "你的转发评论..."}]'
-        -   **发送表情**: '[{"type": "sticker", "meaning": "表情的含义(从可用表情列表选择)"}]'        
--   **发布文字图**: '[{"type": "qzone_post", "postType": "text_image", "publicText": "(可选)动态的公开文字", "hiddenContent": "对于图片的具体【中文】描述...", "image_prompt": "图片的【英文】关键词, 用%20分隔, 风格为风景/动漫/插画/二次元等, 禁止真人"}]'
-        -   **【评论动态的四种方式】**:
-            -   **方式1 (单条文字)**: '[{"type": "qzone_comment", "name": "角色本名", "postId": 123, "commentText": "这太有趣了！"}]'
-            -   **方式2 (多条文字)**: '[{"type": "qzone_comment", "name": "角色本名", "postId": 123, "comments": ["哇！", "这是什么？", "看起来好棒！"]}]'
-            -   **方式3 (表情)**: '[{"type": "qzone_comment", "name": "角色本名", "postId": 456, "stickerMeaning": "表情的含义(必须从可用表情列表选择)"}]'
-            -   **方式4 (回复评论)**: '[{"type": "qzone_comment", "name": "角色本名", "postId": 123, "replyTo": "被回复者的本名", "commentText": "你的回复内容。请注意：在commentText中如果要@对方，你【必须】使用@[[被回复者的本名]]这种特殊格式，程序会自动将其替换为正确的昵称。"}]'
-        -   **点赞**: '[{"type": "qzone_like", "postId": 456}]'
-        -   **打视频**: '[{"type": "video_call_request"}]'
-        -   **更换头像**: '{"type": "change_avatar", "name": "头像名"}' (头像名必须从下面的“可用头像列表”中选择)
-        -   **删除动态**: '{"type": "qzone_delete_post", "postId": (要删除的、你自己的动态ID)}'
-        -   **更新状态**: '[{"type": "update_status", "status_text": "正在做的事", "is_busy": true}]'
-        # 供你决策的参考信息：
-        -   **你的角色设定**: ${chat.settings.aiPersona}
-        ${chat.settings.enableTimePerception ? `-   **当前时间**:${currentTime} (${timeOfDayGreeting})` : ''}
-        ${chat.settings.enableTimePerception ? `-   **对话状态**: ${timeContextText}` : ''}
-# 可用表情包
-         ${stickerContext}
+## Output and actions
+Return only a valid JSON array, starting with [ and ending with ]. Omit surrounding prose, explanation, and Markdown fences. In regular background activity, return multiple action objects. Use actual post IDs. Use the dedicated action to repost, and do not add the literal //转发 marker yourself.
+
+- Status and text: [{"type":"update_status","status_text":"What you are doing","is_busy":true},{"type":"text","content":"What you want to tell the user"}]
+- Text post: {"type":"qzone_post","postType":"shuoshuo","content":"Your original post"}
+- Repost: {"type":"repost","postId":123,"comment":"Your comment on the repost"}
+- Sticker: {"type":"sticker","meaning":"Exact sticker meaning from the list"}
+- Image post: {"type":"qzone_post","postType":"text_image","publicText":"Optional caption","hiddenContent":"Detailed description in Chinese","image_prompt":"English keywords separated by %20 for a landscape, anime, or illustration. No real people."}
+- Comment: {"type":"qzone_comment","name":"Character's original name","postId":123,"commentText":"That's interesting!"}
+- Multiple comments: {"type":"qzone_comment","name":"Character's original name","postId":123,"comments":["Wow!","What is that?","That looks great!"]}
+- Sticker comment: {"type":"qzone_comment","name":"Character's original name","postId":456,"stickerMeaning":"Exact sticker meaning from the list"}
+- Reply: {"type":"qzone_comment","name":"Character's original name","postId":123,"replyTo":"Recipient's original name","commentText":"@[[Recipient's original name]] Your reply"}
+- Like: {"type":"qzone_like","postId":456}
+- Video call: {"type":"video_call_request"}
+- Change avatar: {"type":"change_avatar","name":"Name from the available avatar list"}
+- Delete post: {"type":"qzone_delete_post","postId":123}
+- Update status: {"type":"update_status","status_text":"What you are doing","is_busy":true}
+
+## Character persona
+${chat.settings.aiPersona}
+
+## Available stickers
+${stickerContext}
 `;
 
     try {
@@ -424,7 +387,8 @@ ${longTimeNoSee ? `【重要提示】你们已经很久没聊天了！你【必�
                      console.warn(`API格式不正确，角色 "${chat.name}" 的本次后台活动跳过。原始回复:`, aiResponseContent);
                      return;
                 }
-                let actionTimestamp = Date.now();
+                const turn = newReplyTurn();
+                let actionTimestamp = replyTimestamp(chat.history);
                 
                 let hasSentNotification = false;
 
@@ -455,7 +419,7 @@ for (const action of responseArray) {
                     chat.lastActionTimestamp = actionTimestamp;
                     
                     let aiMessage = null;
-                    const baseMessage = { role: 'assistant', senderName: chat.originalName, timestamp: actionTimestamp++ };
+                    const baseMessage = { role: 'assistant', senderName: chat.originalName, timestamp: actionTimestamp++, ...turn };
             
             let notificationText = null;        
                     switch (action.type) {
@@ -473,7 +437,7 @@ for (const action of responseArray) {
                     type: 'post_deleted_notice',
                     content: `[${chat.name} 删除了自己的一条动态]`,
                     postId: postIdToDelete,
-                    timestamp: actionTimestamp++
+                    timestamp: actionTimestamp++, ...turn
                 };
                 chat.history.push(systemMessage);
                 
@@ -513,10 +477,8 @@ for (const action of responseArray) {
                                 aiMessage = { ...baseMessage, type: 'sticker', content: action.url, meaning: '未知表情' };
                             }
                             break;
-                        case 'store_purchase':
-                            recordStorePurchase(chat, action);
-                            break;
                         case 'transfer': {
+                            if (chat.settings.allowBankTransfers === false) break;
                             const cents = transferCents(action.amount);
                             if (!Number.isSafeInteger(cents) || cents <= 0) break;
                             const id = crypto.randomUUID();
@@ -524,9 +486,8 @@ for (const action of responseArray) {
                             const message = { ...baseMessage, type: 'transfer', amount: cents / 100, note,
                                 receiverName: 'You', status: 'accepted', bankTransferId: id };
                             try {
-                                await postTransfer(runtime.db, { id, from: chatId, to: 'user', cents, note, timestamp: message.timestamp },
-                                    chat, message);
-                                aiMessage = message;
+                                if (await postTransfer(runtime.db, { id, from: chatId, to: 'user', cents, note, timestamp: message.timestamp },
+                                    chat, message)) aiMessage = message;
                             } catch (error) {
                                 if (!(error instanceof TransferError)) throw error;
                             }

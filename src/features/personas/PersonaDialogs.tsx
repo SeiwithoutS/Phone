@@ -1,4 +1,5 @@
 import { Dialog, FormField } from '../../components/phone'
+import { LocationFields } from '../chat/LocationFields'
 
 export function PersonaEditorModal() {
   return (
@@ -19,6 +20,7 @@ export function PersonaEditorModal() {
           <FormField id="preset-persona-input" label="Persona Description">
             <textarea id="preset-persona-input" rows={4} placeholder={"Describe this persona…"} />
           </FormField>
+          <LocationFields prefix="preset-user-location" cityLabel="My city" zoneLabel="My time zone" />
         </div>
         <div className="modal-footer">
           <button className="cancel" id="cancel-persona-editor-btn" type="button">Cancel</button>

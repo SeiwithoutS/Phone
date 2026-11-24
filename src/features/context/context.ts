@@ -51,7 +51,7 @@ function fullText(books: TextBook[]) {
 }
 
 function fullSources(chat: Chat | undefined, rawHistory: ChatMessage[], extraMessages: ChatMessage[], preset?: TextBook): ContextFull {
-  const miniIds = new Set((chat?.settings.linkedWorldBookIds as Array<string | number> | undefined ?? []).map(String))
+  const miniIds = new Set((chat?.settings.linkedWorldBookIds ?? []).map(String))
   const miniPrompts = (runtime.state.worldBooks ?? []).filter(book => miniIds.has(String(book.id)))
   return {
     worldInfo: chat ? loreContext({ settings: chat.settings, history: rawHistory }, extraMessages).replace(/^\n# World Info\n/, '') : '',
@@ -144,10 +144,11 @@ export function chatHistoryMessages(chat: Chat, history: ChatMessage[] = chat.hi
   })
 }
 
-export function latestUserTurn(messages: PromptMessage[]) {
+export function latestUserTurn(messages: PromptMessage[], prioritizeLatest = false) {
   const previousReply = messages.findLastIndex(message => message.role === 'assistant' || message.role === 'ai')
   const lastUser = messages.findLastIndex(message => message.role === 'user')
-  return lastUser > previousReply ? { history: [...messages.slice(0, lastUser), ...messages.slice(lastUser + 1)], request: [messages[lastUser]!] }
+  return lastUser >= 0 && (prioritizeLatest || lastUser > previousReply)
+    ? { history: [...messages.slice(0, lastUser), ...messages.slice(lastUser + 1)], request: [messages[lastUser]!] }
     : { history: messages, request: [] }
 }
 

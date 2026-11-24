@@ -14,7 +14,7 @@ import { applyButtonOrder } from './button-order.js'
 import { showMessageActions } from './editor.js'
 import { createSystemTimestampElement, formatTimestamp } from '../../features/chat/format'
 import { getDisplayNameInGroup, processMentions } from './groups.js'
-import { exitSelectionMode, toggleMessageSelection } from './messages.js'
+import { bindMessageSelection, exitSelectionMode } from './messages.js'
 import { addLongPressListener } from '../dialogs/dialogs.js'
 import { hideLoader, showLoader } from '../dialogs/dialogs.js'
 import { playNotificationSound } from '../home/status.js'
@@ -173,13 +173,13 @@ export async function renderChatInterface(chatId, preserveScroll = false) {
             let lastTimestamp = 0;
 
             for (const msg of initialMessages) {
-                if (lastTimestamp > 0 && (msg.timestamp - lastTimestamp > 600000)) {
+                if (lastTimestamp > 0 && ((msg.replyTurnTime ?? msg.timestamp) - lastTimestamp > 600000)) {
                     
-                    messagePromises.push(Promise.resolve(createSystemTimestampElement(msg.timestamp)));
+                    messagePromises.push(Promise.resolve(createSystemTimestampElement(msg.replyTurnTime ?? msg.timestamp)));
                 }
                 
                 messagePromises.push(createMessageElement(msg, chat, true));
-                lastTimestamp = msg.timestamp;
+                lastTimestamp = msg.replyTurnTime ?? msg.timestamp;
             }
 
             
@@ -233,13 +233,13 @@ export async function loadMoreMessages() {
 
     
     const firstVisibleMessage = messagesContainer.querySelector('.message-wrapper[data-timestamp]');
-    let nextMessageTimestamp = firstVisibleMessage ? parseInt(firstVisibleMessage.dataset.timestamp) : 0;
+    let nextMessageTimestamp = firstVisibleMessage ? Number(firstVisibleMessage.dataset.displayTime ?? firstVisibleMessage.dataset.timestamp) : 0;
 
     
     for (const msg of messagesToPrepend.reverse()) {
         
         
-        if (nextMessageTimestamp > 0 && (nextMessageTimestamp - msg.timestamp > 600000)) { 
+        if (nextMessageTimestamp > 0 && (nextMessageTimestamp - (msg.replyTurnTime ?? msg.timestamp) > 600000)) {
             
             const timestampEl = createSystemTimestampElement(nextMessageTimestamp);
             
@@ -250,7 +250,7 @@ export async function loadMoreMessages() {
         await prependMessage(msg, chat);
         
         
-        nextMessageTimestamp = msg.timestamp;
+        nextMessageTimestamp = msg.replyTurnTime ?? msg.timestamp;
     }
 
     runtime.currentRenderedCount += messagesToPrepend.length;
@@ -292,35 +292,29 @@ export async function createMessageElement(msg, chat, interactive = false) {
             if (msg.type === 'recalled_message') {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'message-wrapper system-pat';
-                wrapper.dataset.timestamp = msg.timestamp; 
+                wrapper.dataset.timestamp = msg.timestamp;
+                wrapper.dataset.displayTime = msg.replyTurnTime ?? msg.timestamp;
                 const bubble = document.createElement('div');
                 bubble.className = 'message-bubble recalled-message-placeholder';
                 bubble.dataset.timestamp = msg.timestamp; 
                 bubble.textContent = msg.content;
                 wrapper.appendChild(bubble);
                 addLongPressListener(wrapper, () => showMessageActions(msg.timestamp));
-                wrapper.addEventListener('click', () => { 
-                    if (runtime.isSelectionMode) {
-                        toggleMessageSelection(msg.timestamp);
-                    }
-                });
+                if (interactive) bindMessageSelection(wrapper, bubble, msg);
                 return wrapper;
             }
             else if (msg.type === 'post_deleted_notice') {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'message-wrapper system-pat';
-                wrapper.dataset.timestamp = msg.timestamp; 
+                wrapper.dataset.timestamp = msg.timestamp;
+                wrapper.dataset.displayTime = msg.replyTurnTime ?? msg.timestamp;
                 const bubble = document.createElement('div');
                 bubble.className = 'message-bubble post-deleted-placeholder'; 
                 bubble.dataset.postId = msg.postId;
                 bubble.textContent = msg.content;
                 wrapper.appendChild(bubble);
                 addLongPressListener(wrapper, () => showMessageActions(msg.timestamp));
-                wrapper.addEventListener('click', () => { 
-                    if (runtime.isSelectionMode) {
-                        toggleMessageSelection(msg.timestamp);
-                    }
-                });
+                if (interactive) bindMessageSelection(wrapper, bubble, msg);
                 return wrapper;
             }
         
@@ -328,7 +322,7 @@ export async function createMessageElement(msg, chat, interactive = false) {
                 return null;
             }
         
-            if (msg.type === 'pat_message') {
+            if (msg.type === 'pat_message' || msg.type === 'app_action_status') {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'message-wrapper system-pat'; 
                 const bubble = document.createElement('div');
@@ -337,7 +331,7 @@ export async function createMessageElement(msg, chat, interactive = false) {
                 bubble.textContent = msg.content;
                 wrapper.appendChild(bubble);
                 addLongPressListener(wrapper, () => showMessageActions(msg.timestamp));
-                wrapper.addEventListener('click', () => { if (runtime.isSelectionMode) toggleMessageSelection(msg.timestamp); });
+                if (interactive) bindMessageSelection(wrapper, bubble, msg);
                 return wrapper;
             }
         
@@ -358,10 +352,12 @@ export async function createMessageElement(msg, chat, interactive = false) {
             const bubble = document.createElement('div');
             bubble.className = `message-bubble ${isUser ? 'user' : 'ai'}`;
             bubble.dataset.timestamp = msg.timestamp;
-        
+            wrapper.dataset.timestamp = msg.timestamp;
+            wrapper.dataset.displayTime = msg.replyTurnTime ?? msg.timestamp;
+
             const timestampEl = document.createElement('span');
             timestampEl.className = 'timestamp';
-            timestampEl.textContent = formatTimestamp(msg.timestamp);
+            timestampEl.textContent = formatTimestamp(msg.replyTurnTime ?? msg.timestamp);
         
             let avatarSrc, avatarFrameSrc = '', rotatingCharacter;
             if (isUser) {
@@ -672,7 +668,7 @@ export async function createMessageElement(msg, chat, interactive = false) {
             if (interactive) addMessageTools(wrapper, msg, chat);
             
             addLongPressListener(wrapper, () => showMessageActions(msg.timestamp));
-            wrapper.addEventListener('click', () => { if (runtime.isSelectionMode) toggleMessageSelection(msg.timestamp); });
+            if (interactive) bindMessageSelection(wrapper, bubble, msg);
         
             if (!isUser) {
                 const avatarGroupEl = wrapper.querySelector('.avatar-group'); 
@@ -711,7 +707,7 @@ const lastMessage = chat.history.filter(m => !m.isHidden).pop();
 
 
 if (lastMessage && (msg.timestamp - lastMessage.timestamp > 600000)) { 
-    const timestampEl = createSystemTimestampElement(msg.timestamp);
+    const timestampEl = createSystemTimestampElement(msg.replyTurnTime ?? msg.timestamp);
     messagesContainer.insertBefore(timestampEl, typingIndicator);
 }
 

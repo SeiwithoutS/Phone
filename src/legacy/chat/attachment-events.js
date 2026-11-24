@@ -2,7 +2,9 @@ import { triggerAiResponse } from './ai.js'
 import { addPollOptionInput, handlePaymentButtonClick, openCreatePollModal, sendDirectRedPacket, sendGroupRedPacket, sendPoll, triggerAiFriendApplication } from './attachments.js'
 import { appendMessage, renderChatInterface } from './conversation.js'
 import { renderChatList } from './list.js'
-import { exitSelectionMode } from './messages.js'
+import { exitSelectionMode, messageDeletionMode, messagesSelectedForDeletion } from './messages.js'
+import { deleteMessages, getActiveChat } from '../../features/chat/sessions'
+import { replyTimestamp } from '../../features/chat/reply-turns'
 import { showScreen } from '../../app/routes'
 import { showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
 import { closePersonaEditor, closePersonaLibrary, deletePersonaPreset, hidePresetActions, openPersonaEditorForCreate, openPersonaEditorForEdit, openPersonaLibrary, savePersonaPreset } from '../personas/personas.js'
@@ -163,36 +165,46 @@ document.getElementById('preset-action-cancel').addEventListener('click', hidePr
 
 document.getElementById('selection-cancel-btn').addEventListener('click', exitSelectionMode);
 
-document.getElementById('selection-soft-delete-btn').addEventListener('click', async () => {
-            if (runtime.selectedMessages.size === 0) return;
-            const confirmed = await showCustomConfirm("Delete messages", `Delete ${runtime.selectedMessages.size} selected messages and notify the AI?`, { confirmButtonClass: 'btn-danger' });
-            if (confirmed) {
-                const chat = runtime.state.chats[runtime.state.activeChatId];
-                let deletedPollsInfo = [];
-                for (const timestamp of runtime.selectedMessages) {
-                    const msg = chat.history.find(m => m.timestamp === timestamp);
-                    if (msg && msg.type === 'poll') {
-                        deletedPollsInfo.push(`关于“${msg.question}”的投票(时间戳: ${msg.timestamp})`);
-                    }
-                }
-                chat.history = chat.history.filter(msg => !runtime.selectedMessages.has(msg.timestamp));
-                let forgetReason = "一些之前的消息已被用户删除。";
-                if (deletedPollsInfo.length > 0) {
-                    forgetReason += ` 其中包括以下投票：${deletedPollsInfo.join('；')}。`;
-                }
-                forgetReason += " 你应该像它们从未存在过一样继续对话，并相应地调整你的记忆和行为，不要再提及这些被删除的内容。";
-                const forgetInstruction = {
-                    role: 'system',
-                    content: `[系统提示：${forgetReason}]`,
-                    timestamp: Date.now(),
-                    isHidden: true
-                };
-                chat.history.push(forgetInstruction);
-                await runtime.db.chats.put(chat);
-                renderChatInterface(runtime.state.activeChatId);
-                renderChatList();
-            }
-        });
+async function removeSelection(event, notify) {
+    const button = event.currentTarget;
+    const chat = getActiveChat();
+    if (!chat || button.disabled || button.getAttribute('aria-busy') === 'true') return;
+    const messages = messagesSelectedForDeletion(chat);
+    if (!messages.length) return;
+    const error = document.getElementById('qq-delete-error');
+    error.textContent = '';
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    try {
+        const mode = messageDeletionMode();
+        if (!mode) {
+            const confirmed = await showCustomConfirm('Delete messages',
+                `Delete ${messages.length} selected messages${notify ? ' and notify the AI' : ''}?`,
+                { confirmButtonClass: 'btn-danger' });
+            if (!confirmed) return;
+        }
+        let notice;
+        if (notify) {
+            const polls = messages.filter(message => message.type === 'poll')
+                .map(message => `"${message.question}" (timestamp: ${message.timestamp})`);
+            const details = polls.length ? ' This includes these polls: ' + polls.join(', ') + '.' : '';
+            notice = {
+                role: 'system', isHidden: true, timestamp: replyTimestamp(chat.history),
+                content: '[System notice: The user deleted some earlier messages.' + details +
+                    ' Continue as if the deleted messages never existed. Adjust what you recall and how you act, and do not mention them again.]',
+            };
+        }
+        await deleteMessages(chat, messages, notice, mode === 'range');
+    } catch (failure) {
+        error.textContent = failure.message || 'Could not delete the selected messages.';
+    } finally {
+        button.removeAttribute('aria-busy');
+        if (runtime.isSelectionMode) button.disabled = messagesSelectedForDeletion(chat).length === 0;
+    }
+}
+
+document.getElementById('selection-erase-btn').addEventListener('click', event => void removeSelection(event, false));
+document.getElementById('selection-soft-delete-btn').addEventListener('click', event => void removeSelection(event, true));
 }
 
 export function bindGroupAttachments() {
@@ -254,7 +266,7 @@ document.getElementById('block-chat-btn').addEventListener('click', async () => 
                 
                 const hiddenMessage = {
                     role: 'system',
-                    content: `[系统提示：你刚刚被用户拉黑了。在对方解除拉黑之前，你无法再主动发起对话，也无法回应。]`,
+                    content: `[System notice: The user blocked you. You cannot initiate or respond to messages until they unblock you.]`,
                     timestamp: Date.now() + 1,
                     isHidden: true
                 };
@@ -289,7 +301,7 @@ document.getElementById('chat-lock-overlay').addEventListener('click', async (e)
                 
                 const hiddenMessage = {
                     role: 'system',
-                    content: `[系统提示：用户刚刚解除了对你的拉黑。现在你们可以重新开始对话了。]`,
+                    content: `[System notice: The user unblocked you. You can talk again.]`,
                     timestamp: Date.now(),
                     isHidden: true
                 };

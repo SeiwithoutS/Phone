@@ -1,7 +1,7 @@
 import { useContext, useRef, useState } from 'react'
 import { HeaderSaveButton, PhoneFeatureHeader, Screen, ScreenContext } from '../../components/phone'
 import { showScreen } from '../../app/routes'
-import { getCharacters } from '../characters/characters'
+import { runtime } from '../../legacy/runtime/state.js'
 import { getLoreBooks, saveLoreBook } from './lore-storage'
 import { makeLoreEntry, readLoreBook } from './lore'
 import { downloadJson, escapeHtml } from '../../runtime/files'
@@ -24,14 +24,14 @@ function LorebookLibrary() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const input = useRef<HTMLInputElement>(null)
-  const characters = getCharacters()
+  const chats = Object.values(runtime.state.chats).filter(chat => chat != null)
   const savedBook = books.find(book => book.id === draft?.id)
 
   function edit(book: LoreBook) {
     setError('')
     setNewEntry(undefined)
     setDraft({ ...book, content: [...book.content].sort((left, right) => left.order - right.order) })
-    setLinked(characters.filter(chat => chat.settings.linkedLoreBookIds?.includes(book.id)).map(chat => chat.id))
+    setLinked(chats.filter(chat => chat.settings.linkedLoreBookIds?.includes(book.id)).map(chat => chat.id))
   }
 
   async function commit(book: LoreBook, remove = false) {
@@ -88,11 +88,11 @@ function LorebookLibrary() {
         <label>Messages to scan<input type="number" min={1} max={100} required value={draft.scanDepth || ''} onChange={event =>
           setDraft({ ...draft, scanDepth: Number(event.target.value) })} /></label>
       </div>
-      {characters.length > 0 && <fieldset className="phone-feature-panel">
+      {chats.length > 0 && <fieldset className="phone-feature-panel">
         <legend>Apply in QQ</legend>
-        {characters.map(chat => <label key={chat.id} className="phone-app-check">
+        {chats.map(chat => <label key={chat.id} className="phone-app-check">
           <input type="checkbox" checked={linked.includes(chat.id)} onChange={event => setLinked(event.target.checked
-            ? [...linked, chat.id] : linked.filter(id => id !== chat.id))} /> {chat.name}
+            ? [...linked, chat.id] : linked.filter(id => id !== chat.id))} /> {chat.name}{chat.isGroup ? ' (Group)' : ''}
         </label>)}
       </fieldset>}
       <PromptEntryList rows={draft.content.map((entry, index) => ({ id: entry.id, title: entry.comment || entry.keys[0] || 'Entry ' + (index + 1),
@@ -135,7 +135,7 @@ function LorebookLibrary() {
       {books.map(book => <article className="phone-app-card collection-card" key={book.id}>
         <button type="button" className="collection-open" onClick={() => edit(book)}>
           <strong>{book.name}</strong><small>{book.content.length} {book.content.length === 1 ? 'entry' : 'entries'}</small>
-          {book.sourceCharacterId && <small>{characters.find(chat => chat.id === book.sourceCharacterId)?.name}</small>}
+          {book.sourceCharacterId && <small>{chats.find(chat => chat.id === book.sourceCharacterId)?.name}</small>}
         </button>
         <div className="collection-actions">
           <IconButton icon="export" label={'Export ' + book.name} onClick={() => exportBook(book)} disabled={busy} />

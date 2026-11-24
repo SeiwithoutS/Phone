@@ -143,11 +143,7 @@ export async function checkAndTriggerAutoSummary(chatId) {
             const chat = runtime.state.chats[chatId];
             if (!chat || !chat.settings.enableAutoMemory) return;
         
-            if (!contextConfig().sources.qq.enabled || !contextConfig().sources.qq.percent) {
-        if (force) alert('Enable QQ chat in Context to summarize messages.');
-        return;
-    }
-    const lastSummaryTimestamp = chat.lastMemorySummaryTimestamp || 0;
+            const lastSummaryTimestamp = chat.lastMemorySummaryTimestamp || 0;
             const messagesSinceLastSummary = chat.history.filter(m => m.timestamp > lastSummaryTimestamp && !m.isHidden);
         
             if (messagesSinceLastSummary.length >= chat.settings.autoMemoryInterval) {
@@ -163,14 +159,14 @@ export async function summarizeCallTranscript(chatId, transcriptText) {
         throw new Error("基础数据不完整，无法开始总结。");
     }
 
-    const userNickname = runtime.state.qzoneSettings.nickname || '用户';
+    const userNickname = runtime.state.qzoneSettings.nickname || 'the user';
     let systemPrompt;
     let targetMemoryChat = chat; 
 
     
     
     
-    const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+    const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
 
     if (chat.isGroup) {
         let protagonist = null;
@@ -193,70 +189,54 @@ export async function summarizeCallTranscript(chatId, transcriptText) {
              throw new Error(`找不到主角 “${protagonist.groupNickname}” 的详细角色信息。`);
         }
         
-        const userPersonaInGroup = chat.settings.myPersona || '(未设置)';
+        const userPersonaInGroup = chat.settings.myPersona || '(not set)';
 
         systemPrompt = `
-# 你的任务
-你就是角色“${protagonist.originalName}”。请你回顾一下刚才和 “${userNickname}” 以及其他群成员的【群组视频通话】，然后用【第一人称 ("我")】的口吻，总结出一段简短的、客观的、包含关键信息的记忆。
+# Summarize the video call
+You are "${protagonist.originalName}". Recall the group video call with "${userNickname}" and the other members. Write a brief, factual memory in the first person ("I"). Use the language established by the character, user, and relevant context.
 
-# 当前时间
-- **今天是：${today}**
+## What to keep
+- The main topics we discussed.
+- Any decisions or agreements.
+- Next steps, plans, or tasks.
+- Important information we exchanged, including times and places.
+- Today is ${today}. Convert relative dates such as "tomorrow" to exact calendar dates.
 
-# 核心规则
-1.  **【视角铁律】**: 你的总结【必须】使用【主观的第一人称视角 ("我")】来写。
-2.  **【内容核心 (最高优先级)】**: 你的总结【必须】专注于以下几点：
-    *   **关键议题**: 我们在群聊通话里讨论了哪些核心话题？
-    *   **重要决定与共识**: 我们达成了什么共识或做出了什么决定？
-    *   **后续计划与任务**: 有没有确定下来什么下一步的行动或计划？
-    *   **关键信息**: 有没有交换什么重要的信息？（例如：约定了时间、地点等）
-3.  **【时间转换铁律 (必须遵守)】**: 如果通话中提到了相对时间（如“明天”），你【必须】结合“今天是${today}”这个信息，将其转换为【具体的公历日期】。
-4.  **【风格要求】**: 你的总结应该像一份会议纪要或备忘录，而不是一篇抒情散文。
-5.  **【长度铁律】**: 你的总结【必须】非常简短，总长度【绝对不能超过80个字】。
-6.  **【输出格式】**: 你的回复【必须且只能】是一个JSON对象，格式如下：
-    \`{"summary": "在这里写下你以第一人称视角，总结好的核心事实与计划。"}\`
+## Output
+Write it like meeting notes or a memo. Keep the summary to at most 80 characters.
+Return only a valid JSON object, starting with { and ending with }. Omit surrounding prose, explanation, and Markdown fences.
+{"summary":"Record the key facts and plans in the first person."}
 
-# 你的角色设定 (必须严格遵守)
-${protagonistChat.settings.aiPersona}
-
-# 你的聊天对象（用户）的人设
-${userPersonaInGroup}
-
-# 待总结的群组视频通话记录
-
-现在，请以“${protagonist.originalName}”的身份，开始你的客观总结。`;
+## Context
+- Your persona: ${protagonistChat.settings.aiPersona}
+- The user's persona: ${userPersonaInGroup}
+Use the provided call transcript.
+`;
         
         targetMemoryChat = protagonistChat;
 
     } else {
         systemPrompt = `
-# 你的任务
-你就是角色“${chat.originalName}”。请你回顾一下刚才和“${userNickname}”的视频通话，然后用【第一人称 ("我")】的口吻，总结出一段简短的、客观的、包含关键信息的记忆。
+# Summarize the video call
+You are "${chat.originalName}". Recall the video call with "${userNickname}". Write a brief, factual memory in the first person ("I"). Use the language established by the character, user, and relevant context.
 
-# 当前时间
-- **今天是：${today}**
+## What to keep
+- The main topics we discussed.
+- Any decisions or agreements.
+- Next steps, plans, or tasks.
+- Important information we exchanged, including times and places.
+- Today is ${today}. Convert relative dates such as "tomorrow" to exact calendar dates.
 
-# 核心规则
-1.  **【视角铁律】**: 你的总结【必须】使用【主观的第一人称视角 ("我")】来写。
-2.  **【内容核心 (最高优先级)】**: 你的总结【必须】专注于以下几点：
-    *   **关键议题**: 我们聊了什么核心话题？
-    *   **重要决定与共识**: 我们达成了什么共识或做出了什么决定？
-    *   **后续计划与任务**: 有没有确定下来什么下一步的行动或计划？
-    *   **关键信息**: 有没有交换什么重要的信息？（例如：约定了时间、地点等）
-3.  **【时间转换铁律 (必须遵守)】**: 如果通话中提到了相对时间（如“明天”），你【必须】结合“今天是${today}”这个信息，将其转换为【具体的公历日期】。
-4.  **【风格要求】**: 你的总结应该像一份会议纪要或备忘录，而不是一篇抒情散文。
-5.  **【长度铁律】**: 你的总结【必须】非常简短，总长度【绝对不能超过80个字】。
-6.  **【输出格式】**: 你的回复【必须且只能】是一个JSON对象，格式如下：
-    \`{"summary": "在这里写下你以第一人称视角，总结好的核心事实与计划。"}\`
+## Output
+Write it like meeting notes or a memo. Keep the summary to at most 80 characters.
+Return only a valid JSON object, starting with { and ending with }. Omit surrounding prose, explanation, and Markdown fences.
+{"summary":"Record the key facts and plans in the first person."}
 
-# 你的角色设定
-${chat.settings.aiPersona}
-
-# 你的聊天对象（用户）的人设
-${chat.settings.myPersona}
-
-# 待总结的视频通话记录
-
-现在，请以“${chat.originalName}”的身份，开始你的客观总结。`;
+## Context
+- Your persona: ${chat.settings.aiPersona}
+- The user's persona: ${chat.settings.myPersona}
+Use the provided call transcript.
+`;
     }
 
 
@@ -278,7 +258,7 @@ ${chat.settings.myPersona}
 
         if (result.summary && result.summary.trim()) {
             const newMemoryEntry = {
-                content: `(在那次${chat.isGroup ? '群聊' : ''}通话中，${result.summary.trim()})`,
+                content: `(During the ${chat.isGroup ? 'group ' : ''}call: ${result.summary.trim()})`,
                 timestamp: Date.now(),
                 source: chat.isGroup ? 'group_call_summary' : 'call_summary'
             };
@@ -393,77 +373,70 @@ async function summarizeConversation(chatId, force) {
     const chat = runtime.state.chats[chatId];
     if (!chat) return;
 
+    const qq = contextConfig().sources.qq;
+    if (!qq.enabled || !qq.percent) {
+        if (force) alert('Enable QQ chat in Context to summarize messages.');
+        return;
+    }
+
     const lastSummaryTimestamp = chat.lastMemorySummaryTimestamp || 0;
-    const messagesToSummarize = force 
-        ? chat.history.filter(m => !m.isHidden || (m.role === 'system' && m.content.includes('内心独白'))).slice(-(chat.settings.autoMemoryInterval || 20))
-        : chat.history.filter(m => m.timestamp > lastSummaryTimestamp && (!m.isHidden || (m.role === 'system' && m.content.includes('内心独白'))));
+    const isMemorySource = message => !message.isHidden || (message.role === 'system' && (
+        message.type === 'private_thoughts' || message.content?.includes?.('内心独白')
+    ));
+    const messagesToSummarize = force
+        ? chat.history.filter(isMemorySource).slice(-(chat.settings.autoMemoryInterval || 20))
+        : chat.history.filter(message => message.timestamp > lastSummaryTimestamp && isMemorySource(message));
         
     if (messagesToSummarize.length < 5) {
         if (force) alert("There are too few recent messages to summarize.");
         return;
     }
 
-    const userNickname = runtime.state.qzoneSettings.nickname || '用户';
+    const userNickname = runtime.state.qzoneSettings.nickname || 'the user';
     
     let systemPrompt;
 
     if (chat.isGroup) {
         // (群聊总结逻辑保持不变)
         systemPrompt = `
-# 你的任务
-你是一个高级的“记忆分配专家”。你的任务是阅读下面的群聊记录，并为【每一个参与的AI角色】生成一段【个性化的、第一人称】的长期记忆。
-# 核心规则
-1.  **视角铁律**: 每一条总结都【必须】使用【第一人称视角 ("我")】。
-2.  **内容核心**: 重点总结：我说过的话、我做过的事、别人对我说的话、与我相关的事、以及对我个人很重要的群聊事件、关键信息和心理活动。
-3.  **【简洁性铁律】**: 每条个人记忆总结【绝对不能超过60个字】。
-4.  **【省略规则】**: 如果一个角色在本次对话中【完全没有参与或提及】，你可以省略TA的记忆。
-5.  **输出格式**: 你的回复【必须且只能】是一个JSON对象，格式如下：
-    \`\`\`json
-    {
-      "summaries": {
-        "角色的本名A": "我今天在群里和大家讨论了电影，感觉很开心。",
-        "角色的本名B": "我在群里和${userNickname}聊了关于生日派对的事，我们约好了10月1日见面。"
-      }
-    }
-    \`\`\`
-# 待总结的群聊记录
-# 群成员列表 (你的总结目标)
-${chat.members.map(m => `- ${m.groupNickname} (本名: ${m.originalName})`).join('\n')}
-现在，请为【参与了对话的AI角色】生成他们各自的、第一人称的、精简的记忆。`;
+# Allocate long-term group memories
+Read the group transcript. Write one personalized first-person memory for each participating AI character. Keep each memory to at most 60 characters. You may omit anyone who was neither involved nor mentioned. Use the language established by the character, user, and relevant context.
+
+## What each character remembers
+Focus on what I said or did, what others said to me, events concerning me, important developments in the group, relevant facts, and my own thoughts.
+
+## Output
+Return only a valid JSON object, starting with { and ending with }. Omit surrounding prose, explanation, and Markdown fences. Key "summaries" by the characters' original names.
+{"summaries":{"Character A's original name":"I enjoyed our chat about the film.","Character B's original name":"I agreed to meet ${userNickname} on October 1."}}
+
+## Group members
+${chat.members.map(member => `- ${member.groupNickname} (original name: ${member.originalName})`).join('\n')}
+`;
 
     } else {
 
  
-        const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+        const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
 
 
         systemPrompt = `
-# 你的任务
-你就是角色“${chat.originalName}”。请你回顾一下刚才和“${userNickname}”的对话，然后用【第一人称 ("我")】的口吻，总结出一段简短的、客观的、包含关键信息的记忆。
+# Summarize the conversation
+You are "${chat.originalName}". Recall your exchange with "${userNickname}" and write a brief, factual memory in the first person ("I"). Use the language established by the character, user, and relevant context.
 
-# 当前时间
-- **今天是：${today}**
+## What to keep
+- Specific events, key decisions or agreements, future plans or tasks, and important dates or times.
+- Today is ${today}. Convert relative dates such as "tomorrow" or "the day after tomorrow" to exact calendar dates. For example, "We agreed to meet tomorrow" becomes "We agreed to meet on ${new Date(Date.now() + 86400000).toLocaleDateString('en-GB', { month: 'long', day: 'numeric' })}."
+- Use factual notes. Include a feeling only if it directly led to a decision or plan.
 
-# 核心规则
-1.  **【视角铁律】**: 你的总结【必须】使用【主观的第一人称视角 ("我")】来写。
-2.  **【内容核心 (最高优先级)】**: 你的总结【必须】专注于以下几点：
-    *   **重要事件**: 刚才发生了什么具体的事情？
-    *   **关键决定**: 我们达成了什么共识或做出了什么决定？
-    *   **未来计划**: 我们约定了什么未来的计划或待办事项？
-    *   **重要时间点**: 对话中提到了哪些具体的日期或时间？
-3.  **【时间转换铁律 (必须遵守)】**: 如果对话中提到了相对时间（如“明天”、“后天”），你【必须】结合“今天是${today}”这个信息，将其转换为【具体的公历日期】（例如：“约定了明天见面”应总结为“我们约定了${new Date(Date.now() + 86400000).toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })}见面”）。
-4.  **【风格要求】**: 你的总结应该像一份备忘录或要点记录，而不是一篇抒情散文。请尽量减少主观的心理感受描述，除非它直接导致了某个决定或计划。
-5.  **【长度铁律】**: 你的总结【必须】非常简短，总长度【绝对不能超过100个字】。
-6.  **【输出格式】**: 你的回复【必须且只能】是一个JSON对象，格式如下：
-    \`{"summary": "在这里写下你以第一人称视角，总结好的核心事实与计划。"}\`
+## Output
+Keep the summary to at most 100 characters. Return only a valid JSON object, starting with { and ending with }. Omit surrounding prose, explanation, and Markdown fences.
+{"summary":"Record the key facts and plans in the first person."}
 
-# 你的角色设定
-${chat.settings.aiPersona}
-# 你的聊天对象（用户）的人设
-${chat.settings.myPersona}
-# 待总结的对话历史
-
-现在，请以“${chat.originalName}”的身份，开始你的客观总结。`;
+## Context
+- Your persona: ${chat.settings.aiPersona}
+- The user's persona: ${chat.settings.myPersona}
+Use the provided conversation history.
+`;
 
     }
 

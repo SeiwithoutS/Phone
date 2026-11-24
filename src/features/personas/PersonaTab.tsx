@@ -5,8 +5,11 @@ import type { LocalDatabase } from '../../storage/database'
 import type { StoredRow } from '../../../shared/storage'
 import { fileDataUrl, imageSource } from '../../runtime/files'
 import { runtime } from '../../legacy/runtime/state.js'
+import { LocationFields, readLocationFields } from '../chat/LocationFields'
+import { resolveTimeZone } from '../chat/location'
+import type { LocationSettings } from '../chat/location'
 
-type Persona = StoredRow & { id: string; name?: string; avatar: string; persona: string }
+type Persona = StoredRow & LocationSettings & { id: string; name?: string; avatar: string; persona: string }
 const empty = () => ({ id: crypto.randomUUID(), name: '', avatar: '', persona: '' })
 const defaultKey = 'default-persona'
 const eventName = 'eephone:personas'
@@ -57,7 +60,7 @@ export function PersonaTab({ database }: { database?: LocalDatabase }) {
     if (!name || /[<>"]/.test(name)) { setNotice('Enter a display name without angle brackets or quotes.'); return }
     if (draft.avatar && !imageSource(draft.avatar)) { setNotice('Choose an image or use a valid image URL.'); return }
     await act(async () => {
-      const next = { ...draft, name, persona: draft.persona.trim() }
+      const next = { ...draft, name, persona: draft.persona.trim(), ...readLocationFields('persona-location') }
       await database.personaPresets.put(next)
       const rows = await database.personaPresets.toArray()
       runtime.state.personaPresets = rows as typeof runtime.state.personaPresets
@@ -74,6 +77,7 @@ export function PersonaTab({ database }: { database?: LocalDatabase }) {
         setDraft({ ...draft, name: event.target.value })} /></label>
       <label>Description<textarea rows={5} maxLength={10000} value={draft.persona} onChange={event =>
         setDraft({ ...draft, persona: event.target.value })} /></label>
+      <LocationFields key={draft.id} prefix="persona-location" cityLabel="My city" zoneLabel="My time zone" initial={draft} />
       <label>Avatar URL<input type="url" value={draft.avatar.startsWith('data:') ? '' : draft.avatar}
         onChange={event => setDraft({ ...draft, avatar: event.target.value })} /></label>
       <label>Upload avatar<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/bmp" onChange={async event => {
@@ -105,6 +109,9 @@ export function PersonaTab({ database }: { database?: LocalDatabase }) {
           <IconButton icon="trash" label="Delete persona" onClick={() => setPendingDelete(true)} />
         </div></div>
         {current.persona && <p className="persona-description">{current.persona}</p>}
+        {(current.location || current.timeZone) && <small>
+          {[current.location, resolveTimeZone(current.location, current.timeZone).zone].filter(Boolean).join(' · ')}
+        </small>}
         {database?.getPreference(defaultKey) === current.id ? <small>Default for new chats</small> :
           <button type="button" className="phone-app-button" disabled={busy} onClick={() => void act(async () => {
             await database?.deviceSettings.put({ id: defaultKey, value: current.id })
@@ -118,7 +125,8 @@ export function PersonaTab({ database }: { database?: LocalDatabase }) {
           <button type="button" className="phone-app-button primary" disabled={!chatId || busy} onClick={() => void act(async () => {
             const chat = runtime.state.chats[chatId]
             if (!chat) return
-            const changes = { myNickname: current.name || 'You', myAvatar: current.avatar || runtime.defaultAvatar, myPersona: current.persona }
+            const changes = { myNickname: current.name || 'You', myAvatar: current.avatar || runtime.defaultAvatar, myPersona: current.persona,
+              userLocation: current.location ?? '', userTimeZone: current.timeZone ?? '' }
             await database?.transaction('rw', 'chats', async tx => {
               const stored = await tx.chats.get(chatId)
               if (!stored) throw new Error('This chat was removed.')

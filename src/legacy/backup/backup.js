@@ -147,17 +147,20 @@ const legacySingletons = new Set(['apiConfig', 'globalSettings', 'musicLibrary',
 function readBackup(data) {
     if (data?.version === 1 && data.tables && typeof data.tables === 'object') {
         const records = new Map();
+        const nextIds = new Map();
         for (const table of runtime.db.tables) {
             if (!Object.hasOwn(data.tables, table.name)) continue;
             const rows = data.tables[table.name]?.rows;
+            const nextId = data.tables[table.name]?.nextId;
             if (!Array.isArray(rows) || rows.some(row => !row || (typeof row.id !== 'string' && !Number.isSafeInteger(row.id))) ||
                 new Set(rows.map(row => row.id)).size !== rows.length) throw new Error('Invalid backup table: ' + table.name);
+            if (Number.isSafeInteger(nextId) && nextId >= 1) nextIds.set(table.name, nextId);
             records.set(table.name, decodePortable(rows));
         }
-        if (!records.size && data.partial !== true && Object.keys(data.tables).length === 0) return { records, partial: false };
+        if (!records.size && data.partial !== true && Object.keys(data.tables).length === 0) return { records, nextIds, partial: false };
         if (!records.size) throw new Error('No EPhone tables found.');
         records.get('worldBooks')?.forEach(normalizeWorldInfo);
-        return { records, partial: data.partial === true };
+        return { records, nextIds, partial: data.partial === true };
     }
     const wrapped = data?.data && Array.isArray(data.data.chats);
     const source = wrapped ? (data.version === 4 ? decodePortable(data.data) : data.data) : data;
@@ -175,7 +178,7 @@ function readBackup(data) {
         }
     }
     records.get('worldBooks')?.forEach(normalizeWorldInfo);
-    return { records, partial: false };
+    return { records, nextIds: new Map(), partial: false };
 }
 
 export async function handleSmartImport(file) {
@@ -192,7 +195,7 @@ export async function handleSmartImport(file) {
         } else {
             contents = await file.text();
         }
-        const { records: tables, partial } = readBackup(JSON.parse(contents));
+        const { records: tables, nextIds, partial } = readBackup(JSON.parse(contents));
         const confirmed = await showCustomConfirm(
             'Restore Backup?',
             partial ? 'Restore the data categories included in this file? Their current records will be replaced.'
@@ -204,9 +207,7 @@ export async function handleSmartImport(file) {
         await db.transaction('rw', db.tables, async tx => {
             for (const table of tx.tables) {
                 if (!tables.has(table.name) && (partial || table.name === 'deviceSettings')) continue;
-                await table.clear();
-                const records = tables.get(table.name);
-                if (records?.length) await table.bulkPut(records);
+                await table.restore(tables.get(table.name) ?? [], nextIds.get(table.name));
             }
         });
         logActivity('backup.restore', 'ok');

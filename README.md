@@ -33,7 +33,16 @@ Open <http://127.0.0.1:8017> in the phone's browser and leave Termux running. Th
 | A custom hostname does not open | Open `http://127.0.0.1:<port>` on the device running EPhone. |
 | The page says the storage API is missing | Start EPhone using the launcher and use its printed address. EPhone needs the Node server to read and save data. |
 
-`npm start` builds on the first run and serves the existing build on later runs. To apply source changes, run the launcher again, use `npm start -- --build`, or develop with `npm run dev`. Set `EEPHONE_HOST` or `PORT` to change the local address. Replace `public/site-avatar.jpg` and rebuild to change the site icon.
+## Updating EPhone
+
+1. Save open edits and export a full ZIP from **Backup**. Keep the existing `data/eephone.json` or the directory configured by `EEPHONE_DATA_DIR`.
+2. Stop the running server with **Ctrl+C**. If you use Git, bring the new code into the same checkout. For an extracted ZIP, update the source without replacing the data directory. If you run from a new folder, use the existing data directory or restore the ZIP there.
+3. Rebuild and start EPhone with `.\start.bat` on Windows or `bash start.sh` in Termux. With dependencies already installed, `npm start -- --build` also rebuilds and starts the server.
+4. Open the address printed in the terminal and reload the page. Check a chat and confirm that existing data is present.
+
+`npm start` builds on the first run and serves the existing build on later runs. Use the rebuild step for source and storage changes. If dependency installation needs a reset, run `.\start.bat --install` or `bash start.sh --install`. Set `EEPHONE_HOST` or `PORT` to change the local address.
+
+Replace `public/site-avatar.jpg` and rebuild to change the site icon.
 
 ## Home screen and apps
 
@@ -42,11 +51,15 @@ Open <http://127.0.0.1:8017> in the phone's browser and leave Termux running. Th
 - Hold an app or widget to arrange the home screen, or tap **Arrange**. Drag to reorder, or select an item, open a page and tap **Move to this page**. The dock holds up to four apps.
 - Use the sun or moon icon on Home or Social to switch the app between light and dark mode. The choice is saved with your local data.
 - Use **Edit** to create a character or import a SillyTavern PNG, JSON, or CHARX card. **Avatar Gallery** rotates the QQ avatar by time or by connected call count.
-- In QQ, open the three-line **Chat actions** menu to start a chat, manage chat files, regenerate the latest reply, or delete messages from a selected point. Use the controls below a reply to edit it, generate an alternate, or return to an earlier version. The branch button opens a separate chat through the selected message and keeps the original in **Manage chat files**.
-- **Mini Prompts** stores prompts you can attach to chats. **World Info** manages lorebook entries and their activation keywords. Embedded card lorebooks appear here after you save the character.
-- Choose a **Preset** in **Chat Settings** for use in Offline Mode, or choose a shared preset in **Context**. Offline Mode still uses the configured AI provider. Presets, World Info and Mini Prompts support compact list and grid views. Open a collection to drag entries by their handles, switch their inclusion on or off, and edit their contents.
+- In QQ, open **Chat actions** to manage chat files, regenerate the latest reply, or select messages to delete on the chat screen. Open a bubble's **⋯** menu to edit or branch. The Swipe controls are on the user message that prompted the reply. For openings and proactive replies, the first AI bubble carries the controls. Regen and Swipe work on a complete AI turn.
+- **QQ → Chat Settings → Setup → Location and time zone** keeps character and user cities separate. Choose a time zone manually or use Automatic, which recognizes common city names and falls back to the device zone. **QQ → Personas** stores the user city and time zone with each persona. Applying a persona copies those values into the selected chat. The default persona supplies them to new private chats.
+- **Linked World Info** activates enabled lorebook entries by keyword or Always On. **Linked Mini Prompts** includes enabled entries from the selected Mini Prompt books. Both links are selected independently in **Chat Settings → Setup**.
+- Choose a per-chat **Preset** in **Chat Settings** for Offline Mode, or choose a shared preset in **Context**. A shared selection takes precedence while enabled. Imported SillyTavern presets can order entries and include slots for lore and chat history. Offline Mode uses the configured AI provider.
+- **Context → Reply Rules** edits message range and writing style for private online Gen, Regen, and new Swipe versions. The default is 3–10 short messages. **Last sent** shows the recorded request in the current browser session.
+- **QQ → Chat Settings → Diary** opens the character's diary. The **Diary CSS** panel accepts a `.css` file or pasted styles for that character.
 - **Social** offers a local timeline, editable profile, photo posts, replies, likes, reposts, bookmarks and search. Use the plus icon to compose a post with up to four photos. In **Social settings**, you can enable **Auto AI comment** and choose which character or NPC replies using your configured API.
 - **Marketplace** records purchases under **Orders**. Open an order to see its estimated arrival and simulated delivery timeline. Choose a chat at checkout to send a gift card immediately, send it later by hand, or schedule it to appear in chat on delivery. Automatic delivery is checked while EPhone is open and catches up the next time it opens.
+- With **QQ → Chat Settings → Features → Shopping** enabled, a character can order a catalog item or submit a new item with a name, unit price, category, and description. Marketplace adds the new item when the order and Bank charge succeed. Matching catalog items keep their saved price.
 - See [Hướng dẫn tùy chỉnh CSS](HUONG-DAN-CSS.md) for widget imports and selectors for chat and other screens.
 
 ## Local data and backup
@@ -75,3 +88,5 @@ For a file-by-file map and where to change specific features, see [Cấu trúc d
 ## Development
 
 Run `npm ci` once, then `npm run dev` for development. Use `npm run typecheck`, `npm test`, and `npm run build` to verify changes. The production build writes the frontend into `dist/` and the compiled server into `build/server/`.
+
+When changing chat or prompt code, link a lorebook and a Mini Prompt, choose a preset, then send a test message and inspect **Context → Last sent**. Check roles, order, active keywords, and the final reply in QQ. When changing storage, test reload and ZIP export/restore against an isolated `EEPHONE_DATA_DIR`.

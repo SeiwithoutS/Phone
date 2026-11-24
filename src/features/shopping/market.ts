@@ -1,4 +1,4 @@
-import { balanceFor, marketMerchant, transferCents, transferEvent } from '../bank/bank'
+import { balanceFor, bankOpeningBalance, marketMerchant, transferCents, transferEvent } from '../bank/bank'
 import { imageSource } from '../../runtime/files'
 import type { Transfer } from '../bank/bank'
 import type { ChatContact, ChatMessage } from '../chat/model'
@@ -6,14 +6,15 @@ import type { LocalDatabase } from '../../storage/database'
 import type { StoredRow } from '../../../shared/storage'
 
 export type MarketKind = 'food' | 'goods'
-type OrderLine = { name: string; kind: MarketKind; cents: number; quantity: number; seller?: string; image?: string }
+type OrderLine = { name: string; kind: MarketKind; cents: number; quantity: number; seller?: string; image?: string; description?: string }
 export const giftStyles = ['Blue', 'Blush', 'Mint'] as const
 export type GiftDraft = { text: string; style: typeof giftStyles[number]; auto: boolean }
 type GiftCard = GiftDraft & { sentAt?: number }
-export type MarketProduct = Omit<OrderLine, 'quantity'> & { id: string; seller: string; image?: string; description?: string }
+type MarketListing = Omit<OrderLine, 'quantity'> & { seller: string }
+export type MarketProduct = MarketListing & { id: string }
 export type MarketOrder = StoredRow & {
   id: string; timestamp: number; items: OrderLine[]; subtotal: number; delivery: number; total: number;
-  recipient: string; chatId?: string; chatName?: string; note: string; gift?: GiftCard
+  recipient: string; chatId?: string; chatName?: string; buyerId?: string; note: string; gift?: GiftCard
 }
 
 const catalog: MarketProduct[] = [
@@ -45,15 +46,41 @@ export async function addMarketProduct(database: CatalogTable, item: {
   name: string; price: string; seller: string; description: string; kind: MarketKind; image: string
 }) {
   const name = item.name.trim().slice(0, 100)
-  const cents = transferCents(item.price)
+  const cents = productCents(item.price)
   const image = imageSource(item.image)
   if (!name) throw new Error('Enter a product name.')
-  if (!Number.isSafeInteger(cents) || cents <= 0 || cents > 10_000_000) throw new Error('Enter a price between 0.01 and 100,000 with up to two decimal places.')
+  if (cents === undefined) throw new Error('Enter a price between 0.01 and 100,000 with up to two decimal places.')
   if (item.image.trim() && !image) throw new Error('Choose a supported image or enter an HTTPS/HTTP image URL.')
   if (item.kind !== 'food' && item.kind !== 'goods') throw new Error('Choose a product category.')
-  await database.shoppingProducts.add({ name, price: cents / 100, seller: item.seller.trim().slice(0, 80),
-    description: item.description.trim().slice(0, 500), marketKind: item.kind, imageUrl: image, categoryId: null, variations: [] })
+  await database.shoppingProducts.add(productRow({ name, cents, image, kind: item.kind,
+    seller: item.seller.trim().slice(0, 80), description: item.description.trim().slice(0, 500) }))
 }
+
+function productCents(price: unknown) {
+  if (typeof price !== 'number' && typeof price !== 'string') return
+  const cents = transferCents(typeof price === 'string' ? price.trim() : price)
+  return Number.isSafeInteger(cents) && cents > 0 && cents <= 10_000_000 ? cents : undefined
+}
+
+function productRow(product: MarketListing) {
+  return { name: product.name, price: product.cents / 100, seller: product.seller, description: product.description ?? '',
+    marketKind: product.kind, imageUrl: product.image ?? '', categoryId: null, variations: [] }
+}
+
+function readProposedProduct(value: unknown): MarketListing | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return
+  const item = value as Record<string, unknown>
+  const name = typeof item.name === 'string' ? item.name.trim() : ''
+  const description = typeof item.description === 'string' ? item.description.trim() : ''
+  const seller = typeof item.seller === 'string' ? item.seller.trim() : ''
+  const cents = productCents(item.price)
+  if (!name || !description || name.length > 100 || description.length > 500 ||
+    seller.length > 80 || cents === undefined || (item.kind !== 'food' && item.kind !== 'goods')) return
+  return { name, description, cents, seller, kind: item.kind }
+}
+
+const productKey = (value: string) => value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase()
+const validQuantity = (quantity: number) => Number.isInteger(quantity) && quantity >= 1 && quantity <= 20
 
 export function orderPricing(items: OrderLine[]) {
   const subtotal = items.reduce((sum, item) => sum + item.cents * item.quantity, 0)
@@ -83,42 +110,75 @@ export function canShareOrder<T extends ChatContact>(chat: T | undefined): chat 
   return !relationship || relationship.status === 'friend'
 }
 
-export async function placeOrder(database: LocalDatabase, request: {
-  id: string; cart: Record<string, number>; expectedTotal: number; chat?: ChatContact; recipient: string; note: string;
-  sendGiftOnDelivery?: boolean
-}) {
+type OrderRequest = { id: string; cart: Record<string, number>; recipient: string; note: string } & (
+  { expectedTotal: number; chat?: ChatContact; sendGiftOnDelivery?: boolean; buyer?: undefined; newItem?: undefined } |
+  { buyer: ChatContact; expectedTotal?: undefined; chat?: undefined; sendGiftOnDelivery?: undefined;
+    newItem?: { product: unknown; quantity: number } }
+)
+
+export class MarketOrderError extends Error {}
+
+export async function placeOrder(database: LocalDatabase, request: OrderRequest) {
   const { id, chat } = request
-  const result = await database.transaction('rw', database.marketOrders, database.bankTransfers, database.chats,
+  const payer = request.buyer?.id ?? 'user'
+  const result = await database.transaction('rw', database.marketOrders, database.bankAccounts, database.bankTransfers, database.chats,
     database.shoppingProducts, database.shoppingCategories, async tx => {
       const saved = await tx.marketOrders.get(id) as MarketOrder | undefined
       if (saved) return { order: saved }
-      const current = chat ? await tx.chats.get(chat.id) as ChatContact | undefined : undefined
-      if (chat && (!current || current.conversationId !== chat.conversationId)) throw new Error('The chat changed. Reopen it to place this order.')
-      if (chat && !canShareOrder(current)) throw new Error('This conversation cannot receive orders.')
+      const contact = chat ?? request.buyer
+      const current = contact ? await tx.chats.get(contact.id) as ChatContact | undefined : undefined
+      if (request.buyer && (!current || current.conversationId !== request.buyer.conversationId ||
+        current.isGroup || current.settings?.isOfflineMode || current.settings?.allowStorePurchases !== true || !canShareOrder(current))) {
+        return { error: 'Shopping is unavailable for this character.' }
+      }
+      if (chat && (!current || current.conversationId !== chat.conversationId)) return { error: 'The chat changed. Reopen it to place this order.' }
+      if (chat && !canShareOrder(current)) return { error: 'This conversation cannot receive orders.' }
 
       const products = new Map((await marketProducts(tx)).map(product => [product.id, product]))
-      const items = Object.entries(request.cart).map(([productId, quantity]) => {
+      const items: OrderLine[] = []
+      let newProduct: MarketListing | undefined
+      for (const [productId, quantity] of Object.entries(request.cart)) {
         const product = products.get(productId)
-        if (!product || !Number.isInteger(quantity) || quantity < 1 || quantity > 20) throw new Error('A cart item is no longer available or has an invalid quantity.')
-        return { name: product.name, kind: product.kind, cents: product.cents, quantity, seller: product.seller, image: product.image }
-      })
-      if (!items.length) throw new Error('Add at least one item to your cart.')
+        if (!product || !validQuantity(quantity)) {
+          return { error: 'A cart item is no longer available or has an invalid quantity.' }
+        }
+        const { name, kind, cents, seller, image, description } = product
+        items.push({ name, kind, cents, quantity, seller, image, description })
+      }
+      if (request.newItem) {
+        const { product, quantity } = request.newItem
+        const proposed = readProposedProduct(product)
+        if (items.length || !proposed || !validQuantity(quantity)) {
+          return { error: 'The new product needs a valid name, unit price, category, description, and quantity.' }
+        }
+        const matched = [...products.values()].find(item => item.kind === proposed.kind &&
+          productKey(item.name) === productKey(proposed.name) &&
+          (!proposed.seller || productKey(item.seller) === productKey(proposed.seller)))
+        const listing = matched ?? { ...proposed, seller: proposed.seller || 'Local Shop' }
+        if (!matched) newProduct = listing
+        const { name, kind, cents, seller, image, description } = listing
+        items.push({ name, kind, cents, quantity, seller, image, description })
+      }
+      if (!items.length) return { error: 'Add at least one item to your cart.' }
       const pricing = orderPricing(items)
-      if (!Number.isSafeInteger(pricing.total)) throw new Error('The order total is too large.')
-      if (pricing.total !== request.expectedTotal) throw new Error('A price changed. Review your cart and try again.')
+      if (!Number.isSafeInteger(pricing.total)) return { error: 'The order total is too large.' }
+      if (!request.buyer && pricing.total !== request.expectedTotal) return { error: 'A price changed. Review your cart and try again.' }
       const transfers = await tx.bankTransfers.toArray() as Transfer[]
-      if (balanceFor('user', transfers) < pricing.total) throw new Error('Insufficient Bank balance. Remove items and try again.')
+      const account = await tx.bankAccounts.get(payer)
+      if (balanceFor(payer, transfers, bankOpeningBalance(account)) < pricing.total) return { error: 'Insufficient Bank balance.' }
       const timestamp = Date.now()
       const order: MarketOrder = { id, timestamp, items, ...pricing, recipient: request.recipient.trim().slice(0, 80) || 'You',
-        chatId: chat?.id, chatName: current?.name, note: request.note.trim().slice(0, 240),
-        gift: current ? { text: '', style: 'Blue', auto: request.sendGiftOnDelivery !== false } : undefined }
-      const charge: Transfer = { id: 'order:' + id, orderId: id, from: 'user', to: marketMerchant, cents: order.total,
+        chatId: chat?.id, chatName: chat ? current?.name : undefined, note: request.note.trim().slice(0, 240),
+        buyerId: request.buyer?.id, gift: chat ? { text: '', style: 'Blue', auto: request.sendGiftOnDelivery !== false } : undefined }
+      const charge: Transfer = { id: 'order:' + id, orderId: id, from: payer, to: marketMerchant, cents: order.total,
         note: items.map(item => item.quantity + ' × ' + item.name).join(', '), timestamp }
 
+      if (newProduct) await tx.shoppingProducts.add(productRow(newProduct))
       await tx.marketOrders.add(order)
       await tx.bankTransfers.add(charge)
       return { order, charge }
     })
+  if (result.error !== undefined) throw new MarketOrderError(result.error)
   if (result.charge) window.dispatchEvent(new CustomEvent(transferEvent, { detail: result.charge }))
   return result.order
 }

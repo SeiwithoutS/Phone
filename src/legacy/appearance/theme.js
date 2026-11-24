@@ -135,8 +135,8 @@ export async function addMusicActionSystemMessage(actionText) {
             if (!chat) return;
         
             
-            const myNickname = chat.isGroup ? (chat.settings.myNickname || '我') : '我';
-            const fullMessage = `[系统提示：用户 (${myNickname}) ${actionText}]`;
+            const myNickname = chat.settings.myNickname || 'You';
+            const fullMessage = `[System notice: The user (${myNickname}) ${actionText}]`;
         
             
             const systemMessage = {

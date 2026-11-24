@@ -1,21 +1,4 @@
-import { controls } from '../runtime/state.js'
 import { runtime } from '../runtime/state.js'
-
-export function updateWorldBookSelectionDisplay() {
-            const checkedBoxes = controls.worldBookCheckboxesContainer.querySelectorAll('input:checked');
-            const displayText = document.querySelector('.selected-options-text');
-            
-            if (checkedBoxes.length === 0) {
-                displayText.textContent = "Select entries";
-            } else if (checkedBoxes.length > 2) {
-                displayText.textContent = `${checkedBoxes.length} Mini Prompts books selected`;
-            } else {
-                const displayItems = Array.from(checkedBoxes).map(cb => {
-                    return cb.parentElement.textContent.trim();
-                });
-                displayText.textContent = displayItems.join(', ');
-            }
-        }
 
 export function renderGroupMemberSettings(members) { 
     const container = document.getElementById('group-members-settings'); 

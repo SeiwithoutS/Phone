@@ -1,11 +1,13 @@
+import { readLocationFields, setLocationFields } from '../../features/chat/LocationFields'
 import { chatFeatureSwitches, parseCalendarDates } from '../../features/chat/chat-features'
 import { categoryKey } from '../../features/stickers/library'
+import { getLoreBooks } from '../../features/world-book/lore-storage'
 import { loadThemePresetsDropdown } from '../appearance/presets.js'
 import { applyScopedCss, updateSettingsPreview } from '../appearance/theme.js'
 import { renderChatInterface } from './conversation.js'
 import { openFrameSelectorModal, syncCharacterAvatarInGroups, syncCharacterNameInGroups } from './groups.js'
 import { renderChatList } from './list.js'
-import { renderGroupMemberSettings, updateWorldBookSelectionDisplay } from './settings.js'
+import { renderGroupMemberSettings } from './settings.js'
 import { showCustomConfirm } from '../dialogs/dialogs.js'
 import { applyLyricsBarPosition } from '../music/player.js'
 import { renderOfflinePresetSelector } from '../presets/presets.js'
@@ -14,27 +16,47 @@ import { showScreen } from '../../app/routes'
 import { controls } from '../runtime/state.js'
 import { runtime } from '../runtime/state.js'
 
-export function bindChatSettingsEditor() {
-  controls.chatSettingsModal = document.getElementById('chat-settings-modal')
-
-controls.worldBookSelectBox = document.querySelector('.custom-multiselect .select-box')
-
-controls.worldBookCheckboxesContainer = document.getElementById('world-book-checkboxes-container')
-
-function setWorldBookPicker(open) {
-    controls.worldBookCheckboxesContainer.classList.toggle('visible', open);
-    controls.worldBookSelectBox.classList.toggle('expanded', open);
-    controls.worldBookSelectBox.setAttribute('aria-expanded', String(open));
+function selectedPromptBooks(picker) {
+    return [...picker.querySelectorAll('[data-link-options] input:checked')].map(input => input.value);
 }
 
-controls.worldBookSelectBox.addEventListener('click', () =>
-    setWorldBookPicker(controls.worldBookSelectBox.getAttribute('aria-expanded') !== 'true'));
+function updatePromptLinkSummary(picker) {
+    const checked = [...picker.querySelectorAll('[data-link-options] input:checked')];
+    const summary = picker.querySelector('[data-link-summary]');
+    summary.textContent = checked.length === 1 ? checked[0].labels[0].textContent :
+        checked.length ? `${checked.length} linked` : 'No links';
+}
 
-document.getElementById('world-book-checkboxes-container').addEventListener('change', updateWorldBookSelectionDisplay);
+function renderPromptLinkPicker(picker, books, linkedIds, emptyMessage) {
+    const linked = new Set((linkedIds ?? []).map(String));
+    const options = picker.querySelector('[data-link-options]');
+    const rows = books.map(book => {
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = String(book.id);
+        input.checked = linked.has(input.value);
+        const name = document.createElement('span');
+        name.textContent = book.name || 'Untitled book';
+        label.append(input, name);
+        return label;
+    });
+    options.replaceChildren(...rows);
+    if (!rows.length) {
+        const empty = document.createElement('p');
+        empty.textContent = emptyMessage;
+        options.append(empty);
+    }
+    updatePromptLinkSummary(picker);
+}
 
-window.addEventListener('click', event => {
-    if (!controls.worldBookSelectBox.parentElement.contains(event.target)) setWorldBookPicker(false);
-});
+export function bindChatSettingsEditor() {
+  controls.chatSettingsModal = document.getElementById('chat-settings-modal')
+  const worldInfoPicker = document.getElementById('chat-world-info-picker');
+  const miniPromptsPicker = document.getElementById('chat-mini-prompts-picker');
+  for (const picker of [worldInfoPicker, miniPromptsPicker]) {
+    picker.addEventListener('change', () => updatePromptLinkSummary(picker));
+  }
 
 document.getElementById('chat-settings-btn').addEventListener('click', async () => {
             loadThemePresetsDropdown(); 
@@ -48,9 +70,7 @@ document.getElementById('chat-settings-btn').addEventListener('click', async () 
             document.getElementById('group-avatar-preview').hidden = !isGroup;
             document.getElementById('chat-settings-contact-name').textContent = chat.name;
             document.getElementById('chat-settings-error').textContent = '';
-            document.getElementById('chat-location-group').hidden = Boolean(isGroup);
             for (const disclosure of document.querySelectorAll('.chat-settings-body details')) disclosure.open = false;
-            setWorldBookPicker(false);
             document.querySelector('.chat-settings-body').scrollTop = 0;
             const groupNai = document.getElementById('group-nai-settings-group');
             const singleNai = document.getElementById('nai-character-settings-group');
@@ -83,7 +103,8 @@ document.getElementById('chat-settings-btn').addEventListener('click', async () 
             for (const [id, [key, fallback]] of Object.entries(chatFeatureSwitches)) {
                 document.getElementById(id).checked = chat.settings[key] ?? fallback;
             }
-            document.getElementById('chat-character-location').value = chat.settings.characterLocation || '';
+            setLocationFields('chat-character-location', { location: chat.settings.characterLocation, timeZone: chat.settings.timeZone });
+            setLocationFields('chat-user-location', { location: chat.settings.userLocation, timeZone: chat.settings.userTimeZone });
             document.getElementById('chat-holiday-dates').value = chat.settings.holidayDates || '';
             document.getElementById('chat-name-input').value = chat.name;
             document.getElementById('my-persona').value = chat.settings.myPersona;
@@ -111,21 +132,6 @@ const timePerceptionToggle = document.getElementById('time-perception-toggle');
 timePerceptionToggle.checked = chat.settings.enableTimePerception;
 
 
-const timezoneSelect = document.getElementById('time-zone-select');
-
-const timezones = Intl.supportedValuesOf('timeZone');
-const selectedZone = chat.settings.timeZone || 'Asia/Shanghai';
-if (!timezones.includes(selectedZone)) timezones.push(selectedZone);
-document.getElementById('time-zone-search-input').value = '';
-timezoneSelect.innerHTML = ''; 
-timezones.forEach(tz => {
-    const option = document.createElement('option');
-    option.value = tz;
-    option.textContent = tz;
-    timezoneSelect.appendChild(option);
-});
-
-timezoneSelect.value = selectedZone;
 if (isGroup) {
     
     document.getElementById('group-background-activity-switch').checked = chat.settings.enableBackgroundActivity;
@@ -176,10 +182,7 @@ document.getElementById('enable-tts-switch').checked = chat.settings.enableTts !
   
             
             
-            const worldBookCheckboxesContainer = document.getElementById('world-book-checkboxes-container');
-            worldBookCheckboxesContainer.innerHTML = ''; 
-        
-            const [allBooks, stickerCategories] = await Promise.all([
+            const [miniPrompts, stickerCategories] = await Promise.all([
                 runtime.db.worldBooks.toArray(),
                 runtime.db.stickerCategories.toArray()
             ]);
@@ -200,20 +203,10 @@ document.getElementById('enable-tts-switch').checked = chat.settings.enableTts !
             stickerGroups.replaceChildren(...stickerOptions);
             if (!stickerOptions.length) stickerGroups.textContent = 'Create a group in the Stickers app to assign it here.';
         
-            const linkedBookIds = new Set((chat.settings.linkedWorldBookIds || []).map(String));
-            const miniPromptOptions = allBooks.map(book => {
-                const label = document.createElement('label');
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.value = 'book_' + book.id;
-                checkbox.checked = linkedBookIds.has(String(book.id));
-                label.append(checkbox, String(book.name));
-                return label;
-            });
-            worldBookCheckboxesContainer.replaceChildren(...miniPromptOptions);
-            if (!miniPromptOptions.length) worldBookCheckboxesContainer.textContent = 'No Mini Prompts books yet.';
-
-            updateWorldBookSelectionDisplay();
+            renderPromptLinkPicker(worldInfoPicker, getLoreBooks(), chat.settings.linkedLoreBookIds,
+                'Create or import a lorebook in World Info to link it here.');
+            renderPromptLinkPicker(miniPromptsPicker, miniPrompts, chat.settings.linkedWorldBookIds,
+                'Create or import a book in Mini Prompts to link it here.');
 
             const themeRadio = [...document.querySelectorAll('input[name="theme-select"]')]
                 .find(input => input.value === chat.settings.theme) ?? document.getElementById('theme-default');
@@ -297,20 +290,18 @@ document.getElementById('save-chat-settings-btn').addEventListener('click', asyn
     chat.settings.myPersona = document.getElementById('my-persona').value;
     chat.settings.myAvatar = document.getElementById('my-avatar-preview').src;
     
-    const checkedBookItems = document.querySelectorAll('#world-book-checkboxes-container input[type="checkbox"]:checked');
-    const newLinkedBookIds = [];
-    checkedBookItems.forEach(cb => {
-        if (cb.value.startsWith('book_')) {
-            newLinkedBookIds.push(cb.value.replace('book_', ''));
-        }
-    });
-    chat.settings.linkedWorldBookIds = newLinkedBookIds;
+    chat.settings.linkedLoreBookIds = selectedPromptBooks(worldInfoPicker);
+    chat.settings.linkedWorldBookIds = selectedPromptBooks(miniPromptsPicker);
     chat.settings.stickerCategoryIds = Array.from(
         document.querySelectorAll('#chat-sticker-groups input:checked'), checkbox => checkbox.value
     );
     
     chat.settings.enableTimePerception = document.getElementById('time-perception-toggle').checked;
-    chat.settings.timeZone = document.getElementById('time-zone-select').value;
+    const characterLocation = readLocationFields('chat-character-location');
+    const userLocation = readLocationFields('chat-user-location');
+    chat.settings.timeZone = characterLocation.timeZone;
+    chat.settings.userTimeZone = userLocation.timeZone;
+    chat.settings.userLocation = userLocation.location;
     const sourceName = chat.isGroup ? 'group-nai-prompt-source' : 'nai-prompt-source';
     const promptSource = document.querySelector('input[name="' + sourceName + '"]:checked')?.value ?? 'system';
     chat.settings.naiSettings = { ...chat.settings.naiSettings, promptSource };
@@ -321,13 +312,15 @@ document.getElementById('save-chat-settings-btn').addEventListener('click', asyn
         chat.settings.groupAvatar = document.getElementById('group-avatar-preview').src;
         chat.settings.actionCooldownMinutes = Math.max(1, parseInt(document.getElementById('group-action-cooldown-input').value) || 10);
     } else {
+        const diaryCss = document.getElementById('chat-diary-css');
+        if (diaryCss) chat.settings.diaryCss = diaryCss.value.trim();
         const holidayInput = document.getElementById('chat-holiday-dates');
         const holidayDates = holidayInput.value.trim();
         try { parseCalendarDates(holidayDates); } catch (error) { return invalid(error.message, holidayInput, 'Features'); }
         for (const [id, [key]] of Object.entries(chatFeatureSwitches)) {
             chat.settings[key] = document.getElementById(id).checked;
         }
-        chat.settings.characterLocation = document.getElementById('chat-character-location').value.trim();
+        chat.settings.characterLocation = characterLocation.location;
         chat.settings.holidayDates = holidayDates;
         chat.settings.enableBackgroundActivity = document.getElementById('char-background-activity-switch').checked;
         const newOfflineModeState = document.getElementById('offline-mode-toggle').checked;
@@ -343,7 +336,7 @@ document.getElementById('save-chat-settings-btn').addEventListener('click', asyn
             
             const switchInstruction = {
                 role: 'system',
-                content: '[系统指令：模式已切换！你现在回到了线上聊天模式。你的回复【必须】严格遵守线上模式的JSON数组格式，例如 [{"type": "text", "content": "你好"}]]',
+                content: '[System instruction: The chat is back in online mode. Return the online JSON array format, for example [{"type": "text", "content": "Hi"}].]',
                 timestamp: Date.now(),
                 isHidden: true 
             };

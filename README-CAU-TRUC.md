@@ -57,10 +57,10 @@ Tên file trong bảng tính từ thư mục tương ứng ở cột đầu.
 | Thư mục | File và vai trò |
 | --- | --- |
 | `home/` | `HomeScreen.tsx` quản lý shortcut, trang Home, dock và kéo thả. `HomeWidgets.tsx` chứa mẫu, bản xem trước và trình sửa widget. `StatusBar.tsx` hiển thị thanh trạng thái. `TutorialScreen.tsx` hiển thị hướng dẫn. |
-| `chat/` | `ChatListScreen.tsx` là danh sách hội thoại. `ChatInterfaceScreen.tsx` là khung trò chuyện và thanh công cụ. `ChatSettingsScreen.tsx` chia cài đặt theo ba tab Setup, Features và Appearance. `ChatSessions.tsx` là giao diện quản lý phiên và nhánh hội thoại. |
+| `chat/` | `ChatListScreen.tsx` là danh sách hội thoại. `ChatInterfaceScreen.tsx` là khung trò chuyện và thanh công cụ. `ChatSettingsScreen.tsx` chia cài đặt theo các tab Setup, Features, Appearance và Diary (chat riêng). `ChatSessions.tsx` là giao diện quản lý phiên và nhánh hội thoại. |
 | `chat/` | `ChatTodoDialog.tsx` quản lý việc cần làm trong chat. `SearchHistoryScreen.tsx` là màn hình tìm lịch sử. `GroupManagement.tsx` quản lý thành viên và `GroupActivities.tsx` chứa các hoạt động nhóm. |
 | `chat/` | `MessageDialogs.tsx` chứa hộp thoại thao tác tin nhắn. `PaymentDialogs.tsx` chứa hộp thoại chuyển tiền, lì xì và các thẻ thanh toán. `SharingDialogs.tsx` chứa hộp thoại chia sẻ. |
-| `chat/` | `model.ts` định nghĩa tin nhắn, hội thoại và phiên. `sessions.ts` lưu, chuyển và tạo nhánh phiên. `replies.ts` xử lý công cụ dưới tin nhắn, sửa trực tiếp và các phiên bản trả lời. `format.ts` định dạng thời gian. `shared-cards.ts` render thẻ chia sẻ. `chat-features.ts` xử lý tùy chọn chat, ngày đặc biệt, bình chọn và dữ liệu tính năng đưa vào prompt. |
+| `chat/` | `model.ts` định nghĩa tin nhắn, hội thoại và phiên. `sessions.ts` lưu, chuyển và tạo nhánh phiên. `replies.ts` xử lý menu của bong bóng chat, sửa trực tiếp và các phiên bản trả lời. `format.ts` định dạng thời gian. `shared-cards.ts` render thẻ chia sẻ. `chat-features.ts` xử lý tùy chọn chat, ngày đặc biệt, bình chọn và dữ liệu tính năng đưa vào prompt. |
 | `characters/` | `CharacterEditScreen.tsx` tạo, sửa và nhập nhân vật. `characters.ts` lưu hồ sơ, prompt và lời chào. `card.ts` đọc Character Card PNG, JSON hoặc CHARX. `gallery.ts` chọn avatar theo thời gian hoặc số cuộc gọi. |
 | `character-phone/` | `CharacterSelectionScreen.tsx` chọn nhân vật. `CharacterPhoneScreen.tsx` lắp launcher và các màn hình Cphone. `CharacterProfileModal.tsx` hiển thị hồ sơ nhân vật. |
 | `personas/`, `npc/` | `PersonaTab.tsx` quản lý persona trong QQ, gồm chọn persona mặc định. `PersonaDialogs.tsx` chứa hộp thoại persona. `NpcEditorModal.tsx` là form tạo và cấu hình NPC. |
@@ -130,3 +130,14 @@ Khi mở EPhone, `src/main.tsx` tải `App.tsx`. Ứng dụng mở cơ sở dữ
 | `SillyTavern/` | Mã tham khảo trong những bản làm việc có thư mục này. EPhone chạy từ mã nguồn và bản build của chính nó. |
 
 Xem [README.md](README.md) để chạy dự án và [HUONG-DAN-CSS.md](HUONG-DAN-CSS.md) để tra selector hoặc nhập CSS.
+
+
+## Luồng chat và dữ liệu mới
+
+| Phần | Nguồn và luồng xử lý |
+| --- | --- |
+| Vị trí và múi giờ | `LocationFields.tsx` dùng chung cho Chat Settings và Personas. `location.ts` phân giải múi giờ, tính độ lệch và ngày địa phương. Chat lưu `characterLocation`, `timeZone`, `userLocation` và `userTimeZone` trong `settings`. Persona lưu `location` và `timeZone`. |
+| Gen và định dạng phản hồi | `legacy/chat/ai/context.js` dựng prompt và lịch sử. `prompts.js` định nghĩa hợp đồng JSON, `response.js` và `reply-bubbles.js` xử lý nội dung, `commerce.js` xử lý Bank và Market. |
+| Reply Rules và các lượt | `chat/reply-rules.ts` lưu mặc định và ghi đè trong `deviceSettings`. `reply-turns.ts` và `replies.ts` xử lý các phiên bản theo lượt và liên kết với tin của user. |
+| World Info, Mini Prompts và Presets | `lorebooks` lưu World Info, `worldBooks` lưu Mini Prompts, `presets` lưu Presets. `context.ts`, `budget.ts` và `presets/prompt-order.ts` dựng ngữ cảnh gửi provider. |
+| Diary | `chat/DiaryPanel.tsx` và `chat/diary.ts`. Các bài nằm trong `chat.diary`, CSS trong `chat.settings.diaryCss`. |

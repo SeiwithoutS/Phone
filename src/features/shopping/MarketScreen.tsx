@@ -4,7 +4,7 @@ import { Icon, IconButton } from '../../components/icons'
 import { BackButton, Screen, ScreenContext, ScreenHeader } from '../../components/phone'
 import { screenPaths } from '../../app/routes'
 import { runtime } from '../../legacy/runtime/state.js'
-import { balanceFor, bankAmount, transferEvent } from '../bank/bank'
+import { balanceFor, bankAmount, bankBalanceEvent, bankOpeningBalance, transferEvent } from '../bank/bank'
 import { useBankCurrency } from '../bank/useBankCurrency'
 import type { Transfer } from '../bank/bank'
 import type { LocalDatabase } from '../../storage/database'
@@ -62,7 +62,8 @@ function Market({ database }: { database: LocalDatabase }) {
   const quantity = lines.reduce((sum, line) => sum + line.quantity, 0)
   const picked = orders.find(order => order.id === selectedId)
   const pickedContact = picked?.chatId ? runtime.state.chats[picked.chatId] : undefined
-  const trackedOrders = orders.filter(order => orderFilter === 'All' ||
+  const myOrders = orders.filter(order => !order.buyerId)
+  const trackedOrders = myOrders.filter(order => orderFilter === 'All' ||
     (deliveryStatus(order, now) === 'Delivered') === (orderFilter === 'Delivered'))
   const byShop = new Map<string, typeof lines>()
   for (const line of lines) {
@@ -73,12 +74,13 @@ function Market({ database }: { database: LocalDatabase }) {
 
   useEffect(() => {
     let active = true
-    const refresh = () => void Promise.all([marketProducts(database), database.marketOrders.toArray(), database.bankTransfers.toArray()])
-      .then(([products, rows, transfers]) => {
+    const refresh = () => void Promise.all([marketProducts(database), database.marketOrders.toArray(),
+      database.bankTransfers.toArray(), database.bankAccounts.get('user')])
+      .then(([products, rows, transfers, account]) => {
         if (!active) return
         setProducts(products)
         setOrders((rows as MarketOrder[]).sort((a, b) => b.timestamp - a.timestamp))
-        setBalance(balanceFor('user', transfers as Transfer[]))
+        setBalance(balanceFor('user', transfers as Transfer[], bankOpeningBalance(account)))
         setLoaded(true)
       }).catch(() => { if (active) setError('Could not load Marketplace.') })
     const updateGift = (event: Event) => {
@@ -91,12 +93,14 @@ function Market({ database }: { database: LocalDatabase }) {
     const updateClock = () => setNow(Date.now())
     refresh()
     window.addEventListener(transferEvent, refresh)
+    window.addEventListener(bankBalanceEvent, refresh)
     window.addEventListener(marketGiftEvent, updateGift)
     window.addEventListener('focus', updateClock)
     const timer = window.setInterval(updateClock, 15_000)
     return () => {
       active = false
       window.removeEventListener(transferEvent, refresh)
+      window.removeEventListener(bankBalanceEvent, refresh)
       window.removeEventListener(marketGiftEvent, updateGift)
       window.removeEventListener('focus', updateClock)
       clearInterval(timer)
@@ -245,7 +249,7 @@ function Market({ database }: { database: LocalDatabase }) {
               aria-pressed={orderFilter === filter} onClick={() => setOrderFilter(filter)}>{filter}</button>)}
           </div>
         </div>
-        {loaded && trackedOrders.length === 0 && <p className="market-empty">{orders.length ? 'No orders in this section.' : 'Your orders will appear here.'}</p>}
+        {loaded && trackedOrders.length === 0 && <p className="market-empty">{myOrders.length ? 'No orders in this section.' : 'Your orders will appear here.'}</p>}
         {trackedOrders.map(order => {
           const status = deliveryStatus(order, now)
           const arrival = deliveryTimeline(order).at(-1)!

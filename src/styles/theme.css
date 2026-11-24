@@ -99,7 +99,7 @@
 #chat-messages .qq-editing { width: min(100%, 42rem); }
 #chat-messages .qq-editing .message-bubble { flex-basis: 100%; }
 #chat-messages .qq-editing .message-bubble > .content { padding: 0; }
-#chat-messages .qq-editing > .qq-message-tools { display: none; }
+#chat-messages .qq-editing .qq-message-tools { display: none; }
 #chat-messages .qq-inline-edit {
   padding: 8px 10px 4px;
   border: 1px solid var(--ui-divider);

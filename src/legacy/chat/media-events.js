@@ -126,7 +126,7 @@ document.getElementById('confirm-create-post-btn').addEventListener('click', asy
         
         const historyMessage = {
             role: 'system',
-            content: `[系统提示：用户刚刚发布了一条动态(ID: ${newPostId})，内容摘要是：“${postSummary}”。请你【结合自己的角色设定、世界观和你们的最近聊天内容】，对这条动态发表一条自然的评论。]`,
+            content: `[System notice: The user published a post (ID: ${newPostId}): "${postSummary}". Comment naturally using your persona, world information, and recent conversation together.]`,
             timestamp: Date.now(),
             isHidden: true
         };

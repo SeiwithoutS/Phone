@@ -124,7 +124,9 @@ export async function handleWaimaiResponse(originalTimestamp, choice) {
         
             
             const originalMessage = chat.history[messageIndex];
-            if (originalMessage.bankTransferId || ['accepted', 'declined'].includes(originalMessage.status)) { hideTransferActionModal(); return; }
+            if (originalMessage.type !== 'waimai_request' || originalMessage.role === 'user' || originalMessage.status !== 'pending' ||
+                (originalMessage.countdownEndTime && originalMessage.countdownEndTime <= Date.now()) ||
+                !['paid', 'rejected'].includes(choice)) return;
             originalMessage.status = choice;
             
             
@@ -133,9 +135,9 @@ export async function handleWaimaiResponse(originalTimestamp, choice) {
             
             if (choice === 'paid') {
                 originalMessage.paidBy = myNickname; 
-                systemContent = `[系统提示：你 (${myNickname}) 为 ${originalMessage.senderName} 的外卖订单（时间戳: ${originalTimestamp}）完成了支付。此订单已关闭，其他成员不能再支付。]`;
+                systemContent = `[System notice: You (${myNickname}) paid for ${originalMessage.senderName}'s delivery (timestamp: ${originalTimestamp}). The order is closed and no one else can pay it.]`;
             } else {
-                systemContent = `[系统提示：你 (${myNickname}) 拒绝了 ${originalMessage.senderName} 的外卖代付请求（时间戳: ${originalTimestamp}）。]`;
+                systemContent = `[System notice: You (${myNickname}) declined ${originalMessage.senderName}'s delivery payment request (timestamp: ${originalTimestamp}).]`;
             }
         
             
@@ -202,7 +204,7 @@ export async function handleUserPat(chatId, characterOriginalName) {
             chat.history.push(visibleMessage);
         
             
-            const hiddenMessageContent = `[系统提示：用户（${myNickname}）刚刚拍了拍你（${characterOriginalName}）${suffix.trim()}。请你对此作出回应。]`;
+            const hiddenMessageContent = `[System notice: The user (${myNickname}) gave you (${characterOriginalName}) a pat ${suffix.trim()}. React in character.]`;
             const hiddenMessage = {
                 role: 'system',
                 content: hiddenMessageContent,
@@ -240,11 +242,13 @@ export async function handleUserTransferResponse(choice) {
         
             const timestamp = runtime.activeTransferTimestamp;
             const chat = runtime.state.chats[runtime.state.activeChatId];
-            const messageIndex = chat.history.findIndex(m => m.timestamp === timestamp);
-            if (messageIndex === -1) return;
-        
-            
-            const originalMessage = chat.history[messageIndex];
+            const originalMessage = chat?.history.find(m => m.timestamp === timestamp);
+            if (originalMessage?.type !== 'transfer' || originalMessage.role !== 'assistant' || originalMessage.bankTransferId ||
+                originalMessage.isRefund || ['accepted', 'declined'].includes(originalMessage.status) ||
+                !['accepted', 'declined'].includes(choice)) {
+                hideTransferActionModal();
+                return;
+            }
             originalMessage.status = choice;
         
             let systemContent;
@@ -263,10 +267,10 @@ export async function handleUserTransferResponse(choice) {
                 chat.history.push(refundMessage);
                 
                 
-                systemContent = `[系统提示：你拒绝并退还了“${originalMessage.senderName}”的转账。]`;
+                systemContent = `[System notice: You declined and returned the transfer from "${originalMessage.senderName}".]`;
             } else { 
                 
-                systemContent = `[系统提示：你接受了“${originalMessage.senderName}”的转账。]`;
+                systemContent = `[System notice: You accepted the transfer from "${originalMessage.senderName}".]`;
             }
         
             
@@ -362,20 +366,16 @@ export async function triggerAiFriendApplication(chatId) {
             }
         
             const systemPrompt = `
-        # 你的任务
-        你现在是角色“${chat.name}”。你之前被用户（你的聊天对象）拉黑了，你们已经有一段时间没有联系了。
-        现在，你非常希望能够和好，重新和用户聊天。请你仔细分析下面的“被拉黑前的对话摘要”，理解当时发生了什么，然后思考一个真诚的、符合你人设、并且【针对具体事件】的申请理由。
-        # 你的角色设定
-        ${chat.settings.aiPersona}
-        # 指令格式
-        你的回复【必须】是一个JSON对象，格式如下：
-        \`\`\`json
-        {
-          "decision": "apply",
-          "reason": "在这里写下你想对用户说的、真诚的、有针对性的申请理由。"
-        }
-        \`\`\`
-        `;
+# Ask to reconnect
+You are "${chat.name}". The user blocked you, and you have been out of touch. You want to reconcile and talk to them again. Read the summary of your last conversation before the block. Work out what happened and give a sincere reason that addresses the specific event and fits your character. Use the language established by the character, user, and relevant context.
+
+## Character persona
+${chat.settings.aiPersona}
+
+## Output
+Return only a valid JSON object, starting with { and ending with }. Omit surrounding prose, explanation, and Markdown fences.
+{"decision":"apply","reason":"A sincere message to the user about what happened."}
+`;
         
             try {
                 
@@ -642,10 +642,10 @@ export async function handleOpenRedPacket(packet) {
                     });
                 }
                 const luckyKingDisplayName = luckyKing.name ? getDisplayNameInGroup(chat, luckyKing.name) : '无';
-                hiddenMessageContent = `[系统提示：用户 (${myDisplayName}) 领取了最后一个红包。红包已被领完，Top Claim是 ${luckyKingDisplayName}！请对此事件发表评论。]`;
+                hiddenMessageContent = `[System notice: The user (${myDisplayName}) claimed the last share of the red packet. The packet is closed. The luckiest member was ${luckyKingDisplayName}. Comment in character on the result.]`;
         
             } else {
-                hiddenMessageContent = `[系统提示：用户 (${myDisplayName}) 刚刚领取了红包 (时间戳: ${packet.timestamp})。红包还未领完，你现在可以使用 'open_red_packet' 指令来尝试领取。]`;
+                hiddenMessageContent = `[System notice: The user (${myDisplayName}) claimed part of the red packet (timestamp: ${packet.timestamp}). Shares remain. You can try to claim one with 'open_red_packet'.]`;
             }
         
             const hiddenMessage = { 
@@ -845,8 +845,8 @@ export async function endPoll(timestamp) {
             if (confirmed) {
                 poll.isClosed = true;
         
-                const resultSummary = poll.options.map(opt => `“${opt}”(${pollVotes(poll.votes, opt).length}票)`).join('，');
-                const hiddenMessageContent = `[系统提示：用户手动结束了投票！最终结果为：${resultSummary}。]`;
+                const resultSummary = poll.options.map(opt => `"${opt}" (${pollVotes(poll.votes, opt).length} votes)`).join(', ');
+                const hiddenMessageContent = `[System notice: The user closed the poll. Final results: ${resultSummary}.]`;
                 
                 const hiddenMessage = {
                     role: 'system',

@@ -76,10 +76,11 @@ export async function saveCharacter(draft: CharacterDraft) {
   const preferred = runtime.state.personaPresets.find(entry => entry.id === runtime.db.getPreference('default-persona'))
   const defaults = {
     myPersona: preferred?.persona || '', myNickname: preferred?.name || 'Me', maxMemory: 10, myAvatar: preferred?.avatar || runtime.defaultAvatar,
+    userLocation: preferred?.location ?? '', userTimeZone: preferred?.timeZone ?? '',
     background: '', theme: 'default', fontSize: 13, customCss: '', linkedWorldBookIds: [],
     aiAvatarLibrary: [], myAvatarLibrary: [], enableBackgroundActivity: true, actionCooldownMinutes: 15,
     enableTimePerception: true, isOfflineMode: false, offlineMinLength: 100, offlineMaxLength: 300,
-    offlinePresetId: null, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    offlinePresetId: null, timeZone: '',
   }
   const next: DirectChat = {
     id, isPinned: false, unreadCount: 0,

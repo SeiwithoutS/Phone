@@ -369,7 +369,7 @@ export async function handleCreateSpectatorGroup() {
         },
         history: [{ 
             role: 'system',
-            content: '[系统指令：这是一个没有用户参与的群聊，请你们根据各自的人设自由地开始对话。]',
+            content: '[System instruction: The user does not participate in this group. Start the conversation in character.]',
             timestamp: Date.now(),
             isHidden: true
         }],

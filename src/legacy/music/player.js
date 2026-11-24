@@ -142,7 +142,7 @@ export async function togglePlayPause() {
         }
     } else {
         runtime.audioPlayer.pause();
-        await addMusicActionSystemMessage('暂停了音乐');
+        await addMusicActionSystemMessage('paused the music.');
     }
 }
 
@@ -246,7 +246,7 @@ export async function playSong(index) {
         coverEl.src = track.cover || 'https://s3plus.meituan.net/opapisdk/op_ticket_885190757_1757748720126_qdqqd_1jt5sv.jpeg';
     }
     
-    await addMusicActionSystemMessage(`将歌曲切换为了《${track.name}》`);
+    await addMusicActionSystemMessage(`switched to "${track.name}".`);
     runtime.musicState.parsedLyrics = parseLRC(track.lrcContent || "");
     
     renderLyrics(); 

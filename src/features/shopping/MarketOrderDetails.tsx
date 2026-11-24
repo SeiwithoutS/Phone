@@ -51,7 +51,8 @@ export function MarketOrderDetails({ order, now, format, openChat, updateGift }:
       {order.items.map((item, index) => <div key={index} className="market-cart-row">
         <div className="market-cart-item">
           {item.image && <img src={item.image} alt="" onError={event => { event.currentTarget.hidden = true }} />}
-          <div><strong>{item.name}</strong><small>{item.seller ? item.seller + ' · ' : ''}Qty {item.quantity}</small></div>
+          <div><strong>{item.name}</strong><small>{item.seller ? item.seller + ' · ' : ''}Qty {item.quantity}</small>
+            {item.description && <small>{item.description}</small>}</div>
         </div>
         <strong>{format(item.quantity * item.cents)}</strong>
       </div>)}
