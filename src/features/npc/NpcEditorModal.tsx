@@ -35,7 +35,7 @@ export function NpcEditorModal() {
             {" "}
             <label htmlFor="npc-background-activity-switch" style={{ marginBottom: "0" }}>
               {" Enable independent background activity "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Allow this NPC to comment on posts in the background. Enable background activity in API Connections as well. "}</p>
+              <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Allow this NPC to comment on posts in the background. Enable background activity in API Connections as well. "}</p>
               {" "}
             </label>
             {" "}
@@ -52,7 +52,7 @@ export function NpcEditorModal() {
             {" "}
             <label htmlFor="npc-action-cooldown-input">
               {" Action cooldown (minutes) "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Minimum interval between background actions. "}</p>
+              <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Minimum interval between background actions. "}</p>
               {" "}
             </label>
             {" "}

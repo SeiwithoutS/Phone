@@ -874,14 +874,14 @@ export function renderCharWallet() {
     `;
     summaryCard.innerHTML = `
         <p style="color: #8a8a8a; margin: 0 0 10px 0;">Account Balance</p>
-        <p style="font-size: 32px; font-weight: 600; color: #1f1f1f; margin: 0;">¥${totalBalance.toFixed(2)}</p>
+        <p style="font-size: 2rem; font-weight: 600; color: #1f1f1f; margin: 0;">¥${totalBalance.toFixed(2)}</p>
     `;
     contentEl.appendChild(summaryCard);
 
     
     const detailsTitle = document.createElement('h3');
     detailsTitle.textContent = "Recent Spending";
-    detailsTitle.style.cssText = `font-size: 16px; color: #555; margin-bottom: 10px;`;
+    detailsTitle.style.cssText = `font-size: 1rem; color: #555; margin-bottom: 10px;`;
     contentEl.appendChild(detailsTitle);
 
     if (purchases.length === 0) {
@@ -902,9 +902,9 @@ export function renderCharWallet() {
         itemEl.innerHTML = `
             <div>
                 <p style="font-weight: 500; margin: 0 0 4px 0;">${item.itemName}</p>
-                <p style="font-size: 12px; color: #8a8a8a; margin: 0;">${taobaoStatusLabel(item.status)}</p>
+                <p style="font-size: 0.75rem; color: #8a8a8a; margin: 0;">${taobaoStatusLabel(item.status)}</p>
             </div>
-            <div style="font-weight: 600; font-size: 16px; color: #ff5722;">- ¥${(item.price || 0).toFixed(2)}</div>
+            <div style="font-weight: 600; font-size: 1rem; color: #ff5722;">- ¥${(item.price || 0).toFixed(2)}</div>
         `;
         contentEl.appendChild(itemEl);
     });

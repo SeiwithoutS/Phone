@@ -78,6 +78,13 @@ export function WallpaperScreen() {
           </label>
           {" "}
         </div>
+        <div className="form-group settings-tools">
+          <label htmlFor="qq-action-language" style={{ marginBottom: 0 }}>QQ action notices</label>
+          <select id="qq-action-language" defaultValue="en">
+            <option value="en">English</option>
+            <option value="vi">Tiếng Việt</option>
+          </select>
+        </div>
         <hr style={{ width: "80%", opacity: "0.3", margin: "30px 0" }} />
         <section className="phone-app-card message-sound-card">
           <div className="message-sound-heading">
@@ -112,7 +119,7 @@ export function WallpaperScreen() {
             <IconButton icon="reset" id="reset-button-order-btn" label="Restore default toolbar order" />
             {" "}
           </div>
-          <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Drag the buttons below to reorder them. Changes are saved automatically. "}</p>
+          <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Drag the buttons below to reorder them. Changes are saved automatically. "}</p>
           <div id="button-order-editor" style={{ display: "flex", flexWrap: "wrap", gap: "10px", padding: "10px", backgroundColor: "var(--ui-raised)", borderRadius: "8px", border: "1px solid var(--border-color)" }}>{" "}</div>
         </div>
         <hr style={{ width: "80%", opacity: "0.3", margin: "30px 0" }} />
@@ -122,7 +129,7 @@ export function WallpaperScreen() {
         </details>
         <hr style={{ width: "80%", opacity: "0.3", margin: "30px 0" }} />
         <h3 style={{ marginTop: "0", borderBottom: "1px solid var(--border-color)", paddingBottom: "10px", width: "100%", textAlign: "left" }}>Appearance Presets</h3>
-        <p style={{ fontSize: "12px", color: "#8a8a8a", marginTop: "-5px", lineHeight: "1.5", width: "100%", textAlign: "left" }}>{" Save or load wallpaper, icons, toolbar order, and theme."}</p>
+        <p style={{ fontSize: "0.75rem", color: "#8a8a8a", marginTop: "-5px", lineHeight: "1.5", width: "100%", textAlign: "left" }}>{" Save or load wallpaper, icons, toolbar order, and theme."}</p>
         <div className="form-group" style={{ width: "100%" }}>
           {" "}
           <label htmlFor="appearance-preset-select">Select a preset</label>
@@ -159,7 +166,7 @@ export function WallpaperScreen() {
             {" "}
           </label>
           {" "}
-          <textarea id="global-css-input" rows={6} style={{ width: "100%", marginTop: "8px", fontFamily: "monospace", fontSize: "16px", resize: "vertical" }} placeholder="/* Enter your custom CSS here */" />
+          <textarea id="global-css-input" rows={6} style={{ width: "100%", marginTop: "8px", fontFamily: "monospace", fontSize: "1rem", resize: "vertical" }} placeholder="/* Enter your custom CSS here */" />
           {" "}
         </div>
         {" "}

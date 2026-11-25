@@ -95,10 +95,6 @@ document.getElementById('enable-ai-drawing-switch').addEventListener('change', a
 
 document.getElementById('search-history-btn').addEventListener('click', openSearchHistoryScreen);
 
-document.getElementById('search-history-back-btn').addEventListener('click', () => {
-    showScreen('chat-settings-screen');
-});
-
 document.getElementById('execute-search-btn').addEventListener('click', handleSearchHistory);
 
 document.getElementById('clear-search-btn').addEventListener('click', clearSearchFilters);

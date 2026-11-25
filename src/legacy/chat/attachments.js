@@ -12,25 +12,38 @@ import { showScreen } from '../../app/routes'
 import { runtime } from '../runtime/state.js'
 import { pollVotes, recordVote } from '../../features/chat/chat-features'
 import { sendUserTransfer } from './messages.js'
+import { escapeHtml } from '../../runtime/files'
+
+export function waimaiPaymentStatus(message) {
+    if (message.status === 'paid') return 'Paid';
+    if (message.status === 'rejected') return 'Declined';
+    if (message.countdownEndTime && Number(message.countdownEndTime) <= Date.now()) return 'Expired';
+    return 'Awaiting payment';
+}
 
 export function startWaimaiCountdown(element, endTime) {
             const timerId = setInterval(() => {
                 const now = Date.now();
                 const distance = endTime - now;
         
-                if (distance < 0) {
+                if (distance <= 0 || !element.isConnected) {
                     clearInterval(timerId);
-                    element.innerHTML = "<span>Expired</span>";
+                    if (element.isConnected) {
+                        const card = element.closest('.waimai-card');
+                        element.closest('.countdown-label').textContent = 'Expired';
+                        card.querySelector('.payment-label').textContent = 'Amount';
+                        card.querySelector('.waimai-user-actions')?.remove();
+                    }
                     return;
                 }
         
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const minutes = Math.floor(distance / (1000 * 60));
                 const seconds = Math.floor((distance % (1000 * 60)) / 1000);
                 
                 const minStr = String(minutes).padStart(2, '0');
                 const secStr = String(seconds).padStart(2, '0');
         
-                element.innerHTML = `<span>${minStr.charAt(0)}</span><span>${minStr.charAt(1)}</span> : <span>${secStr.charAt(0)}</span><span>${secStr.charAt(1)}</span>`;
+                element.innerHTML = `${Array.from(minStr, digit => `<span>${digit}</span>`).join('')} : <span>${secStr[0]}</span><span>${secStr[1]}</span>`;
             }, 1000);
             return timerId;
         }
@@ -49,7 +62,7 @@ export async function showWaimaiDetails(timestamp) {
     const message = chat.history.find(m => m.timestamp === timestamp);
     
     if (!message || !['waimai_request', 'waimai_order'].includes(message.type)) {
-        console.error("showWaimaiDetails: 找不到消息或消息类型不正确", timestamp);
+        console.error('Delivery message not found', timestamp);
         return;
     }
     
@@ -57,25 +70,14 @@ export async function showWaimaiDetails(timestamp) {
 
     if (message.type === 'waimai_request') {
         
-        let statusText;
-        switch(message.status) {
-            case 'paid':
-                const payerName = message.paidBy || '对方';
-                const payerDisplayName = getDisplayNameInGroup(chat, payerName);
-                statusText = `由 ${payerDisplayName} 为您代付成功`;
-                break;
-            case 'rejected':
-                statusText = '代付请求已被拒绝';
-                break;
-            default:
-                statusText = '等待对方处理';
-                break;
-        }
+        const statusText = waimaiPaymentStatus(message);
+        const paidBy = !chat.isGroup && message.paidBy === '我' ? chat.settings.myNickname || 'You' : message.paidBy;
+        const payer = getDisplayNameInGroup(chat, paidBy);
         detailsHtml = `
-            <div style="text-align: left; font-size: 15px; line-height: 1.8;">
-                <strong>Item:</strong> ${message.productInfo}<br>
+            <div style="text-align: left; font-size: 0.9375rem; line-height: 1.8;">
+                <strong>Item:</strong> ${escapeHtml(String(message.productInfo ?? ''))}<br>
                 <strong>Amount:</strong> ¥${Number(message.amount).toFixed(2)}<br>
-                <strong>Status:</strong> ${statusText}
+                <strong>Status:</strong> ${statusText}${message.status === 'paid' && payer ? ` by ${escapeHtml(String(payer))}` : ''}
             </div>
         `;
     } else if (message.type === 'waimai_order') {
@@ -91,22 +93,21 @@ export async function showWaimaiDetails(timestamp) {
             
             if (message.role === 'user') {
                 
-                senderDisplayName = chat.settings.myNickname || '我';
+                senderDisplayName = chat.settings.myNickname || 'You';
                 recipientDisplayName = chat.name; 
             } else {
                 
                 senderDisplayName = chat.name;
-                recipientDisplayName = chat.settings.myNickname || '我';
+                recipientDisplayName = chat.settings.myNickname || 'You';
             }
         }
         
 
         detailsHtml = `
-            <div style="text-align: left; font-size: 15px; line-height: 1.8;">
-                <strong>Order Type:</strong> Order for Character<br>
-                <strong>From:</strong> ${senderDisplayName}<br>
-                <strong>To:</strong> ${recipientDisplayName}<br>
-                <strong>Item:</strong> ${message.productInfo}<br>
+            <div style="text-align: left; font-size: 0.9375rem; line-height: 1.8;">
+                <strong>From:</strong> ${escapeHtml(String(senderDisplayName))}<br>
+                <strong>To:</strong> ${escapeHtml(String(recipientDisplayName))}<br>
+                <strong>Item:</strong> ${escapeHtml(String(message.productInfo ?? ''))}<br>
                 <strong>Amount:</strong> ¥${Number(message.amount).toFixed(2)}
             </div>
         `;
@@ -125,7 +126,7 @@ export async function handleWaimaiResponse(originalTimestamp, choice) {
             
             const originalMessage = chat.history[messageIndex];
             if (originalMessage.type !== 'waimai_request' || originalMessage.role === 'user' || originalMessage.status !== 'pending' ||
-                (originalMessage.countdownEndTime && originalMessage.countdownEndTime <= Date.now()) ||
+                waimaiPaymentStatus(originalMessage) === 'Expired' ||
                 !['paid', 'rejected'].includes(choice)) return;
             originalMessage.status = choice;
             
@@ -190,11 +191,11 @@ export async function handleUserPat(chatId, characterOriginalName) {
         
             
             
-            const myNickname = getDisplayNameInGroup(chat, runtime.state.qzoneSettings.nickname);
+            const myNickname = chat.settings.myNickname || (chat.isGroup ? runtime.state.qzoneSettings.nickname : 'You');
             
             
             
-            const visibleMessageContent = `${myNickname} 拍了拍 “${displayNameForUI}” ${suffix.trim()}`;
+            const visibleMessageContent = [`${myNickname} nudged “${displayNameForUI}”`, suffix.trim()].filter(Boolean).join(' ');
             const visibleMessage = {
                 role: 'system',
                 type: 'pat_message',
@@ -616,7 +617,7 @@ export async function handleOpenRedPacket(packet) {
             const visibleMessage = { 
                 role: 'system', 
                 type: 'pat_message', 
-                content: `你领取了 ${senderDisplayName} 的红包`, 
+                content: `You claimed a share of ${senderDisplayName}’s red packet`,
                 
                 timestamp: timestamp++ 
             };
@@ -627,7 +628,7 @@ export async function handleOpenRedPacket(packet) {
                 const finishedMessage = {
                     role: 'system',
                     type: 'pat_message',
-                    content: `${senderDisplayName} 的红包已被领完`,
+                    content: `${senderDisplayName}’s red packet has been fully claimed`,
                     
                     timestamp: timestamp++ 
                 };
@@ -690,10 +691,10 @@ export async function showRedPacketDetails(packet) {
         
             const claimedCount = Object.keys(packet.claimedBy || {}).length;
             const claimedAmountSum = Object.values(packet.claimedBy || {}).reduce((sum, val) => sum + val, 0);
-            let summaryText = `${claimedCount}/${packet.count}个红包，共${claimedAmountSum.toFixed(2)}/${packet.totalAmount.toFixed(2)}元。`;
+            let summaryText = `${claimedCount} of ${packet.count} shares claimed (¥${claimedAmountSum.toFixed(2)} of ¥${Number(packet.totalAmount).toFixed(2)}).`;
             if (!packet.isFullyClaimed && claimedCount < packet.count) {
                 const timeLeft = Math.floor((packet.timestamp + 24*60*60*1000 - Date.now()) / (1000 * 60 * 60));
-                if(timeLeft > 0) summaryText += ` 剩余红包将在${timeLeft}小时内退还。`;
+                if (timeLeft > 0) summaryText += ` Unclaimed shares will be returned in about ${timeLeft} h.`;
             }
             document.getElementById('rp-details-summary').textContent = summaryText;
         
@@ -724,7 +725,7 @@ export async function showRedPacketDetails(packet) {
                 const claimerDisplayName = getDisplayNameInGroup(chat, originalName);
         
                 item.innerHTML = `
-                    <span class="name">${claimerDisplayName}</span>
+                    <span class="name">${escapeHtml(String(claimerDisplayName))}</span>
                     <span class="amount">¥${amount.toFixed(2)}</span>
                     ${luckyTag}
                 `;
@@ -867,22 +868,22 @@ export function showPollResults(timestamp) {
             const poll = chat.history.find(m => m.timestamp === timestamp);
             if (!poll || !poll.isClosed) return;
         
-            let resultsHtml = `<p><strong>${poll.question}</strong></p><hr style="opacity: 0.2; margin: 10px 0;">`;
+            let resultsHtml = `<p><strong>${escapeHtml(String(poll.question))}</strong></p><hr style="opacity: 0.2; margin: 10px 0;">`;
             
-            if (Object.keys(poll.votes).length === 0) {
+            if (Object.keys(poll.votes ?? {}).length === 0) {
                 resultsHtml += '<p style="color: #8a8a8a;">No votes yet.</p>';
             } else {
                 poll.options.forEach(option => {
                     const voters = pollVotes(poll.votes, option);
                     
                     
-                    const displayVoters = voters.map(originalName => getDisplayNameInGroup(chat, originalName)).join('、 ');
+                    const displayVoters = voters.map(originalName => getDisplayNameInGroup(chat, originalName)).join(', ');
         
                     resultsHtml += `
                         <div style="margin-bottom: 15px;">
-                            <p style="font-weight: 500; margin: 0 0 5px 0;">${option} (${voters.length}票)</p>
-                            <p style="font-size: 13px; color: #555; margin: 0; line-height: 1.5;">
-                                ${voters.length > 0 ? displayVoters : '无人投票'}
+                            <p style="font-weight: 500; margin: 0 0 5px 0;">${escapeHtml(String(option))} (${voters.length} ${voters.length === 1 ? 'vote' : 'votes'})</p>
+                            <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0; line-height: 1.5;">
+                                ${voters.length > 0 ? escapeHtml(displayVoters) : 'No votes'}
                             </p>
                         </div>
                     `;

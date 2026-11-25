@@ -6,19 +6,19 @@ export function CharacterNaiPromptsModal() {
       <div className="modal-content">
         <div className="modal-header">
           <span>Character NovelAI Prompts</span>
-          <span className="close" id="close-character-nai-prompts" style={{ cursor: "pointer", float: "right", fontSize: "28px", fontWeight: "bold" }}>{"×"}</span>
+          <span className="close" id="close-character-nai-prompts" style={{ cursor: "pointer", float: "right", fontSize: "1.75rem", fontWeight: "bold" }}>{"×"}</span>
         </div>
         <div className="modal-body">
-          <p style={{ fontSize: "13px", color: "#666", marginBottom: "20px", backgroundColor: "#f0f8ff", padding: "12px", borderRadius: "6px", borderLeft: "3px solid #007bff" }}>{" These prompts apply to images generated for this character. "}</p>
+          <p style={{ fontSize: "0.8125rem", color: "#666", marginBottom: "20px", backgroundColor: "#f0f8ff", padding: "12px", borderRadius: "6px", borderLeft: "3px solid #007bff" }}>{" These prompts apply to images generated for this character. "}</p>
           <div className="form-group">
             <label htmlFor="character-nai-positive" style={{ color: "#333", fontWeight: "600" }}>{" Positive Prompt "}</label>
-            <textarea id="character-nai-positive" rows={4} style={{ backgroundColor: "#f8f9fa", color: "#333", border: "1px solid #ccc", padding: "10px", width: "100%", borderRadius: "4px", resize: "vertical", fontSize: "13px" }} placeholder="Example: masterpiece, best quality, 1girl, detailed eyes, long hair, anime style" />
-            <small style={{ display: "block", color: "#666", fontSize: "12px", marginTop: "5px" }}>{" Describe the desired image style or add artist tags. "}</small>
+            <textarea id="character-nai-positive" rows={4} style={{ backgroundColor: "#f8f9fa", color: "#333", border: "1px solid #ccc", padding: "10px", width: "100%", borderRadius: "4px", resize: "vertical", fontSize: "0.8125rem" }} placeholder="Example: masterpiece, best quality, 1girl, detailed eyes, long hair, anime style" />
+            <small style={{ display: "block", color: "#666", fontSize: "0.75rem", marginTop: "5px" }}>{" Describe the desired image style or add artist tags. "}</small>
           </div>
           <div className="form-group">
             <label htmlFor="character-nai-negative" style={{ color: "#333", fontWeight: "600" }}>{" Negative Prompt "}</label>
-            <textarea id="character-nai-negative" rows={4} style={{ backgroundColor: "#f8f9fa", color: "#333", border: "1px solid #ccc", padding: "10px", width: "100%", borderRadius: "4px", resize: "vertical", fontSize: "13px" }} placeholder="Example: lowres, bad anatomy, bad hands, text, error, missing fingers" />
-            <small style={{ display: "block", color: "#666", fontSize: "12px", marginTop: "5px" }}>{" Describe what the image should avoid. "}</small>
+            <textarea id="character-nai-negative" rows={4} style={{ backgroundColor: "#f8f9fa", color: "#333", border: "1px solid #ccc", padding: "10px", width: "100%", borderRadius: "4px", resize: "vertical", fontSize: "0.8125rem" }} placeholder="Example: lowres, bad anatomy, bad hands, text, error, missing fingers" />
+            <small style={{ display: "block", color: "#666", fontSize: "0.75rem", marginTop: "5px" }}>{" Describe what the image should avoid. "}</small>
           </div>
         </div>
         <div className="modal-footer">
@@ -36,7 +36,7 @@ export function NovelaiSettingsModal() {
       <div className="modal-content" style={{ maxWidth: "600px", width: "90%", maxHeight: "85vh", overflowY: "auto" }}>
         <div className="modal-header">
           <span>NovelAI Generation Settings</span>
-          <span className="close" id="close-novelai-settings" style={{ cursor: "pointer", float: "right", fontSize: "28px", fontWeight: "bold" }}>{"×"}</span>
+          <span className="close" id="close-novelai-settings" style={{ cursor: "pointer", float: "right", fontSize: "1.75rem", fontWeight: "bold" }}>{"×"}</span>
         </div>
         <div className="modal-body" style={{ padding: "20px" }}>
           <div className="form-group">
@@ -98,21 +98,21 @@ export function NovelaiSettingsModal() {
             <label style={{ color: "#333" }}>Quality Tags</label>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <input type="checkbox" id="nai-quality-toggle" defaultChecked style={{ width: "auto" }} />
-              <span style={{ color: "#666", fontSize: "14px" }}>Automatically Add Quality Tags</span>
+              <span style={{ color: "#666", fontSize: "0.875rem" }}>Automatically Add Quality Tags</span>
             </div>
           </div>
           <div className="form-group">
             <label style={{ color: "#333" }}>SMEA (Detail Enhancement)</label>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <input type="checkbox" id="nai-smea" defaultChecked style={{ width: "auto" }} />
-              <span style={{ color: "#666", fontSize: "14px" }}>Enable SMEA</span>
+              <span style={{ color: "#666", fontSize: "0.875rem" }}>Enable SMEA</span>
             </div>
           </div>
           <div className="form-group">
             <label style={{ color: "#333" }}>SMEA DYN (Dynamic SMEA)</label>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <input type="checkbox" id="nai-smea-dyn" style={{ width: "auto" }} />
-              <span style={{ color: "#666", fontSize: "14px" }}>Enable Dynamic SMEA</span>
+              <span style={{ color: "#666", fontSize: "0.875rem" }}>Enable Dynamic SMEA</span>
             </div>
           </div>
           <div className="form-group">
@@ -156,7 +156,7 @@ export function NovelaiTestModal() {
       <div className="modal-content" style={{ maxWidth: "700px", width: "90%", maxHeight: "90vh", overflowY: "auto" }}>
         <div className="modal-header">
           <span>Test NovelAI Generation</span>
-          <span className="close" id="close-novelai-test" style={{ cursor: "pointer", float: "right", fontSize: "28px", fontWeight: "bold" }}>{"×"}</span>
+          <span className="close" id="close-novelai-test" style={{ cursor: "pointer", float: "right", fontSize: "1.75rem", fontWeight: "bold" }}>{"×"}</span>
         </div>
         <div className="modal-body" style={{ padding: "20px" }}>
           <div className="form-group">
@@ -168,7 +168,7 @@ export function NovelaiTestModal() {
             <textarea id="nai-test-negative" rows={3} style={{ backgroundColor: "#f8f9fa", color: "#333", border: "1px solid #ccc", padding: "10px", width: "100%", borderRadius: "4px", resize: "vertical" }} placeholder="Leave blank to use the default negative prompt" />
           </div>
           <div style={{ textAlign: "center", margin: "20px 0" }}>
-            <button id="nai-generate-btn" style={{ backgroundColor: "#007bff", color: "white", border: "none", padding: "12px 30px", borderRadius: "6px", cursor: "pointer", fontSize: "16px", fontWeight: "bold" }} type="button">{" Generate Image "}</button>
+            <button id="nai-generate-btn" style={{ backgroundColor: "#007bff", color: "white", border: "none", padding: "12px 30px", borderRadius: "6px", cursor: "pointer", fontSize: "1rem", fontWeight: "bold" }} type="button">{" Generate Image "}</button>
           </div>
           <div id="nai-test-status" style={{ textAlign: "center", color: "#666", margin: "15px 0", display: "none" }}>{" Generating image… "}</div>
           <div id="nai-test-result" style={{ display: "none", marginTop: "20px" }}>

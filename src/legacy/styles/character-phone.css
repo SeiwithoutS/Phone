@@ -112,7 +112,7 @@
 
 #character-profile-modal #profile-main-content .text {
     font-family: "SimSun", "Songti SC", serif; 
-    font-size: 16px; 
+    font-size: 1rem;
 }
 
 #character-profile-modal .thought-content .label {
@@ -147,7 +147,7 @@
             cursor: pointer;
             border: none;
             background-color: transparent;
-            font-size: 14px;
+            font-size: 0.875rem;
             font-weight: 500;
             color: var(--text-secondary);
             border-bottom: 2px solid transparent;
@@ -204,7 +204,7 @@
 
 .character-select-item .name {
     font-weight: 500;
-    font-size: 16px;         
+    font-size: 1rem;
     color: var(--text-primary);
 }
 
@@ -218,9 +218,9 @@
 
 #char-clock-container { text-align: center; color: white; text-shadow: 0 3px 8px rgba(0,0,0,0.4); margin-top: calc(60px + env(safe-area-inset-top)); flex-shrink: 0; margin-bottom: 100px; }
 
-#char-main-time { font-size: 88px; font-weight: 600; letter-spacing: -2px; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+#char-main-time { font-size: 5.5rem; font-weight: 600; letter-spacing: -2px; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
 
-#char-main-date { font-size: 22px; font-weight: normal; }
+#char-main-date { font-size: 1.375rem; font-weight: normal; }
 
 #char-app-grid { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
 
@@ -231,11 +231,11 @@
 
 .memo-item, .usage-item { padding: 15px 20px; border-bottom: 1px solid var(--border-color); cursor: pointer; }
 
-.memo-item .content { font-size: 16px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.memo-item .content { font-size: 1rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.usage-item .timestamp { font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; }
+.usage-item .timestamp { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 5px; }
 
-.usage-item .action { font-size: 15px; color: var(--text-primary); }
+.usage-item .action { font-size: 0.9375rem; color: var(--text-primary); }
 
 #char-album-grid {
     display: grid;
@@ -258,13 +258,13 @@
 
 .char-browser-item .title {
     font-weight: 500;
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--text-primary);
     margin-bottom: 4px;
 }
 
 .char-browser-item .url {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--accent-color);
     white-space: nowrap;
     overflow: hidden;
@@ -299,20 +299,20 @@
 }
 
 .char-product-item .product-name {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: #333;
     line-height: 1.4;
     min-height: 36px;
 }
 
 .char-product-item .product-price {
-    font-size: 16px;
+    font-size: 1rem;
     font-weight: 700;
     color: #ff5722;
     margin-top: 8px;
 }
 
-.char-product-item .product-price::before { content: '¥'; font-size: 12px; }
+.char-product-item .product-price::before { content: '¥'; font-size: 0.75rem; }
 
 #char-qq-screen .list-container {
     padding: 0; 
@@ -376,7 +376,7 @@
     height: 100%;
     border: none;
     background-color: transparent;
-    font-size: 16px;
+    font-size: 1rem;
     line-height: 1.7; 
     padding: 15px 20px; 
     box-sizing: border-box;
@@ -410,7 +410,7 @@
 #char-memo-detail-content {
     background-color: var(--secondary-bg); 
     padding: 15px 20px; 
-    font-size: 17px; 
+    font-size: 1.0625rem;
     line-height: 1.7; 
     color: var(--text-primary);
 }
@@ -449,7 +449,7 @@
 }
 
 .amap-item-icon {
-    font-size: 24px;
+    font-size: 1.5rem;
     color: var(--accent-color);
     margin-top: 2px;
 }
@@ -460,12 +460,12 @@
 
 .amap-item-title {
     font-weight: 600;
-    font-size: 16px;
+    font-size: 1rem;
     margin-bottom: 4px;
 }
 
 .amap-item-address {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--text-secondary);
 }
 
@@ -476,7 +476,7 @@
 }
 
 .amap-item-comment {
-    font-size: 14px;
+    font-size: 0.875rem;
     line-height: 1.6;
     white-space: pre-wrap; 
 }
@@ -491,7 +491,7 @@
 }
 
 .amap-item-footer {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--text-secondary);
     margin-top: 10px;
     text-align: right;
@@ -528,16 +528,16 @@
 
 .usage-item-name {
     font-weight: 500;
-    font-size: 16px;
+    font-size: 1rem;
 }
 
 .usage-item-category {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--text-secondary);
 }
 
 .usage-item-time {
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--text-secondary);
     font-weight: 500;
     flex-shrink: 0;
@@ -583,14 +583,14 @@
 
 .music-item-name {
     font-weight: 500;
-    font-size: 16px;
+    font-size: 1rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .music-item-artist {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--text-secondary);
 }
 
@@ -619,7 +619,7 @@
 #char-music-player-modal .char-player-close-btn {
     background: none;
     border: none;
-    font-size: 20px;
+    font-size: 1.25rem;
     color: #aaa;
     cursor: pointer;
 }
@@ -696,7 +696,7 @@
 }
 
 #char-music-player-modal .char-player-controls .control-btn.mode {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 500;
     width: 50px;
 }
@@ -705,7 +705,7 @@
     flex-grow: 1;
     overflow-y: auto;
     padding: 0 35px 25px 35px;
-    font-size: 14px;
+    font-size: 0.875rem;
     line-height: 2;
     color: #888;
     text-align: center;
@@ -753,7 +753,7 @@
     right: 15px;
     background: none;
     border: none;
-    font-size: 24px;
+    font-size: 1.5rem;
     font-weight: 300;
     color: #aaa;
     cursor: pointer;
@@ -774,13 +774,13 @@
 }
 
 #char-music-player-modal #char-music-player-title {
-    font-size: 20px;
+    font-size: 1.25rem;
     font-weight: 600;
     margin: 0 0 5px 0;
 }
 
 #char-music-player-modal #char-music-artist {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: #888;
     margin: 0;
 }
@@ -811,7 +811,7 @@
 
 #char-music-player-modal #char-lyric-placeholder {
     color: #aaa;
-    font-size: 18px;
+    font-size: 1.125rem;
     letter-spacing: 5px;
     margin-bottom: 25px;
 }
@@ -849,7 +849,7 @@
 }
 
 #char-music-player-modal .char-player-controls .control-btn.mode {
-    font-size: 14px; font-weight: 500; width: 50px;
+    font-size: 0.875rem; font-weight: 500; width: 50px;
 }
 
 #char-music-player-modal #char-music-lyrics {
@@ -884,7 +884,7 @@
     right: 15px;
     background: none;
     border: none;
-    font-size: 24px;
+    font-size: 1.5rem;
     font-weight: 300;
     color: #aaa;
     cursor: pointer;
@@ -905,13 +905,13 @@
 }
 
 #char-music-player-modal #char-music-player-title {
-    font-size: 20px;
+    font-size: 1.25rem;
     font-weight: 600;
     margin: 0 0 5px 0;
 }
 
 #char-music-player-modal #char-music-artist {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: #888;
     margin: 0;
 }
@@ -946,7 +946,7 @@
     overflow: hidden; 
     position: relative;
     margin-bottom: 25px;
-    font-size: 14px;
+    font-size: 0.875rem;
     line-height: 25px; 
     color: #888;
     text-align: center;
@@ -961,7 +961,7 @@
 #char-music-player-modal #char-music-lyrics p.active {
     color: #000;
     font-weight: 600;
-    font-size: 16px; 
+    font-size: 1rem;
 }
 
 #char-music-player-modal .char-player-footer {
@@ -997,7 +997,7 @@
 }
 
 #char-music-player-modal .char-player-controls .control-btn.mode {
-    font-size: 14px; font-weight: 500; width: 50px;
+    font-size: 0.875rem; font-weight: 500; width: 50px;
 }
 
 #chat-list .chat-list-item {

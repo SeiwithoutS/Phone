@@ -1,5 +1,5 @@
 import { openPhotoViewer, renderAlbumList, renderAlbumPhotosScreen } from '../album/album.js'
-import { applyCustomFont, resetToDefaultFont } from '../appearance/fonts.js'
+import { bindFontSettings } from '../appearance/fonts.js'
 import { toggleTheme } from '../appearance/theme.js'
 import { showCallTranscript } from '../calls/calls.js'
 import { renderCallHistoryScreen } from '../chat/attachments.js'
@@ -14,20 +14,7 @@ import { controls } from '../runtime/state.js'
 import { runtime } from '../runtime/state.js'
 
 export function bindQzonePostEditor() {
-controls.fontUrlInput = document.getElementById('font-url-input')
-
-controls.fontUrlInput.addEventListener('input', () => applyCustomFont(controls.fontUrlInput.value.trim(), true));
-
-document.getElementById('save-font-btn').addEventListener('click', async () => {
-                        const newFontUrl = controls.fontUrlInput.value.trim();
-                        if (!newFontUrl) { alert("Enter a valid font URL."); return; }
-                        applyCustomFont(newFontUrl, false);
-                        runtime.state.globalSettings.fontUrl = newFontUrl;
-                        await runtime.db.globalSettings.put(runtime.state.globalSettings);
-                        alert("Font saved and applied.");
-                    });
-
-document.getElementById('reset-font-btn').addEventListener('click', resetToDefaultFont);
+bindFontSettings();
 
 document.querySelectorAll('#chat-list-bottom-nav .nav-item').forEach(item => { item.addEventListener('click', () => switchToChatListView(item.dataset.view)); });
 

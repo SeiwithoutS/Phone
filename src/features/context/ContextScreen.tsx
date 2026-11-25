@@ -131,7 +131,8 @@ function ContextEditor({ database, fromChat }: { database: LocalDatabase; fromCh
         <p className="phone-app-muted">Estimated input {tokens(plan.used)} of {tokens(plan.inputLimit)}</p>
         {plan.error && <p className="phone-app-error" role="alert">{plan.error}</p>}
         {plan.sections.map((section, index) => <details key={section.id + '-' + index} className="phone-feature-panel">
-          <summary>{section.id === 'instructions' ? 'Instructions and persona' : section.id === 'request' ? 'Current request' : sourceLabels[section.id]}
+          <summary>{section.id === 'instructions' ? section.inline ? 'Remaining reply instructions' : 'Instructions and persona' : section.id === 'request' ? 'Current request' : sourceLabels[section.id]}
+            {section.id === 'miniPrompts' && section.inline ? ' (inside system message)' : ''}
             {' · '}{section.messages.length}/{section.total}{' · '}{tokens(section.tokens)}{section.limit !== undefined && ' / ' + tokens(section.limit)}</summary>
           {section.messages.length ? section.messages.map((message, index) => <div className="context-message" key={index}>
             <small>{message.role}</small><pre>{promptText(message)}</pre>

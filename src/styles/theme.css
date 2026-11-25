@@ -154,7 +154,7 @@
 .api-image-input-setting small { display: block; margin-top: .3rem; color: var(--ui-muted); font-weight: 400; }
 #npc-association-list { max-height: 150px; overflow: auto; background: var(--ui-raised); padding: 10px; border-radius: 8px; }
 #character-social-profile-btn { min-height: 36px; padding-inline: 12px; }
-#chat-interface-screen :is(#open-memory-screen-btn, #chat-settings-btn, #listen-together-btn) {
+#chat-interface-screen :is(#chat-settings-btn, #listen-together-btn) {
   min-width: 36px;
   min-height: 36px;
   color: var(--ui-text);

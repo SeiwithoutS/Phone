@@ -1,11 +1,9 @@
 import { summarizeExistingLongTermMemory } from '../api/client.js'
-import { deleteApiPreset, handlePresetSelectionChange, saveApiPreset } from '../api/settings.js'
 import { openLongTermMemoryScreen } from '../appearance/theme.js'
 import { hideThoughtsHistory, loadMoreThoughts, showThoughtsHistory } from '../character-phone/profile.js'
 import { handleAddManualMemory, handleDeleteMemory, handleEditMemory, handleManualSummary } from './memories.js'
 import { loadMoreQzonePosts } from '../qzone/feed.js'
 import { handlePostClick } from '../qzone/gestures.js'
-import { showScreen } from '../../app/routes'
 import { controls } from '../runtime/state.js'
 import { runtime } from '../runtime/state.js'
 
@@ -29,15 +27,6 @@ document.getElementById('refine-memory-btn-header').addEventListener('click', ()
             }
         });
 
-document.getElementById('api-preset-select').addEventListener('change', handlePresetSelectionChange);
-
-document.getElementById('save-api-preset-btn').addEventListener('click', saveApiPreset);
-
-document.getElementById('delete-api-preset-btn').addEventListener('click', deleteApiPreset);
-
-
-
-
 document.getElementById('thoughts-history-list').addEventListener('click', (e) => {
             if (e.target && e.target.id === 'load-more-thoughts-btn') {
                 loadMoreThoughts();
@@ -60,10 +49,6 @@ document.getElementById('character-profile-modal').addEventListener('click', (e)
 
 export function bindMemoryNavigation() {
   document.getElementById('open-memory-screen-btn').addEventListener('click', openLongTermMemoryScreen);
-
-document.getElementById('memory-screen-back-btn').addEventListener('click', () => {
-            showScreen('chat-interface-screen');
-        });
 
 document.getElementById('add-manual-memory-btn-header').addEventListener('click', handleAddManualMemory);
 

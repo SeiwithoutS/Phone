@@ -57,7 +57,7 @@ export function ChatInterfaceScreen() {
             <span id="reading-title">No book selected</span>
             <div className="reading-controls">
               {" "}
-              <button id="minimize-reading-btn" title="Minimize" style={{ fontSize: "20px", lineHeight: "1" }} type="button" aria-label="Minimize">
+              <button id="minimize-reading-btn" title="Minimize" style={{ fontSize: "1.25rem", lineHeight: "1" }} type="button" aria-label="Minimize">
                 {" "}
                 <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
                   <line x1="5" y1="12" x2="19" y2="12" />
@@ -65,7 +65,7 @@ export function ChatInterfaceScreen() {
                 {" "}
               </button>
               {" "}
-              <button id="open-reading-library-btn" title="Open Library" style={{ fontSize: "22px", lineHeight: "1" }} type="button" aria-label="Open Library">
+              <button id="open-reading-library-btn" title="Open Library" style={{ fontSize: "1.375rem", lineHeight: "1" }} type="button" aria-label="Open Library">
                 {" "}
                 <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="3" y1="12" x2="21" y2="12" />
@@ -121,16 +121,6 @@ export function ChatInterfaceScreen() {
             </div>
           </div>
           <div className="header-actions">
-            {" "}
-            <span className="action-btn" id="open-memory-screen-btn" title="Long-Term Memory">
-              {" "}
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M16 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M12 6L9 9L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M21 5V19C21 20.1046 20.1046 21 19 21H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              {" "}
-            </span>
             {" "}
             <IconButton icon="music" id="listen-together-btn" label="Listen Together" />
             {" "}

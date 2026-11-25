@@ -2,6 +2,7 @@ import { resolveTimeZone } from '../../../features/chat/location'
 import { newReplyTurn, replyTimestamp } from '../../../features/chat/reply-turns'
 import { requestContextCompletion } from '../../../features/api/completion'
 import { characterPrompt } from '../../../features/characters/characters'
+import { changeCharacterNickname, describeUserIdentity } from '../../../features/chat/user-identity'
 import { withConversationRequest } from '../../../features/chat/sessions'
 import { getGeminiResponseText, parseAiResponse } from '../../api/client.js'
 import { appendMessage, setAvatarActingState } from '../conversation.js'
@@ -41,7 +42,6 @@ async function handlePropelActionForConversation() {
         const zone = resolveTimeZone(chat.settings.characterLocation, chat.settings.timeZone).zone;
         const currentTime = now.toLocaleString('en-GB', { timeZone: zone, dateStyle: 'full', timeStyle: 'short' });
         const timeOfDayGreeting = getTimeOfDayGreeting(now, zone);
-        const myNickname = chat.settings.myNickname || '我';
 
         let musicContext = '';
         if (runtime.musicState.isActive && runtime.musicState.activeChatId === chat.id) {
@@ -88,7 +88,7 @@ ${characterPrompt(chat)}
 # Relationship and identity
 - Your original name is "${chat.originalName}". Use it in an action's "name" field.
 - The user's display name for you is "${chat.name}". You can suggest changing it.
-- Your nickname for the user is "${myNickname}". You can change it.
+- ${describeUserIdentity(chat.settings)}
 ${userProfileContext}
 ${nameHistoryContext}
 # Available stickers
@@ -114,7 +114,7 @@ Use the actual timestamp when quoting a message or responding to a pending trans
 - **Share a link** \`{"type": "share_link", "title": "Title", "description": "Summary", "source_name": "Source", "content": "Full text"}\`
 - **Share location** \`{"type": "location_share", "content": "Place name"}\`
 - **Change your display name** \`{"type": "change_remark_name", "new_name": "New name"}\`
-- **Change the user's nickname** \`{"type": "change_user_nickname", "new_name": "New nickname"}\`
+- **Change the nickname you use for the user in this chat** \`{"type": "change_user_nickname", "new_name": "New nickname"}\`. Only the user can change their display name.
 - **Change your avatar** \`{"type": "change_avatar", "name": "Name from your avatar library"}\`
 - **Change the user's avatar** \`{"type": "change_user_avatar", "name": "Name from the user's avatar library"}\`
 - **Respond to a friend request** \`{"type": "friend_request_response", "decision": "accept"}\`. Use "reject" to decline.
@@ -167,6 +167,15 @@ Continue the conversation using the rules and history provided.
         const turn = newReplyTurn();
         let messageTimestamp = replyTimestamp(chat.history);
         for (const msgData of processedActions) {
+            if (msgData.type === 'change_user_nickname') {
+                const notices = changeCharacterNickname(chat, msgData.new_name, messageTimestamp);
+                if (notices) {
+                    messageTimestamp += notices.length;
+                    chat.history.push(...notices.map(message => ({ ...message, ...turn })));
+                    if (runtime.state.activeChatId === chat.id) appendMessage(notices[0], chat);
+                }
+                continue;
+            }
             const aiMessage = {
                 role: 'assistant',
                 senderName: chat.originalName,

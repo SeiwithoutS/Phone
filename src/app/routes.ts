@@ -66,7 +66,7 @@ export function resolveScreen(pathname: string) {
 }
 
 type ScreenState = { bookId?: string | number; chatListView?: 'npc-list-view'; socialActorId?: string; stickerChatId?: string; contextChatId?: string;
-  chatId?: string; from?: 'chat' | 'bank'; food?: boolean }
+  chatId?: string; chatSettingsTab?: 'Features'; from?: 'chat' | 'bank'; food?: boolean }
 type NavigateScreen = (id: ScreenId, state?: ScreenState) => void
 let navigateScreen: NavigateScreen | undefined
 

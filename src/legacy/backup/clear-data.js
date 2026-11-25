@@ -69,7 +69,7 @@ export function renderClearWizardStep2() {
                     <div class="checkbox"></div>
                     <div>
                         <span class="name">${type.name}</span>
-                        <p style="font-size: 12px; color: #888; margin: 4px 0 0;">${type.description}</p>
+                        <p style="font-size: 0.75rem; color: #888; margin: 4px 0 0;">${type.description}</p>
                     </div>
                 `;
                 listEl.appendChild(item);
@@ -150,7 +150,7 @@ export async function handleConfirmDataClear() {
                                             chat.nameHistory = [];
                                         }
                                         if (chat.settings) {
-                                            chat.settings.myNickname = '我';
+                                            delete chat.settings.characterNickname;
                                         }
                                         await tx.chats.put(chat);
                                     }

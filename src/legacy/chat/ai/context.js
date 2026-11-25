@@ -1,7 +1,7 @@
 import { resolveTimeZone } from '../../../features/chat/location'
 import { effectiveReplyRules } from '../../../features/chat/reply-rules'
 import { isUserMessage, replyForUser } from '../../../features/chat/reply-turns'
-import { latestUserTurn } from '../../../features/context/context'
+import { latestUserTurn } from '../../../features/context/budget'
 import { bankCurrency } from '../../../features/bank/bank'
 import { photoPromptContent } from '../../../features/api/image-input'
 import { formatTimestampForAI, getTimeOfDayGreeting } from '../../../features/chat/format'
@@ -15,11 +15,11 @@ import { buildGroupReplyPrompt, buildOfflineReplyPrompt, buildOnlineReplyPrompt 
 export async function buildQQReplyInput(chat) {
     const rawHistory = chat.history.filter(message => !message.isTemporary);
     const latestUser = rawHistory.findLast(isUserMessage);
-    const { systemPrompt, messagesPayload, activitySources } = await buildChatReplyContext({ ...chat, history: rawHistory }, chat.id);
+    const { systemPrompt, afterMiniPrompts, messagesPayload, activitySources } = await buildChatReplyContext({ ...chat, history: rawHistory }, chat.id);
     const turn = latestUserTurn(messagesPayload, Boolean(latestUser && !replyForUser(rawHistory, latestUser)));
     return {
         replyToUserTimestamp: latestUser?.timestamp ?? null,
-        input: { instructions: systemPrompt, ...turn, rawHistory, activity: activitySources, task: 'QQ reply' },
+        input: { instructions: systemPrompt, afterMiniPrompts, ...turn, rawHistory, activity: activitySources, task: 'QQ reply' },
     };
 }
 
@@ -32,7 +32,7 @@ export async function buildChatReplyContext(chat, chatId, { alternate = false } 
     const currentTime = now.toLocaleString('en-GB', { timeZone: selectedTimeZone, dateStyle: 'full', timeStyle: 'short' });
 
     const timeOfDayGreeting = getTimeOfDayGreeting(now, selectedTimeZone);
-    let systemPrompt, messagesPayload;
+    let systemPrompt, afterMiniPrompts, messagesPayload;
     const lastHiddenMessage = chat.history.filter(m => m.isHidden).pop();
     if (lastHiddenMessage?.type === 'video_call_ended' || lastHiddenMessage?.content?.includes?.('视频通话刚刚结束')) {
         const lastCallRecord = await runtime.db.callRecords
@@ -269,14 +269,6 @@ ${transcriptText}
 `;
         }
 
-        const allProducts = alternate ? [] : await runtime.db.shoppingProducts.toArray();
-        let shoppingContext = "";
-        if (allProducts.length > 0) {
-            shoppingContext = "\n\n# Your shop (gifts for the user)\n";
-            allProducts.forEach(product => {
-                shoppingContext += `- (ID: ${product.id}) Item: ${product.name}, price: ¥${product.price.toFixed(2)}\n`;
-            });
-        }
         if (isOfflineMode) {
             const minLength = chat.settings.offlineMinLength || 100;
             const maxLength = chat.settings.offlineMaxLength || 300;
@@ -422,9 +414,11 @@ ${transcriptText}
                     timeContext = "- **Conversation timing.** No usable history yet.";
                 }
             }
-            activitySources.push(latestThoughtContext, shoppingContext);
-            systemPrompt = buildOnlineReplyPrompt(chat, { currentTime, timeOfDayGreeting, timeContext, myNickname, userProfileContext, nameHistoryContext, stickerContext, contactsList,
+            activitySources.push(latestThoughtContext);
+            const prompt = buildOnlineReplyPrompt(chat, { currentTime, timeOfDayGreeting, timeContext, myNickname, userProfileContext, nameHistoryContext, stickerContext, contactsList,
                 alternate, rules: effectiveReplyRules(runtime.db, chat.id) });
+            systemPrompt = prompt.instructions;
+            afterMiniPrompts = prompt.afterMiniPrompts;
 
             messagesPayload = historySlice.map(msg => {
 
@@ -532,5 +526,5 @@ ${transcriptText}
             }
         }
     }
-    return { systemPrompt, messagesPayload, activitySources };
+    return { systemPrompt, afterMiniPrompts, messagesPayload, activitySources };
 }

@@ -1,10 +1,20 @@
 .api-generation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 0 14px; }
 .api-streaming { display: flex; align-items: center; gap: 8px; }
 #api-connection-status:empty { display: none; }
-#api-settings-screen .form-container { width: 100%; max-width: 760px; margin-inline: auto; }
+#api-settings-screen .form-container { box-sizing: border-box; width: 100%; max-width: 760px; min-height: 0; margin-inline: auto; overflow-wrap: anywhere; }
+.api-preset-controls, .api-setting-row { display: flex; align-items: center; gap: 10px; }
+.api-preset-controls { gap: 4px; }
+.api-preset-controls select { flex: 1; min-width: 0; }
+.api-setting-row > label:not(.toggle-switch) { flex: 1; min-width: 0; margin: 0; }
+.api-setting-row small { display: block; margin-top: 5px; color: var(--ui-muted); font-size: 0.75rem; font-weight: 400; }
+.api-setting-row > .toggle-switch { flex: none; margin: 0; }
+.api-setting-row > input[type=number] { flex: none; width: 80px; text-align: center; }
+#api-temperature-slider { margin-inline: 0; }
 .api-connection-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 #api-settings-screen .api-connection-actions .form-button { width: auto; margin: 0; }
-#api-connection-status { font-size: .875rem; color: var(--ui-muted); margin: 0 0 12px; }
+#api-connection-status { font-size: .875rem; color: var(--ui-muted); margin: 0 0 12px; overflow-wrap: anywhere; }
+#api-preset-status:empty { display: none; }
+#api-preset-status { font-size: .875rem; color: var(--ui-muted); margin: 8px 0 0; overflow-wrap: anywhere; }
 #api-external-model-field[hidden] { display: none; }
 .context-sources { display: grid; gap: 5px; }
 .context-source { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

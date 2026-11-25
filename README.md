@@ -24,6 +24,8 @@ bash start.sh
 
 Open <http://127.0.0.1:8017> in the phone's browser and leave Termux running. The URL always points to the device where you open it. To run EPhone locally on the phone, start it in Termux on that phone.
 
+See [Updating EPhone](#updating-ephone) when a new version is available.
+
 ### Startup troubleshooting
 
 | What you see | What to do |
@@ -35,10 +37,42 @@ Open <http://127.0.0.1:8017> in the phone's browser and leave Termux running. Th
 
 ## Updating EPhone
 
-1. Save open edits and export a full ZIP from **Backup**. Keep the existing `data/eephone.json` or the directory configured by `EEPHONE_DATA_DIR`.
-2. Stop the running server with **Ctrl+C**. If you use Git, bring the new code into the same checkout. For an extracted ZIP, update the source without replacing the data directory. If you run from a new folder, use the existing data directory or restore the ZIP there.
-3. Rebuild and start EPhone with `.\start.bat` on Windows or `bash start.sh` in Termux. With dependencies already installed, `npm start -- --build` also rebuilds and starts the server.
-4. Open the address printed in the terminal and reload the page. Check a chat and confirm that existing data is present.
+Before updating, save open edits, export a full ZIP from **Backup**, and stop the server with **Ctrl+C**. Your local data is stored in `data/eephone.json` or in the directory configured by `EEPHONE_DATA_DIR`.
+
+### Termux with a Git clone
+
+Install Git once with `pkg install git`. When a new version is published to your clone's tracked branch, run these commands. Replace `~/eephone` with your clone's folder if it has a different name.
+
+```bash
+cd ~/eephone &&
+git pull --ff-only &&
+bash start.sh
+```
+
+`git pull --ff-only` updates the source from the tracked branch. The default `data/` directory is excluded from Git, so the pull leaves your chats and settings in place. `bash start.sh` checks dependencies, rebuilds, and starts the server. If Git stops because of local edits or divergent history, run `git status` and resolve the reported issue before retrying.
+
+### Termux with a source ZIP
+
+A folder extracted from the source ZIP has no Git checkout. You can extract each new ZIP into a fresh folder and copy the existing `data/` folder into it before starting. To switch to Git updates, clone this branch into a new folder once. The commands below use the default ZIP installation and data paths.
+
+```bash
+pkg install git &&
+cd ~ &&
+git clone --branch THuong https://github.com/SeiwithoutS/Phone.git eephone-git &&
+if [ -z "${EEPHONE_DATA_DIR:-}" ] && [ -d ~/eephone/data ]; then
+  cp -a ~/eephone/data ~/eephone-git/
+fi &&
+cd ~/eephone-git &&
+bash start.sh
+```
+
+The copy runs only when the default data folder exists and `EEPHONE_DATA_DIR` is unset. If you use a custom data folder, keep the same absolute `EEPHONE_DATA_DIR` when starting the new checkout. For subsequent Git updates, use `~/eephone-git` in the previous section.
+
+### Windows and verification
+
+For a Git checkout on Windows, run `git pull --ff-only` in the project folder, then run `.\start.bat` after the pull succeeds. For a source ZIP, extract the update into a fresh folder and copy the existing data directory or restore your backup there.
+
+After starting the updated app, reload the address printed in the terminal and open an existing chat to confirm that your data is present.
 
 `npm start` builds on the first run and serves the existing build on later runs. Use the rebuild step for source and storage changes. If dependency installation needs a reset, run `.\start.bat --install` or `bash start.sh --install`. Set `EEPHONE_HOST` or `PORT` to change the local address.
 

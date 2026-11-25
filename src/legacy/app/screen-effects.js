@@ -2,7 +2,7 @@ import { renderNpcListScreen } from '../npc/npcs.js'
 import { renderFavoritesScreen } from '../qzone/favorites.js'
 import { renderQzonePosts, renderQzoneScreen, updateUnreadIndicator } from '../qzone/feed.js'
 import { runtime } from '../runtime/state.js'
-import { applyCustomFont } from '../appearance/fonts.js'
+import { renderFontSettings } from '../appearance/fonts.js'
 import { loadFontPresetsDropdown } from '../appearance/presets.js'
 import { renderWallpaperScreen } from '../appearance/wallpaper.js'
 import { renderApiSettings } from '../api/settings.js'
@@ -24,9 +24,7 @@ export function enterScreen(screenId, chatListView = 'messages-view') {
     if (screenId === 'chat-interface-screen') updateListenTogetherIcon(runtime.state.activeChatId);
     if (screenId === 'font-settings-screen') {
         void loadFontPresetsDropdown();
-        const font = runtime.state.globalSettings.fontUrl || '';
-        document.getElementById('font-url-input').value = font;
-        applyCustomFont(font, true);
+        renderFontSettings();
     }
     screen?.querySelector('.back-btn')?.blur();
 }

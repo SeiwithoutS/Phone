@@ -200,7 +200,7 @@ export async function renderCartItems() {
                         
                         
                         const variationHtml = item.variation
-                            ? `<div class="cart-item-variation" style="font-size: 12px; color: #8a8a8a; margin-top: 4px;">Variant: ${item.variation.name}</div>`
+                            ? `<div class="cart-item-variation" style="font-size: 0.75rem; color: #8a8a8a; margin-top: 4px;">Variant: ${item.variation.name}</div>`
                             : '';
                         
                         itemEl.innerHTML = `

@@ -103,7 +103,7 @@
   color: var(--feature-text);
   background: var(--feature-panel);
   font: inherit;
-  font-size: 16px;
+  font-size: 1rem;
   user-select: text;
 }
 .phone-app-stack input[type=checkbox] { width: 18px; height: 18px; margin: 0; accent-color: var(--ui-accent); }
@@ -230,6 +230,13 @@
   z-index: 20;
   flex: 0 0 auto;
   min-width: 0;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  backdrop-filter: none;
+  padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+}
+#chat-interface-screen > .header:not(:has(#global-lyrics-bar.visible)) {
+  padding-block: calc(6px + env(safe-area-inset-top)) 6px;
 }
 #phone-screen.status-bar-visible #chat-interface-screen > .header {
   padding-top: calc(40px + env(safe-area-inset-top));
@@ -252,9 +259,21 @@
   padding-bottom: calc(8px + env(safe-area-inset-bottom));
 }
 #chat-interface-screen #chat-input { min-width: 0; }
-#chat-interface-screen .default-controls #chat-header-title-wrapper { min-width: 0; }
-#chat-interface-screen .default-controls :is(#chat-header-title, #chat-header-status) { overflow: hidden; text-overflow: ellipsis; }
-#chat-interface-screen .default-controls .header-actions { gap: clamp(4px, 2vw, 15px); }
+#chat-interface-screen .default-controls { gap: 8px; }
+#chat-interface-screen .default-controls #chat-header-title-wrapper {
+  position: static;
+  transform: none;
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+}
+#chat-interface-screen #chat-header-status { max-width: 100%; }
+#chat-interface-screen #chat-header-status .status-dot { flex: none; }
+#chat-interface-screen #chat-header-status .status-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#chat-interface-screen .default-controls .header-actions { flex: none; gap: clamp(4px, 2vw, 15px); }
+#chat-interface-screen .selection-controls,
+#chat-interface-screen .selection-controls .header-actions { flex-wrap: wrap; gap: 4px 8px; }
+#chat-interface-screen .selection-controls .action-btn { width: auto; }
 #qq-branch-status { color: var(--accent-color); font-size: .72rem; }
 #chat-interface-screen .qq-chat-menu-button {
   flex: 0 0 40px;

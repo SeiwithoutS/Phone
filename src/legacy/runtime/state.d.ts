@@ -14,12 +14,12 @@ export const runtime: {
     activeChatId: string | null
     userStickers: Sticker[]
     personaPresets: Array<{ id: string; name?: string; avatar: string; persona: string; location?: string; timeZone?: string }>
-    worldBooks?: Array<{ id: string | number; name?: string; content?: Array<{ enabled?: boolean; content?: string; comment?: string }> }>
+    worldBooks?: Array<{ id: string | number; name?: string; content?: Array<{ enabled?: boolean; content?: string; comment?: string; keys?: string[] }> }>
     presets?: Array<{ id: string | number; name?: string; content?: Array<{ enabled?: boolean; content?: string; comment?: string }> }>
     lorebooks?: LoreBook[]
     qzoneSettings?: { nickname?: string }
     apiConfig?: { proxyUrl?: string; apiKey?: string; model?: string; provider?: string }
-    globalSettings?: { sendImagesToAi?: boolean; apiTemperature?: number; apiTopP?: number;
+    globalSettings?: { qqActionLanguage?: 'en' | 'vi'; sendImagesToAi?: boolean; apiTemperature?: number; apiTopP?: number;
       apiFrequencyPenalty?: number; apiPresencePenalty?: number; apiSwipes?: number; apiStreaming?: boolean }
   }
   videoCallState?: { activeChatId: string | null; isActive: boolean; isAwaitingResponse: boolean }

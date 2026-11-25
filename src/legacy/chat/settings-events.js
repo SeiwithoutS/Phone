@@ -162,7 +162,10 @@ document.getElementById('ai-voice-id-input').value = chat.settings.minimaxVoiceI
 document.getElementById('enable-tts-switch').checked = chat.settings.enableTts !== false;
     document.getElementById('ai-persona').value = chat.settings.aiPersona;
     document.getElementById('ai-avatar-preview').src = chat.settings.aiAvatar || runtime.defaultAvatar;
-    document.getElementById('my-nickname-input').value = chat.settings.myNickname || '我';
+    document.getElementById('my-nickname-input').value = chat.settings.myNickname || 'You';
+    const nicknameInput = document.getElementById('character-nickname-for-user');
+    nicknameInput.defaultValue = chat.settings.characterNickname || '';
+    nicknameInput.value = nicknameInput.defaultValue;
     document.getElementById('ai-action-cooldown-input').value = chat.settings.actionCooldownMinutes || 10;
     const select = document.getElementById('assign-group-select');
     select.innerHTML = "<option value=\"\">Ungrouped</option>";
@@ -291,7 +294,11 @@ document.getElementById('save-chat-settings-btn').addEventListener('click', asyn
     chat.settings.myAvatar = document.getElementById('my-avatar-preview').src;
     
     chat.settings.linkedLoreBookIds = selectedPromptBooks(worldInfoPicker);
-    chat.settings.linkedWorldBookIds = selectedPromptBooks(miniPromptsPicker);
+    const selectedMiniPrompts = selectedPromptBooks(miniPromptsPicker);
+    chat.settings.linkedWorldBookIds = [...new Set([
+        ...(chat.settings.linkedWorldBookIds ?? []).map(String).filter(id => selectedMiniPrompts.includes(id)),
+        ...selectedMiniPrompts,
+    ])];
     chat.settings.stickerCategoryIds = Array.from(
         document.querySelectorAll('#chat-sticker-groups input:checked'), checkbox => checkbox.value
     );
@@ -360,7 +367,7 @@ document.getElementById('save-chat-settings-btn').addEventListener('click', asyn
         chat.settings.minimaxVoiceId = document.getElementById('ai-voice-id-input').value.trim();
 chat.settings.enableTts = document.getElementById('enable-tts-switch').checked;
         chat.settings.aiAvatar = document.getElementById('ai-avatar-preview').src;
-        chat.settings.myNickname = document.getElementById('my-nickname-input').value.trim() || '我';
+        chat.settings.myNickname = document.getElementById('my-nickname-input').value.trim() || 'You';
         chat.settings.actionCooldownMinutes = Math.max(1, parseInt(document.getElementById('ai-action-cooldown-input').value) || 10);
         chat.settings.lyricsPosition = {
             vertical: document.getElementById('lyrics-vertical-pos').value,
@@ -372,6 +379,8 @@ chat.settings.enableTts = document.getElementById('enable-tts-switch').checked;
     }
 
     const button = document.getElementById('save-chat-settings-btn');
+    const nicknameInput = document.getElementById('character-nickname-for-user');
+    const nicknameEdit = nicknameInput.value.trim() !== nicknameInput.defaultValue.trim() ? nicknameInput.value.trim() : undefined;
     button.disabled = true;
     try {
         await runtime.db.transaction('rw', runtime.db.chats, async tx => {
@@ -379,6 +388,9 @@ chat.settings.enableTts = document.getElementById('enable-tts-switch').checked;
             if (!stored) throw new Error('This chat was deleted.');
             const changes = { name: chat.name, settings: chat.settings };
             if (!chat.isGroup) {
+                const nickname = nicknameEdit ?? stored.settings?.characterNickname ?? current.settings.characterNickname;
+                if (nickname === undefined) delete changes.settings.characterNickname;
+                else changes.settings.characterNickname = nickname;
                 Object.assign(changes, { originalName: chat.originalName, nameHistory: chat.nameHistory, groupId: chat.groupId });
                 if (oldOfflineModeState && !chat.settings.isOfflineMode) changes.history = [...(stored.history ?? []), chat.history.at(-1)];
             }

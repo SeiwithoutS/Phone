@@ -483,10 +483,6 @@ controls.debouncedUpdateReadingContext = debounce(updateReadingContextOnScroll, 
 
 document.getElementById('reading-content').addEventListener('scroll', controls.debouncedUpdateReadingContext);
 
-document.getElementById('api-temperature-slider').addEventListener('input', (e) => {
-    document.getElementById('api-temperature-value').textContent = e.target.value;
-});
-
 controls.chatListContainer = document.getElementById('messages-view')
 
 controls.chatListContainer.addEventListener('scroll', () => {

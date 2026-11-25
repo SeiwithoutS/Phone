@@ -4,7 +4,7 @@ import { showScreen } from '../../app/routes'
 
 export function FontSettingsScreen() {
   return (
-    <Screen id="font-settings-screen">
+    <Screen id="font-settings-screen" className="phone-feature">
       <PhoneFeatureHeader title="Font Settings" onBack={() => showScreen('home-screen')}
         actions={<HeaderSaveButton id="save-font-btn" label="Save and apply font" />} />
       <div className="form-container">
@@ -12,9 +12,9 @@ export function FontSettingsScreen() {
         <div className="form-group">
           {" "}
           <label htmlFor="font-preset-select">Select a preset</label>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <div className="font-preset-controls">
             {" "}
-            <select id="font-preset-select" style={{ flexGrow: "1" }} />
+            <select id="font-preset-select" />
             {" "}
             <IconButton icon="check" id="save-font-preset-btn" label="Save font preset" />
             {" "}
@@ -27,10 +27,14 @@ export function FontSettingsScreen() {
           <input type="text" id="font-url-input" placeholder="https://..../font.ttf" />
         </FormField>
         <div className="form-group">
+          <label htmlFor="app-font-size">App text size <output id="app-font-size-value" htmlFor="app-font-size">100%</output></label>
+          <input id="app-font-size" type="range" min={85} max={130} step={5} defaultValue={100} />
+        </div>
+        <div className="form-group">
           {" "}
           <label>Live Preview</label>
           <div id="font-preview">
-            <p style={{ fontSize: "20px", margin: "0 0 10px 0" }}>Hello World</p>
+            <p style={{ fontSize: "1.25em", margin: "0 0 10px 0" }}>Hello World</p>
             <p style={{ margin: "0" }}>Sample text and numbers 12345.</p>
           </div>
         </div>

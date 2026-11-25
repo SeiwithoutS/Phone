@@ -6,7 +6,7 @@ import { alternateReplyBubbles } from '../../legacy/chat/ai/reply-bubbles.js'
 import { openAdvancedMessageEditor } from '../../legacy/chat/editor.js'
 import { enterSelectionMode } from '../../legacy/chat/messages.js'
 import { requestContextCompletion } from '../api/completion'
-import { latestUserTurn } from '../context/context'
+import { latestUserTurn } from '../context/budget'
 import { isReply, isUserMessage, isVisibleReply, replyAnchor, replyForUser, replyTimestamp, replyTurn, turnVersions, withoutReplyVersions } from './reply-turns'
 import { changeSession, manualMemory, mutateConversation, rerenderConversation, storeConversation } from './sessions'
 import type { ChatMessage, DirectChat, GroupChat } from './model'
@@ -32,16 +32,18 @@ async function generateAlternatives(chat: Chat, turn: ChatMessage[], turnId: str
     index > anchorIndex && index < start && isUserMessage(message)) : -1
   const preceding = chat.history.slice(0, newerUser === -1 ? start : newerUser)
   const contextChat = { ...chat, history: preceding, longTermMemory: manualMemory(chat) }
-  const { systemPrompt, messagesPayload, activitySources } = await buildChatReplyContext(contextChat, chat.id, { alternate: true })
+  const { systemPrompt, afterMiniPrompts, messagesPayload, activitySources } = await buildChatReplyContext(contextChat, chat.id, { alternate: true })
   const { history, request } = anchor ? latestUserTurn(messagesPayload, true) : { history: messagesPayload, request: [] }
   const opening = turn.some(message => message.isOpening)
   const previous = versions.slice(-4).map(version => (version ?? turn).filter(isReply)
     .map(message => String(message.content ?? '').slice(0, 350)).join('\n').slice(0, 2000))
-  const instructions = systemPrompt + '\n\n# Alternate chat turn\n' +
+  const alternative = '# Alternate chat turn\n' +
     'Generate a complete alternative for this turn. ' +
     (opening ? 'Write a new opening. ' : '') + 'Avoid repeating the previous versions.'
   const response = await requestContextCompletion(contextChat, {
-    instructions, history, rawHistory: preceding, task: 'QQ swipe',
+    instructions: afterMiniPrompts === undefined ? systemPrompt + '\n\n' + alternative : systemPrompt,
+    afterMiniPrompts: afterMiniPrompts === undefined ? undefined : alternative,
+    history, rawHistory: preceding, task: 'QQ swipe',
     activity: [...activitySources, 'Previous versions to avoid repeating:\n' + JSON.stringify(previous)],
     request: request.length ? request : [{ role: 'user', content: opening
       ? 'Write an alternative opening.' : 'Write an alternative chat turn at this point.' }],

@@ -47,13 +47,13 @@ function PromptLinkPicker({ kind, title, icon, description }: {
 
 export function ChatSettingsScreen() {
   const navigate = useNavigate()
-  const { key } = useLocation()
+  const { key, state } = useLocation()
   const active = useContext(ScreenContext) === 'chat-settings-screen'
   const chatId = active && runtime.state.activeChatId
   const chat = chatId ? runtime.state.chats[chatId] : undefined
   const character = chat && !chat.isGroup ? chat : undefined
   const [tab, setTab] = useState<typeof settingsTabs[number]>('Setup')
-  useEffect(() => { setTab('Setup') }, [key])
+  useEffect(() => { setTab(state?.chatSettingsTab === 'Features' ? 'Features' : 'Setup') }, [key, state])
   useEffect(() => {
     const body = document.querySelector('.chat-settings-body')
     if (body) body.scrollTop = 0
@@ -91,13 +91,6 @@ export function ChatSettingsScreen() {
           <textarea id="ai-persona" rows={3} />
         </div>
         </div>
-        <div className="form-group" id="my-nickname-group">
-          {" "}
-          <label htmlFor="my-nickname-input">My Display Name</label>
-          {" "}
-          <input type="text" id="my-nickname-input" />
-          {" "}
-        </div>
         <div className="form-group" id="assign-group-section" style={{ display: "none" }}>
           {" "}
           <label htmlFor="assign-group-select">Contact Group</label>
@@ -108,10 +101,6 @@ export function ChatSettingsScreen() {
             <button id="manage-groups-btn" className="form-button-secondary" style={{ marginTop: "0", padding: "12px" }} type="button">Manage Groups</button>
             {" "}
           </div>
-        </div>
-        <div className="form-group" id="my-group-nickname-group">
-          <label htmlFor="my-group-nickname-input">My Group Display Name</label>
-          <input type="text" id="my-group-nickname-input" />
         </div>
         {" "}
         <details className="chat-setting-card chat-sticker-groups">
@@ -130,9 +119,23 @@ export function ChatSettingsScreen() {
           <LocationFields prefix="chat-user-location" cityLabel="My city" zoneLabel="My time zone" />
           <p className="phone-app-muted">These settings apply to this chat. Automatic mode uses a recognized city or the device time zone.</p>
         </div>
-        <div className="form-group" id="my-persona-group">
-          <label htmlFor="my-persona">My Persona</label>
-          <textarea id="my-persona" rows={3} />
+        <div className="chat-setting-card chat-identity-fields">
+          <div className="form-group" id="my-nickname-group">
+            <label htmlFor="my-nickname-input">My Display Name</label>
+            <input type="text" id="my-nickname-input" aria-describedby="my-display-name-hint" />
+            <small id="my-display-name-hint">The name from your applied persona. You can also set it for this chat.</small>
+            <label htmlFor="character-nickname-for-user">Nickname the character uses for me</label>
+            <input type="text" id="character-nickname-for-user" aria-describedby="character-nickname-hint" />
+            <small id="character-nickname-hint">You and the character can change this nickname. Leave it blank to use your display name.</small>
+          </div>
+          <div className="form-group" id="my-group-nickname-group">
+            <label htmlFor="my-group-nickname-input">My Group Display Name</label>
+            <input type="text" id="my-group-nickname-input" />
+          </div>
+          <div className="form-group" id="my-persona-group">
+            <label htmlFor="my-persona">My Persona</label>
+            <textarea id="my-persona" rows={3} />
+          </div>
         </div>
         <div className="form-group" id="group-members-group">
           <label>Group Member Descriptions</label>
@@ -153,6 +156,11 @@ export function ChatSettingsScreen() {
         </details>
         </section>
         <section hidden={tab !== "Features"} aria-label="Chat features">
+        <button className="chat-setting-card chat-setting-link" id="open-memory-screen-btn" type="button">
+          <span className="chat-setting-icon"><Icon name="book" /></span>
+          Long-Term Memory
+          <Icon name="next" />
+        </button>
         <div id="chat-character-features" className="chat-setting-toggles">
           <ChatSwitch icon="feed" id="chat-social-posts" label="Social interaction" hint="Allow this character to publish posts." />
           <ChatSwitch icon="bag" id="chat-store-purchases" label="Shopping" hint="Let the character buy items or order food from Market during a reply, using their own balance." />
@@ -163,7 +171,7 @@ export function ChatSettingsScreen() {
           {" "}
           <label htmlFor="ai-action-cooldown-input">
             {" Cooldown (minutes) "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Minimum interval between this character’s background actions. "}</p>
+            <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Minimum interval between this character’s background actions. "}</p>
             {" "}
           </label>
           {" "}
@@ -184,7 +192,7 @@ export function ChatSettingsScreen() {
               {" "}
               <label htmlFor="inject-thought-toggle" style={{ marginBottom: "0" }}>
                 {" Include Latest Inner Monologue "}
-                <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Include the AI’s last inner monologue in its next prompt. This can improve continuity and increase token usage. "}</p>
+                <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Include the AI’s last inner monologue in its next prompt. This can improve continuity and increase token usage. "}</p>
               </label>
               {" "}
               <label className="toggle-switch">
@@ -201,7 +209,7 @@ export function ChatSettingsScreen() {
             {" "}
             <label htmlFor="char-background-activity-switch" style={{ marginBottom: "0" }}>
               {" Enable independent background activity "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Allow scheduled messages or spontaneous background activity for this character. Also turn on Background Activity in API Connections. "}</p>
+              <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Allow scheduled messages or spontaneous background activity for this character. Also turn on Background Activity in API Connections. "}</p>
               {" "}
             </label>
             <label className="toggle-switch">
@@ -219,7 +227,7 @@ export function ChatSettingsScreen() {
             {" "}
             <label htmlFor="time-perception-toggle" style={{ marginBottom: "0" }}>
               {" Enable Time Awareness "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Turn off to omit the current time from the conversation prompt. "}</p>
+              <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Turn off to omit the current time from the conversation prompt. "}</p>
               {" "}
             </label>
             <label className="toggle-switch">
@@ -236,7 +244,7 @@ export function ChatSettingsScreen() {
             {" "}
             <label htmlFor="group-background-activity-switch" style={{ marginBottom: "0" }}>
               {" Enable Group Background Activity "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Allow AI members to act independently in this group. Enable background activity in API Connections as well. "}</p>
+              <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Allow AI members to act independently in this group. Enable background activity in API Connections as well. "}</p>
               {" "}
             </label>
             <label className="toggle-switch">
@@ -253,7 +261,7 @@ export function ChatSettingsScreen() {
           {" "}
           <label htmlFor="group-action-cooldown-input">
             {" Group action cooldown (minutes) "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Minimum interval between background actions in this group. "}</p>
+            <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Minimum interval between background actions in this group. "}</p>
             {" "}
           </label>
           {" "}
@@ -266,7 +274,7 @@ export function ChatSettingsScreen() {
             {" "}
             <label htmlFor="offline-mode-toggle" style={{ marginBottom: "0" }}>
               {" Enable Offline Roleplay Mode "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>
+              <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>
                 {" The AI will write a scene with dialogue and"}
                 <i style={{ color: "var(--ui-muted)" }}>actions or setting descriptions</i>
                 {". "}
@@ -309,7 +317,7 @@ export function ChatSettingsScreen() {
         <div className="form-group" id="group-nai-settings-group" style={{ display: "none" }}>
           <hr style={{ opacity: "0.2", margin: "20px 0" }} />
           <label style={{ fontWeight: "600", color: "var(--accent-color)" }}>NovelAI Image Settings</label>
-          <p style={{ fontSize: "12px", color: "var(--ui-muted)", marginTop: "5px" }}>{" Customize the image prompts for this character. "}</p>
+          <p style={{ fontSize: "0.75rem", color: "var(--ui-muted)", marginTop: "5px" }}>{" Customize the image prompts for this character. "}</p>
           <div style={{ marginTop: "15px" }}>
             <label style={{ fontWeight: "500", color: "var(--ui-text)" }}>Prompt Source</label>
             <div style={{ display: "flex", gap: "15px", marginTop: "10px" }}>
@@ -330,7 +338,7 @@ export function ChatSettingsScreen() {
             {" "}
             <label htmlFor="enable-tts-switch" style={{ marginBottom: "0" }}>
               {" Enable Text-to-Speech (TTS) "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Turn off to ignore the [V] voice-message prefix. "}</p>
+              <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Turn off to ignore the [V] voice-message prefix. "}</p>
               {" "}
             </label>
             <label className="toggle-switch">
@@ -351,7 +359,7 @@ export function ChatSettingsScreen() {
         <div className="form-group" id="nai-character-settings-group" style={{ display: "none" }}>
           <hr style={{ opacity: "0.2", margin: "20px 0" }} />
           <label style={{ fontWeight: "600", color: "var(--accent-color)" }}>NovelAI Image Settings</label>
-          <p style={{ fontSize: "12px", color: "var(--ui-muted)", marginTop: "5px" }}>{" Customize the image prompts for this character. "}</p>
+          <p style={{ fontSize: "0.75rem", color: "var(--ui-muted)", marginTop: "5px" }}>{" Customize the image prompts for this character. "}</p>
           <div style={{ marginTop: "15px" }}>
             <label style={{ fontWeight: "500", color: "var(--ui-text)" }}>Prompt Source</label>
             <div style={{ display: "flex", gap: "15px", marginTop: "10px" }}>
@@ -464,7 +472,7 @@ export function ChatSettingsScreen() {
             <IconButton icon="reset" id="reset-custom-css-btn" label="Reset chat CSS" />
           </label>
           {" "}
-          <textarea id="custom-css-input" rows={5} style={{ width: "100%", marginTop: "8px", fontFamily: "monospace", fontSize: "16px", resize: "vertical" }} placeholder={"/* Add styles for your chat bubbles */ .message-bubble.user .content { border-radius: 15px 4px 15px 15px; }"} />
+          <textarea id="custom-css-input" rows={5} style={{ width: "100%", marginTop: "8px", fontFamily: "monospace", fontSize: "1rem", resize: "vertical" }} placeholder={"/* Add styles for your chat bubbles */ .message-bubble.user .content { border-radius: 15px 4px 15px 15px; }"} />
           {" "}
         </div>
         <div className="form-group">
@@ -496,7 +504,7 @@ export function ChatSettingsScreen() {
               {" "}
               <label htmlFor="lyrics-vertical-pos" style={{ fontSize: "0.9em", color: "var(--text-secondary)" }}>Vertical Position</label>
               {" "}
-              <select id="lyrics-vertical-pos" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "14px" }}>
+              <select id="lyrics-vertical-pos" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "0.875rem" }}>
                 <option value="top">Top</option>
                 <option value="bottom">Bottom</option>
               </select>
@@ -506,7 +514,7 @@ export function ChatSettingsScreen() {
               {" "}
               <label htmlFor="lyrics-horizontal-pos" style={{ fontSize: "0.9em", color: "var(--text-secondary)" }}>Horizontal Alignment</label>
               {" "}
-              <select id="lyrics-horizontal-pos" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "14px" }}>
+              <select id="lyrics-horizontal-pos" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "0.875rem" }}>
                 <option value="left">Left</option>
                 <option value="center">Center</option>
                 <option value="right">Right</option>
@@ -518,12 +526,12 @@ export function ChatSettingsScreen() {
             {" "}
             <label htmlFor="lyrics-offset-input" style={{ fontSize: "0.9em", color: "var(--text-secondary)" }}>Vertical Offset (px)</label>
             {" "}
-            <input type="number" id="lyrics-offset-input" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} defaultValue="10" />
+            <input type="number" id="lyrics-offset-input" style={{ width: "100%", padding: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "0.875rem", boxSizing: "border-box" }} defaultValue="10" />
             {" "}
           </div>
         </div>
         </section>
-        {character && <section hidden={tab !== 'Diary'} className="phone-app-stack" aria-label="Diary">
+        {character && <section hidden={tab !== 'Diary'} aria-label="Diary">
           <DiaryPanel key={character.id + ':' + key} chat={character} />
         </section>}
       </div>

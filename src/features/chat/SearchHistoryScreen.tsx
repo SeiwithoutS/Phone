@@ -1,23 +1,16 @@
-import { BackButton, Screen, ScreenHeader } from '../../components/phone'
+import { PhoneFeatureHeader, Screen } from '../../components/phone'
+import { showScreen } from '../../app/routes'
 
 export function SearchHistoryScreen() {
   return (
-    <Screen id="search-history-screen">
-      <ScreenHeader>
-        {" "}
-        <BackButton id="search-history-back-btn" />
-        {" "}
-        <span>Search Chat History</span>
-        {" "}
-        <span style={{ width: "30px" }} />
-        {" "}
-      </ScreenHeader>
+    <Screen id="search-history-screen" className="phone-feature">
+      <PhoneFeatureHeader title="Search Chat History" onBack={() => showScreen('chat-settings-screen')} />
       <div id="search-bar" style={{ padding: "10px 15px", borderBottom: "1px solid var(--border-color)", backgroundColor: "var(--secondary-bg)", flexShrink: "0" }}>
-        <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+        <div className="chat-search-fields">
           {" "}
-          <input type="search" id="keyword-search-input" placeholder={"Enter a keyword…"} style={{ flexGrow: "1", padding: "8px 12px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "16px" }} />
+          <input type="search" id="keyword-search-input" aria-label="Keyword" placeholder="Enter a keyword…" />
           {" "}
-          <input type="date" id="date-search-input" style={{ padding: "8px 12px", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "16px" }} />
+          <input type="date" id="date-search-input" aria-label="Message date" />
           {" "}
         </div>
         <div style={{ display: "flex", gap: "10px" }}>

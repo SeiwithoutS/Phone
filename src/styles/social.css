@@ -141,7 +141,7 @@
   border-radius: 12px;
   background: var(--ui-raised);
   cursor: zoom-in;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
 }
 .social-media { display: block; width: 100%; max-height: min(54dvh, 360px); object-fit: contain; }
 .social-slide-buttons {

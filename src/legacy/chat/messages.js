@@ -205,7 +205,7 @@ export function startReplyToMessage() {
             
             let senderDisplayName;
             if (message.role === 'user') {
-                senderDisplayName = chat.isGroup ? (chat.settings.myNickname || '我') : '我';
+                senderDisplayName = chat.settings.myNickname || 'You';
             } else { 
                 if (chat.isGroup) {
                     
@@ -221,11 +221,11 @@ export function startReplyToMessage() {
             let previewSnippet = '';
         
             if (typeof message.content === 'string' && runtime.STICKER_REGEX.test(message.content)) {
-                previewSnippet = '[表情]';
+                previewSnippet = '[Sticker]';
             } else if (message.type === 'ai_image' || message.type === 'user_photo') {
-                previewSnippet = '[图片]';
+                previewSnippet = '[Image]';
             } else if (message.type === 'voice_message') {
-                previewSnippet = '[语音]';
+                previewSnippet = '[Voice message]';
             } else {
                 previewSnippet = fullContent.substring(0, 50) + (fullContent.length > 50 ? '...' : '');
             }
@@ -262,7 +262,7 @@ export async function recallMessage(timestamp, isUserRecall) {
     };
     
     messageToRecall.type = 'recalled_message';
-    messageToRecall.content = isUserRecall ? '你撤回了一条消息' : '对方撤回了一条消息';
+    messageToRecall.content = isUserRecall ? 'You recalled a message.' : 'The character recalled a message.';
     messageToRecall.recalledData = recalledData;
     delete messageToRecall.meaning;
     delete messageToRecall.quote;

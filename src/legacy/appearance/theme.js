@@ -43,7 +43,7 @@ export async function updateSettingsPreview() {
         
             
             previewArea.dataset.theme = selectedTheme;
-            previewArea.style.setProperty('--chat-font-size', `${fontSize}px`);
+            previewArea.style.setProperty('--chat-font-size', `${Number(fontSize) / 16}rem`);
             
             previewArea.style.backgroundImage = background ? `url(${JSON.stringify(background)})` : 'none';
             previewArea.style.backgroundColor = document.getElementById('phone-screen').classList.contains('dark-mode')
@@ -58,7 +58,7 @@ export async function updateSettingsPreview() {
             const previewLyricsBar = document.createElement('div');
             previewLyricsBar.style.cssText = `
                 position: absolute; 
-                font-size: 11px; 
+                font-size: 0.6875rem;
                 padding: 2px 6px; 
                 border-radius: 8px; 
                 background-color: rgba(0, 0, 0, 0.1); 

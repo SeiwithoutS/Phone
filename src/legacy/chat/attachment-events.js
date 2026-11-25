@@ -325,7 +325,7 @@ document.getElementById('chat-lock-overlay').addEventListener('click', async (e)
                 const systemMessage = {
                     role: 'system',
                     type: 'pat_message', 
-                    content: `你通过了“${chat.name}”的好友请求`,
+                    content: `You accepted “${chat.name}”’s friend request`,
                     timestamp: Date.now()
                 };
                 chat.history.push(systemMessage);
@@ -334,7 +334,7 @@ document.getElementById('chat-lock-overlay').addEventListener('click', async (e)
                 const welcomeMessage = {
                     role: 'assistant',
                     senderName: chat.name,
-                    content: '太好了！我们又可以聊天啦！',
+                    content: 'Great! We can chat again!',
                     timestamp: Date.now() + 1 
                 };
                 chat.history.push(welcomeMessage);

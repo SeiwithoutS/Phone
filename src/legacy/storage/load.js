@@ -1,4 +1,5 @@
 import { runtime } from '../runtime/state.js'
+import { recoverLegacyNickname } from '../../features/chat/user-identity'
 
 export async function loadAllDataFromDB() {
     const [
@@ -83,7 +84,7 @@ export async function loadAllDataFromDB() {
         if (typeof chat.settings.actionCooldownMinutes === 'undefined') {
             chat.settings.actionCooldownMinutes = 10;
         }
-        if (!chat.isGroup && !chat.status) chat.status = { text: '在线', lastUpdate: Date.now(), isBusy: false };
+        if (!chat.isGroup && !chat.status) chat.status = { text: 'Online', lastUpdate: Date.now(), isBusy: false };
         if (!chat.isGroup && !chat.relationship) chat.relationship = { status: 'friend', blockedTimestamp: null, applicationReason: '' };
         if (!chat.isGroup && (!chat.settings || !chat.settings.aiAvatarLibrary)) { if (!chat.settings) chat.settings = {}; chat.settings.aiAvatarLibrary = []; }
         if (chat.isGroup) { (chat.members || []).forEach(member => { if (typeof member.avatarFrame === 'undefined') member.avatarFrame = ''; }); }
@@ -91,7 +92,11 @@ export async function loadAllDataFromDB() {
         if (chat.settings && chat.settings.linkedWorldBookId && !chat.settings.linkedWorldBookIds) { chat.settings.linkedWorldBookIds = [chat.settings.linkedWorldBookId]; delete chat.settings.linkedWorldBookId; }
         if (typeof chat.isPinned === 'undefined') chat.isPinned = false;
         if (!chat.isGroup && typeof chat.settings.myNickname === 'undefined') {
-            chat.settings.myNickname = '我';
+            chat.settings.myNickname = 'You';
+        }
+        if (!chat.isGroup) {
+            const identity = recoverLegacyNickname(chat.settings, chat.history, personaPresets || [], chat.chatSessions);
+            if (identity) Object.assign(chat.settings, identity);
         }
         if (chat.isGroup && chat.members) {
             let needsUpdate = false;
@@ -124,7 +129,7 @@ export async function loadAllDataFromDB() {
                 chat.settings.enableBackgroundActivity = true;
             }
             if (typeof chat.settings.enableTts === 'undefined') { chat.settings.enableTts = false; }
-            if (!chat.status) chat.status = { text: '在线', lastUpdate: Date.now(), isBusy: false };
+            if (!chat.status) chat.status = { text: 'Online', lastUpdate: Date.now(), isBusy: false };
             if (!chat.relationship) chat.relationship = { status: 'friend', blockedTimestamp: null, applicationReason: '' };
             if (!chat.settings || !chat.settings.aiAvatarLibrary) { if (!chat.settings) chat.settings = {}; chat.settings.aiAvatarLibrary = []; }
             if (typeof chat.settings.isOfflineMode === 'undefined') chat.settings.isOfflineMode = false;

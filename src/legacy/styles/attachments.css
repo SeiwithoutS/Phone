@@ -39,7 +39,7 @@ input:checked + .slider:before {
             border-left: 3px solid var(--accent-color);
             border-radius: 6px;
             position: relative;
-            font-size: 13px;
+            font-size: 0.8125rem;
             color: var(--text-secondary);
         }
 
@@ -72,7 +72,7 @@ input:checked + .slider:before {
             border-radius: 50%;
             background-color: rgba(0,0,0,0.1);
             cursor: pointer;
-            font-size: 14px;
+            font-size: 0.875rem;
         }
 
 .quoted-message {
@@ -140,14 +140,14 @@ input:checked + .slider:before {
         }
 
 .transfer-actions-header {
-            font-size: 20px;
+            font-size: 1.25rem;
             font-weight: bold;
             color: #a35c7b; 
             margin-bottom: 15px;
         }
 
 .transfer-actions-body p {
-            font-size: 15px;
+            font-size: 0.9375rem;
             color: #555;
             margin: 0 0 25px 0;
             line-height: 1.5;
@@ -164,7 +164,7 @@ input:checked + .slider:before {
             padding: 12px;
             border: none;
             border-radius: 12px;
-            font-size: 16px;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
@@ -195,7 +195,7 @@ input:checked + .slider:before {
             border: none;
             background-color: rgba(0, 0, 0, 0.1);
             color: #a35c7b;
-            font-size: 20px;
+            font-size: 1.25rem;
             line-height: 28px;
             cursor: pointer;
         }
@@ -215,7 +215,7 @@ input:checked + .slider:before {
             padding: 0 6px;
             background-color: #ff3b30; 
             color: white;
-            font-size: 13px;
+            font-size: 0.8125rem;
             font-weight: 500;
             line-height: 20px;
             text-align: center;
@@ -249,7 +249,7 @@ input:checked + .slider:before {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 13px;
+            font-size: 0.8125rem;
             color: var(--text-secondary);
             margin-bottom: 12px;
             padding-bottom: 8px;
@@ -288,7 +288,7 @@ input:checked + .slider:before {
             margin-left: 12px;
             font-weight: 600;
             color: var(--text-primary);
-            font-size: 15px;
+            font-size: 0.9375rem;
         }
 
 #transcript-modal-body {
@@ -327,7 +327,7 @@ input:checked + .slider:before {
         }
 
 .call-record-card .custom-title {
-            font-size: 16px;
+            font-size: 1rem;
             font-weight: 600; 
             color: var(--text-primary);
             padding-bottom: 8px; 
@@ -343,12 +343,12 @@ input:checked + .slider:before {
 .call-record-card .participants-names {
             margin-left: 12px;
             font-weight: 500; 
-            font-size: 14px; 
+            font-size: 0.875rem;
             color: var(--text-secondary); 
         }
 
 .voice-transcript {
-            font-size: 14px;         
+            font-size: 0.875rem;
             line-height: 1.6;        
             color: var(--text-secondary); 
             padding: 8px 12px;       
@@ -450,7 +450,7 @@ input:checked + .slider:before {
 #music-return-btn, #music-exit-btn {
             background: none;
             border: none;
-            font-size: 28px;
+            font-size: 1.75rem;
             font-weight: 300;
             cursor: pointer;
             color: #555;
@@ -459,7 +459,7 @@ input:checked + .slider:before {
         }
 
 #music-exit-btn {
-            font-size: 24px;
+            font-size: 1.5rem;
             font-weight: 400;
         }
 
@@ -473,7 +473,7 @@ input:checked + .slider:before {
         }
 
 .time-display {
-            font-size: 11px;
+            font-size: 0.6875rem;
             color: #888;
             width: 35px;
             text-align: center;
@@ -514,7 +514,7 @@ input:checked + .slider:before {
 
 .lyric-line {
             padding: 4px 0;
-            font-size: 14px;
+            font-size: 0.875rem;
             color: #666;
             text-align: center;
             line-height: 1.5;
@@ -524,7 +524,7 @@ input:checked + .slider:before {
         }
 
 .lyric-line.active {
-            font-size: 16px;
+            font-size: 1rem;
             color: #000;
             opacity: 1;
             transform: scale(1);
@@ -556,7 +556,7 @@ input:checked + .slider:before {
         }
 
 .playlist-action-btn {
-            font-size: 18px;
+            font-size: 1.125rem;
             color: #888;
             cursor: pointer;
             transition: color 0.2s;
@@ -564,7 +564,7 @@ input:checked + .slider:before {
 
 .playlist-action-btn:hover { color: #000; }
 
-.delete-track-btn { font-size: 24px; color: #ff3b30; }
+.delete-track-btn { font-size: 1.5rem; color: #ff3b30; }
 
 .delete-track-btn:hover { color: #c00; }
 
@@ -584,7 +584,7 @@ input:checked + .slider:before {
             margin: 5px 0;
             background-color: rgba(0, 0, 0, 0.1);
             color: var(--text-secondary);
-            font-size: 12px;
+            font-size: 0.75rem;
             border-radius: 10px;
             text-align: center;
             max-width: 80%;
@@ -633,7 +633,7 @@ input:checked + .slider:before {
         }
 
 .world-book-group-header .arrow {
-            font-size: 14px;
+            font-size: 0.875rem;
             margin-right: 8px;
             transition: transform 0.2s ease;
         }
@@ -644,7 +644,7 @@ input:checked + .slider:before {
 
 .world-book-group-header .group-name {
             font-weight: 600;
-            font-size: 15px;
+            font-size: 0.9375rem;
         }
 
 .world-book-group-content {
@@ -742,7 +742,7 @@ input:checked + .slider:before {
             position: absolute;
             top: 15px;
             right: 15px;
-            font-size: 20px;
+            font-size: 1.25rem;
             font-weight: bold;
             color: var(--text-secondary);
             cursor: pointer;
@@ -767,7 +767,7 @@ input:checked + .slider:before {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: 1rem;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             border: 2px solid white;
         }
@@ -801,7 +801,7 @@ input:checked + .slider:before {
         }
 
 .reposted-content-wrapper .post-nickname {
-            font-size: 14px;
+            font-size: 0.875rem;
         }
 
 .location-share-card {
@@ -820,7 +820,7 @@ input:checked + .slider:before {
         }
 
 .card-text-primary {
-            font-size: 16px;
+            font-size: 1rem;
             font-weight: 600;
             color: #222;
             margin-bottom: 4px;
@@ -830,7 +830,7 @@ input:checked + .slider:before {
         }
 
 .card-text-secondary {
-            font-size: 12px;
+            font-size: 0.75rem;
             color: #a0a0a0;
         }
 
@@ -849,7 +849,7 @@ input:checked + .slider:before {
         }
 
 .card-pin-icon {
-            font-size: 40px;
+            font-size: 2.5rem;
             color: #FF6B6B; 
             text-shadow: 0 2px 5px rgba(0, 0, 0, 0.4); 
         }
@@ -951,7 +951,7 @@ input:checked + .slider:before {
             background-color: #f0f0f0;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 0.8125rem;
             margin-left: 10px;
         }
 
@@ -1103,7 +1103,7 @@ input:checked + .slider:before {
     overflow-wrap: break-word; 
     word-wrap: break-word;     
     position: relative;
-    font-size: var(--chat-font-size, 16px);
+    font-size: var(--chat-font-size, 1rem);
     padding: 8px 12px;
     line-height: 1.5;
 }
