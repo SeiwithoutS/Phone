@@ -11,152 +11,127 @@ import { escapeHtml } from '../../runtime/files'
 import { getRandomValue } from '../../runtime/helpers'
 import { runtime } from '../runtime/state.js'
 
-export async function loadApiPresetsDropdown() {
-            const selectEl = document.getElementById('api-preset-select');
-            selectEl.innerHTML = "<option value=\"current\">Current Settings (Unsaved)</option>";
-            
-            const presets = await runtime.db.apiPresets.toArray();
-            presets.forEach(preset => {
-                const option = document.createElement('option');
-                option.value = preset.id;
-                option.textContent = preset.name;
-                selectEl.appendChild(option);
-            });
-        
-            
-            const currentConfig = runtime.state.apiConfig;
-            let matchingPresetId = null;
-            for (const preset of presets) {
-                
-                if (
-                    preset.proxyUrl === currentConfig.proxyUrl &&
-                    preset.apiKey === currentConfig.apiKey &&
-                    preset.model === currentConfig.model &&
-                    usesGemini(preset.proxyUrl, preset.provider) === usesGemini(currentConfig.proxyUrl, currentConfig.provider) &&
-                    
-                    (preset.minimaxGroupId || '') === (currentConfig.minimaxGroupId || '') &&
-                    (preset.minimaxApiKey || '') === (currentConfig.minimaxApiKey || '') &&
-                    (preset.minimaxModel || 'speech-01') === (currentConfig.minimaxModel || 'speech-01')
-                ) 
-                  
-                {
-                    matchingPresetId = preset.id;
-                    break;
-                }
-            }
-        
-            if (matchingPresetId) {
-                selectEl.value = matchingPresetId;
-            } else {
-                selectEl.value = 'current';
-            }
-        }
+function presetMatches(preset, connection, settings, budget) {
+  const { generation } = preset
+  return ['apiKey', 'proxyUrl', 'model'].every(key => (preset[key] ?? '') === (connection[key] ?? '')) &&
+    usesGemini(preset.proxyUrl, preset.provider) === usesGemini(connection.proxyUrl, connection.provider) &&
+    (preset.sendImagesToAi ?? settings.sendImagesToAi ?? false) === (settings.sendImagesToAi ?? false) &&
+    (!generation || (generation.size === budget.size && generation.response === budget.response &&
+      Object.entries(generation).every(([key, value]) => key === 'size' || key === 'response' || settings[key] === value)))
+}
 
-export async function handlePresetSelectionChange() {
-            const selectEl = document.getElementById('api-preset-select');
-            const selectedId = parseInt(selectEl.value);
-        
-            
-            if (isNaN(selectedId)) {
-                return;
-            }
-        
-            const preset = await runtime.db.apiPresets.get(selectedId);
-            if (preset) {
-                
-                runtime.state.apiConfig = {
-                    id: 'main',
-                    proxyUrl: usesGemini(preset.proxyUrl, preset.provider) ? geminiModelsUrl : preset.proxyUrl,
-                    apiKey: preset.apiKey,
-                    model: preset.model,
-                    provider: usesGemini(preset.proxyUrl, preset.provider) ? "gemini" : "openai",
-                    
-                    minimaxGroupId: preset.minimaxGroupId,
-                    minimaxApiKey: preset.minimaxApiKey,
-                    minimaxModel: preset.minimaxModel
-                      
-                };
-                
-                await runtime.db.apiConfig.put(runtime.state.apiConfig);
-                
-                renderApiSettings();
-                
-                alert(`Loaded preset “${preset.name}”`);
-            }
-        }
+async function loadApiPresetsDropdown(preferredId) {
+  const select = field('api-preset-select')
+  const presets = await runtime.db.apiPresets.toArray()
+  const { apiConfig, globalSettings } = runtime.state
+  const budget = contextConfig()
+  const matches = preset => presetMatches(preset, apiConfig, globalSettings, budget)
+  const selected = preferredId ?? presets.find(preset => preset.id === apiConfig.presetId && matches(preset))?.id ??
+    presets.find(matches)?.id
+  const current = new Option('Current settings', '')
+  select.replaceChildren(current, ...presets.map(preset => new Option(preset.name, String(preset.id))))
+  select.value = selected === undefined ? '' : String(selected)
+  updatePresetButtons()
+}
 
-export async function saveApiPreset() {
-            const name = await showCustomPrompt("Save API Preset", "Enter a preset name");
-            if (!name || !name.trim()) return;
-        
-            
-            const presetData = {
-                name: name.trim(),
-                proxyUrl: text('api-provider') === 'gemini' ? geminiModelsUrl : text('proxy-url'),
-                apiKey: document.getElementById('api-key').value.trim(),
-                model: text('model-select'),
-                provider: text('api-provider'),
-     
-                minimaxGroupId: document.getElementById('minimax-group-id').value.trim(),
-                minimaxApiKey: document.getElementById('minimax-api-key').value.trim(),
-                minimaxModel: document.getElementById('minimax-model-select').value
-                  
-            };
-        
-            
-            const existingPreset = await runtime.db.apiPresets.where('name').equals(presetData.name).first();
-            if (existingPreset) {
-                const confirmed = await showCustomConfirm("Overwrite Preset", `A preset named “${presetData.name}” already exists. Overwrite it?`, { confirmButtonClass: 'btn-danger' });
-                if (!confirmed) return;
-                presetData.id = existingPreset.id; 
-            }
-        
-            await runtime.db.apiPresets.put(presetData);
-            await loadApiPresetsDropdown(); 
-            alert("API preset saved.");
-        }
+function updatePresetButtons() {
+  const hasPreset = Boolean(field('api-preset-select').value)
+  field('save-api-preset-btn').disabled = !hasPreset
+  field('delete-api-preset-btn').disabled = !hasPreset
+}
 
-export async function deleteApiPreset() {
-            const selectEl = document.getElementById('api-preset-select');
-            const selectedId = parseInt(selectEl.value);
-        
-            if (isNaN(selectedId)) {
-                alert("Select a saved preset to delete.");
-                return;
-            }
-        
-            const preset = await runtime.db.apiPresets.get(selectedId);
-            if (!preset) return;
-        
-            const confirmed = await showCustomConfirm("Delete Preset", `Delete preset “${preset.name}”?`, { confirmButtonClass: 'btn-danger' });
-            if (confirmed) {
-                await runtime.db.apiPresets.delete(selectedId);
-                await loadApiPresetsDropdown(); 
-                alert("Preset deleted.");
-            }
-        }
+async function handlePresetSelectionChange() {
+  if (!text('api-preset-select')) {
+    renderConnectionSettings()
+    return
+  }
+  const preset = await runtime.db.apiPresets.get(Number(text('api-preset-select')))
+  if (!preset) return
+  const provider = usesGemini(preset.proxyUrl, preset.provider) ? 'gemini' : 'openai'
+  const { size, response, apiTemperature, apiTopP, apiFrequencyPenalty, apiPresencePenalty, apiSwipes, apiStreaming } = preset.generation ?? {}
+  const db = runtime.db
+  await db.transaction('rw', db.apiConfig, db.globalSettings, db.deviceSettings, async tx => {
+    const apiConfig = {
+      ...(await tx.apiConfig.get('main') ?? runtime.state.apiConfig),
+      id: 'main', presetId: preset.id, provider,
+      proxyUrl: provider === 'gemini' ? geminiModelsUrl : (preset.proxyUrl ?? ''),
+      apiKey: preset.apiKey ?? '', model: preset.model ?? '',
+    }
+    await tx.apiConfig.put(apiConfig)
+    if (preset.generation || typeof preset.sendImagesToAi === 'boolean') {
+      const settings = await tx.globalSettings.get('main') ?? runtime.state.globalSettings
+      await tx.globalSettings.put({
+        ...settings,
+        apiTemperature: apiTemperature ?? settings.apiTemperature,
+        apiTopP: apiTopP ?? settings.apiTopP,
+        apiFrequencyPenalty: apiFrequencyPenalty ?? settings.apiFrequencyPenalty,
+        apiPresencePenalty: apiPresencePenalty ?? settings.apiPresencePenalty,
+        apiSwipes: apiSwipes ?? settings.apiSwipes,
+        apiStreaming: apiStreaming ?? settings.apiStreaming,
+        sendImagesToAi: preset.sendImagesToAi ?? settings.sendImagesToAi,
+      })
+    }
+    if (preset.generation) {
+      const context = normalizeContext((await tx.deviceSettings.get(contextKey))?.value)
+      await tx.deviceSettings.put({ id: contextKey, value: normalizeContext({ ...context, size: size ?? context.size, response: response ?? context.response }) })
+    }
+  })
+  runtime.state.apiConfig = await db.apiConfig.get('main')
+  runtime.state.globalSettings = await db.globalSettings.get('main') ?? runtime.state.globalSettings
+  renderConnectionSettings()
+}
+
+async function createApiPreset() {
+  const preset = readPresetFields()
+  if (!preset) return
+  const name = (await showCustomPrompt('New API Preset', 'Enter a preset name'))?.trim()
+  if (!name) return
+  const existing = await runtime.db.apiPresets.where('name').equals(name).first()
+  if (existing) return showPresetStatus('That preset name already exists. Select it to save changes.')
+  const id = await runtime.db.apiPresets.add({ name, ...preset })
+  await loadApiPresetsDropdown(id)
+  showPresetStatus('API preset created.')
+}
+
+async function saveApiPreset() {
+  const id = Number(text('api-preset-select'))
+  const preset = readPresetFields()
+  if (!id || !preset) return
+  const existing = await runtime.db.apiPresets.get(id)
+  if (!existing) return
+  await runtime.db.apiPresets.put({ id, name: existing.name, ...preset })
+  showPresetStatus('API preset saved.')
+}
+
+async function deleteApiPreset() {
+  const id = Number(text('api-preset-select'))
+  const preset = await runtime.db.apiPresets.get(id)
+  if (!preset || !await showCustomConfirm('Delete Preset', 'Delete preset “' + preset.name + '”?', { confirmButtonClass: 'btn-danger' })) return
+  await runtime.db.apiPresets.delete(id)
+  await loadApiPresetsDropdown()
+  showPresetStatus('API preset deleted.')
+}
+
+function renderConnectionSettings() {
+  resetModelList()
+  const connection = runtime.state.apiConfig
+  field('proxy-url').value = connection.proxyUrl || ''
+  field('api-provider').value = usesGemini(connection.proxyUrl, connection.provider) ? 'gemini' : 'openai'
+  field('api-key').value = connection.apiKey || ''
+  field('model-select').value = connection.model ?? ''
+  field('send-images-to-ai-switch').checked = runtime.state.globalSettings.sendImagesToAi === true
+  renderGenerationSettings()
+}
 
 export function renderApiSettings() {
-            resetModelList();
-            
-            field('proxy-url').value = runtime.state.apiConfig.proxyUrl || '';
-            field('api-provider').value = usesGemini(runtime.state.apiConfig.proxyUrl, runtime.state.apiConfig.provider) ? 'gemini' : 'openai';
-            renderGenerationSettings();
-            showConnectionStatus('');
-            document.getElementById('api-key').value = runtime.state.apiConfig.apiKey || ''; 
-            document.getElementById('model-select').value = runtime.state.apiConfig.model ?? '';
+            renderConnectionSettings();
+            showPresetStatus('');
             document.getElementById('background-activity-switch').checked = runtime.state.globalSettings.enableBackgroundActivity || false;
             document.getElementById('background-interval-input').value = runtime.state.globalSettings.backgroundActivityInterval || 60;
             document.getElementById('block-cooldown-input').value = runtime.state.globalSettings.blockCooldownHours || 1;
             document.getElementById('enable-ai-drawing-switch').checked = runtime.state.globalSettings.enableAiDrawing; 
-            document.getElementById('send-images-to-ai-switch').checked = runtime.state.globalSettings.sendImagesToAi === true;
             document.getElementById('chat-render-window-input').value = runtime.state.globalSettings.chatRenderWindow || 50;   
             document.getElementById('chat-list-render-window-input').value = runtime.state.globalSettings.chatListRenderWindow || 30;
-            const tempSlider = document.getElementById('api-temperature-slider');
-            const tempValue = document.getElementById('api-temperature-value');
-            const savedTemp = runtime.state.globalSettings.apiTemperature ?? 0.8;
-            tempSlider.value = savedTemp;
-            tempValue.textContent = savedTemp;    
            document.getElementById('minimax-group-id').value = runtime.state.apiConfig.minimaxGroupId || '';
            document.getElementById('minimax-api-key').value = runtime.state.apiConfig.minimaxApiKey || '';
 document.getElementById('minimax-model-select').value = runtime.state.apiConfig.minimaxModel || 'speech-01'; 
@@ -283,6 +258,7 @@ const field = id => document.getElementById(id)
 const text = id => field(id).value.trim()
 
 function showConnectionStatus(message) { field('api-connection-status').textContent = message; }
+function showPresetStatus(message) { field('api-preset-status').textContent = message; }
 function numberField(id, min, max, fallback) {
   const value = Number(text(id));
   return text(id) && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
@@ -300,6 +276,8 @@ function renderGenerationSettings() {
   field('api-presence-penalty').value = settings.presencePenalty;
   field('api-swipes').value = settings.swipes;
   field('api-streaming').checked = settings.streaming;
+  field('api-temperature-slider').value = settings.temperature;
+  field('api-temperature-value').textContent = field('api-temperature-slider').value;
   updateProviderFields();
 }
 async function testApiConnection() {
@@ -342,49 +320,85 @@ async function testApiConnection() {
   button.disabled = false;
   void showCustomAlert('Test Message', escapeHtml(heading) + '<pre class="api-test-response">' + escapeHtml(body) + '</pre>');
 }
-export function bindApiSettingsEvents() {
-  const save = field('save-api-settings-btn')
-  save.addEventListener('click', async () => {
-    const provider = text('api-provider');
-    const proxyUrl = provider === 'gemini' ? geminiModelsUrl : text('proxy-url').replace(/\/+$/, '');
-    try {
-      if (proxyUrl && provider !== 'gemini') openAiUrl(proxyUrl, 'models');
-    } catch {
-      alert('Enter a valid HTTP or HTTPS base URL.')
-      return
-    }
-
-    const apiConfig = {
-      id: 'main',
-      provider,
-      proxyUrl,
-      apiKey: text('api-key'),
-      model: text('model-select'),
-      minimaxGroupId: text('minimax-group-id'),
-      minimaxApiKey: text('minimax-api-key'),
-      minimaxModel: text('minimax-model-select'),
-    }
-    const globalSettings = {
-      ...runtime.state.globalSettings,
-      enableBackgroundActivity: field('background-activity-switch').checked,
-      backgroundActivityInterval: Math.max(1, Number.parseInt(text('background-interval-input'), 10) || 60),
-      blockCooldownHours: Math.max(0, Number.parseFloat(text('block-cooldown-input')) || 1),
-      enableAiDrawing: field('enable-ai-drawing-switch').checked,
-      sendImagesToAi: field('send-images-to-ai-switch').checked,
-      chatRenderWindow: Math.max(1, Number.parseInt(text('chat-render-window-input'), 10) || 50),
-      chatListRenderWindow: Math.max(1, Number.parseInt(text('chat-list-render-window-input'), 10) || 30),
+function readPresetFields(report = showPresetStatus) {
+  const provider = text('api-provider')
+  const proxyUrl = provider === 'gemini' ? geminiModelsUrl : text('proxy-url').replace(/\/+$/, '')
+  try {
+    if (proxyUrl && provider !== 'gemini') openAiUrl(proxyUrl, 'models')
+  } catch {
+    report('Enter a valid HTTP or HTTPS base URL.')
+    return
+  }
+  const size = Number(text('api-context-size'))
+  const response = Number(text('api-max-response'))
+  if (!Number.isInteger(size) || size < 1024 || size > 2000000 || !Number.isInteger(response) || response < 1 || response > size - 256) {
+    report('Enter a valid context size and leave at least 256 tokens for the prompt.')
+    return
+  }
+  return {
+    provider, proxyUrl, apiKey: text('api-key'), model: text('model-select'),
+    sendImagesToAi: field('send-images-to-ai-switch').checked,
+    generation: {
+      size, response,
       apiTemperature: numberField('api-temperature-slider', 0, 2, 0.8),
       apiTopP: numberField('api-top-p', 0, 1, 1),
       apiFrequencyPenalty: numberField('api-frequency-penalty', -2, 2, 0),
       apiPresencePenalty: numberField('api-presence-penalty', -2, 2, 0),
       apiSwipes: Math.trunc(numberField('api-swipes', 1, 5, 1)),
       apiStreaming: field('api-streaming').checked,
+    },
+  }
+}
+
+export function bindApiSettingsEvents() {
+  const save = field('save-api-settings-btn')
+  const presetSelect = field('api-preset-select')
+  const create = field('create-api-preset-btn')
+  const presetSave = field('save-api-preset-btn')
+  const remove = field('delete-api-preset-btn')
+  const presetControls = [presetSelect, create, presetSave, remove]
+  const bindPresetAction = (element, event, action) => element.addEventListener(event, async () => {
+    showPresetStatus('')
+    for (const control of [...presetControls, save]) control.disabled = true
+    try {
+      await action()
+    } catch {
+      await loadApiPresetsDropdown()
+      showPresetStatus('Could not update API presets.')
+    } finally {
+      for (const control of [...presetControls, save]) control.disabled = false
+      updatePresetButtons()
     }
-    const size = Number(text('api-context-size'));
-    const response = Number(text('api-max-response'));
-    if (!Number.isInteger(size) || size < 1024 || size > 2000000 || !Number.isInteger(response) || response < 1 || response > size - 256) {
-      showConnectionStatus('Enter a valid context size and leave at least 256 tokens for the prompt.');
-      return;
+  })
+  bindPresetAction(presetSelect, 'change', handlePresetSelectionChange)
+  bindPresetAction(create, 'click', createApiPreset)
+  bindPresetAction(presetSave, 'click', saveApiPreset)
+  bindPresetAction(remove, 'click', deleteApiPreset)
+
+  save.addEventListener('click', async () => {
+    const preset = readPresetFields(message => {
+      showConnectionStatus(message)
+      alert(message)
+    })
+    if (!preset) return
+    const { generation: { size, response, ...generation }, sendImagesToAi, ...connection } = preset
+    const apiConfig = {
+      id: 'main',
+      presetId: Number(presetSelect.value) || undefined,
+      ...connection,
+      minimaxGroupId: text('minimax-group-id'),
+      minimaxApiKey: text('minimax-api-key'),
+      minimaxModel: text('minimax-model-select'),
+    }
+    const globalSettings = {
+      enableBackgroundActivity: field('background-activity-switch').checked,
+      backgroundActivityInterval: Math.max(1, Number.parseInt(text('background-interval-input'), 10) || 60),
+      blockCooldownHours: Math.max(0, Number.parseFloat(text('block-cooldown-input')) || 1),
+      enableAiDrawing: field('enable-ai-drawing-switch').checked,
+      chatRenderWindow: Math.max(1, Number.parseInt(text('chat-render-window-input'), 10) || 50),
+      chatListRenderWindow: Math.max(1, Number.parseInt(text('chat-list-render-window-input'), 10) || 30),
+      ...generation,
+      sendImagesToAi,
     }
     const deviceSettings = [
       { id: 'novelai-enabled', value: String(field('novelai-switch').checked) },
@@ -394,14 +408,18 @@ export function bindApiSettingsEvents() {
 
     const db = runtime.db
     save.disabled = true
+    for (const control of presetControls) control.disabled = true
     try {
       await db.transaction('rw', db.apiConfig, db.globalSettings, db.deviceSettings, async tx => {
         await tx.apiConfig.put(apiConfig)
-        await tx.globalSettings.put(globalSettings)
+        const current = await tx.globalSettings.get('main') ?? runtime.state.globalSettings
+        await tx.globalSettings.put({ ...current, ...globalSettings })
         await tx.deviceSettings.bulkPut(deviceSettings)
-        await tx.deviceSettings.put({ id: contextKey, value: normalizeContext({ ...contextConfig(db), size, response }) })
+        const context = normalizeContext((await tx.deviceSettings.get(contextKey))?.value)
+        await tx.deviceSettings.put({ id: contextKey, value: normalizeContext({ ...context, size, response }) })
       })
-      Object.assign(runtime.state, { apiConfig, globalSettings })
+      runtime.state.apiConfig = apiConfig
+      runtime.state.globalSettings = await db.globalSettings.get('main')
       stopBackgroundSimulation()
       if (globalSettings.enableBackgroundActivity) startBackgroundSimulation()
       alert('API and background activity settings saved.')
@@ -409,6 +427,8 @@ export function bindApiSettingsEvents() {
       // The application displays storage errors when the transaction fails.
     } finally {
       save.disabled = false
+      for (const control of presetControls) control.disabled = false
+      updatePresetButtons()
     }
   })
 
@@ -421,6 +441,9 @@ export function bindApiSettingsEvents() {
     field('model-select').value = event.target.value
   })
   field('model-select').addEventListener('input', syncModelSelect)
+  field('api-temperature-slider').addEventListener('input', event => {
+    field('api-temperature-value').textContent = event.target.value
+  })
   field('test-api-connection-btn').addEventListener('click', testApiConnection)
   field('fetch-models-btn').addEventListener('click', fetchModels)
 }

@@ -1,4 +1,5 @@
 import { handleUserPat } from './attachments.js'
+import { formatChatActionNotice } from '../../features/chat/action-notices'
 import { characterAvatar } from '../../features/characters/gallery'
 import { escapeHtml } from '../../runtime/files'
 import { openChat } from './conversation.js'
@@ -194,7 +195,8 @@ export function createChatListItem(chat) {
         const sender = lastMsgObj.senderName && chat.isGroup ? getDisplayNameInGroup(chat, lastMsgObj.senderName) + ': ' : '';
         const previews = { transfer: 'Bank transfer', waimai_order: 'Food delivery', gift: 'Gift', poll: 'Poll',
             voice_message: 'Voice message', user_photo: 'Photo', ai_image: 'Photo', sticker: 'Sticker', location_share: 'Location' };
-        let preview = previews[lastMsgObj.type] || (typeof lastMsgObj.content === 'string' ? lastMsgObj.content : '');
+        let preview = previews[lastMsgObj.type] || (typeof lastMsgObj.content === 'string'
+            ? formatChatActionNotice(lastMsgObj, runtime.state.globalSettings.qqActionLanguage) : '');
         if (chat.relationship?.status === 'pending_user_approval') preview = chat.relationship.applicationReason || 'Contact request';
         if (chat.relationship?.status === 'blocked_by_ai') preview = 'Contact unavailable';
         const date = Number.isFinite(lastMsgObj.timestamp) ? new Date(lastMsgObj.timestamp) : undefined;

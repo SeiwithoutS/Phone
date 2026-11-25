@@ -51,7 +51,7 @@
 }
 
 #frame-action-bar .select-all-label {
-    font-size: 16px;
+    font-size: 1rem;
     color: var(--text-primary);
     cursor: pointer;
 }
@@ -60,7 +60,7 @@
     padding: 10px 25px;
     border-radius: 20px;
     border: none;
-    font-size: 15px;
+    font-size: 0.9375rem;
     font-weight: 600;
     cursor: pointer;
     background-color: #ff3b30;
@@ -76,7 +76,7 @@
     font-weight: 600;
     display: block;
     margin-bottom: 8px;
-    font-size: 15px;
+    font-size: 0.9375rem;
 }
 
 #chat-interface-screen .back-btn {
@@ -92,7 +92,7 @@
     padding: 0 5px;
     background-color: #ff3b30;
     color: white;
-    font-size: 11px;
+    font-size: 0.6875rem;
     font-weight: bold;
     line-height: 18px;
     text-align: center;
@@ -132,7 +132,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-secondary);
     margin-bottom: 15px;
     padding: 8px 12px;

@@ -4,6 +4,7 @@ import { contextConfig } from '../../features/context/context'
 import { getGeminiResponseText } from '../api/client.js'
 import { showChoiceModal, showCustomAlert, showCustomConfirm, showCustomPrompt } from '../dialogs/dialogs.js'
 import { runtime } from '../runtime/state.js'
+import { escapeHtml } from '../../runtime/files'
 
 export function renderLongTermMemoryList() {
             const container = document.getElementById('memory-list-container');
@@ -47,28 +48,27 @@ export function renderLongTermMemoryList() {
             
             memoriesToDisplay.sort((a, b) => b.timestamp - a.timestamp);
         
-            memoriesToDisplay.forEach((memory, index) => {
+            memoriesToDisplay.forEach(memory => {
                 const item = document.createElement('div');
                 item.className = 'memory-card'; 
                 item.style.cursor = 'default';
         
                 item.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div class="content" style="padding: 0; flex-grow: 1;">
-                            <!-- 新增：显示记忆来源 -->
-                            <div style="font-size: 0.8em; color: #999; margin-bottom: 5px;">
-                                [ ${memory.authorName} 的记忆 ]
+                        <div class="content" style="padding: 0; flex-grow: 1; min-width: 0; overflow-wrap: anywhere;">
+                            <div style="font-size: 0.8em; color: var(--ui-muted); margin-bottom: 5px;">
+                                Memory for ${escapeHtml(String(memory.authorName))}
                             </div>
-                            ${memory.content.replace(/\n/g, '<br>')}
+                            ${escapeHtml(String(memory.content ?? '')).replace(/\n/g, '<br>')}
                         </div>
                         <div style="display: flex; gap: 8px; flex-shrink: 0; margin-left: 15px;">
-                            <button class="memory-action-btn edit-memory-btn" data-author-id="${memory.authorChatId}" data-memory-timestamp="${memory.timestamp}" title="Edit">
+                            <button class="memory-action-btn edit-memory-btn" data-author-id="${escapeHtml(String(memory.authorChatId))}" data-memory-timestamp="${Number(memory.timestamp)}" title="Edit">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                 </svg>
                             </button>
-                            <button class="memory-action-btn delete-memory-btn" data-author-id="${memory.authorChatId}" data-memory-timestamp="${memory.timestamp}" title="Delete">
+                            <button class="memory-action-btn delete-memory-btn" data-author-id="${escapeHtml(String(memory.authorChatId))}" data-memory-timestamp="${Number(memory.timestamp)}" title="Delete">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="3 6 5 6 21 6"></polyline>
                                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -87,10 +87,10 @@ export async function handleAddManualMemory() {
     let targetChatForMemory = chat;
     if (chat.isGroup) {
         const memberOptions = chat.members.map(member => ({
-            text: `为“${member.groupNickname}”添加记忆`,
+            text: `Add memory for “${member.groupNickname}”`,
             value: member.id
         }));
-        const selectedMemberId = await showChoiceModal('选择记忆所属角色', memberOptions);
+        const selectedMemberId = await showChoiceModal('Choose a group member', memberOptions);
         if (!selectedMemberId) return;
         targetChatForMemory = runtime.state.chats[selectedMemberId];
         if (!targetChatForMemory) {

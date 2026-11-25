@@ -241,7 +241,7 @@ export async function handleUploadFrame() {
 
 export async function handleBatchUploadFrames() {
     const placeholder = `请按照以下格式粘贴，一行一个：\n\n头像框名字1: https://.../image1.png\n头像框名字2: https://.../image2.gif`;
-    const pastedText = await showCustomPrompt("Batch Import Avatar Frames", "Import a list of URLs", "", 'textarea', `<p style="font-size:12px;color:#888;">${placeholder}</p>`);
+    const pastedText = await showCustomPrompt("Batch Import Avatar Frames", "Import a list of URLs", "", 'textarea', `<p style="font-size:0.75rem;color:#888;">${placeholder}</p>`);
 
     if (!pastedText || !pastedText.trim()) return;
 

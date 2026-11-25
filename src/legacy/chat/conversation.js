@@ -2,6 +2,7 @@ import { pollVotes } from '../../features/chat/chat-features'
 import { bankAmount, bankCurrency } from '../../features/bank/bank'
 import { escapeHtml, imageSource } from '../../runtime/files'
 import { addMessageTools } from '../../features/chat/replies'
+import { formatChatActionNotice } from '../../features/chat/action-notices'
 import { characterAvatar } from '../../features/characters/gallery'
 import { sharedCardHtml } from '../../features/chat/shared-cards'
 import { applyScopedCss } from '../appearance/theme.js'
@@ -9,7 +10,7 @@ import { updateBackButtonUnreadCount } from '../backup/backup.js'
 import { toggleCallButtons } from '../calls/calls.js'
 import { showCharacterProfileModal } from '../character-phone/profile.js'
 import { triggerAiResponse, triggerSpectatorGroupAiAction } from './ai.js'
-import { cleanupWaimaiTimers, handleUserPat, startWaimaiCountdown } from './attachments.js'
+import { cleanupWaimaiTimers, handleUserPat, startWaimaiCountdown, waimaiPaymentStatus } from './attachments.js'
 import { applyButtonOrder } from './button-order.js'
 import { showMessageActions } from './editor.js'
 import { createSystemTimestampElement, formatTimestamp } from '../../features/chat/format'
@@ -24,6 +25,7 @@ import { showScreen } from '../../app/routes'
 import { runtime } from '../runtime/state.js'
 
 let renderVersion = 0;
+let olderMessagesRequest;
 
 export function updateChatHeaderStatus(chat) {
     const container = document.getElementById('chat-header-status');
@@ -52,7 +54,7 @@ export async function renderChatInterface(chatId, preserveScroll = false) {
 
             messagesContainer.dataset.theme = chat.settings.theme || 'default';
             const fontSize = chat.settings.fontSize || 13;
-            messagesContainer.style.setProperty('--chat-font-size', `${fontSize}px`);
+            messagesContainer.style.setProperty('--chat-font-size', `${fontSize / 16}rem`);
             applyScopedCss(chat.settings.customCss || '', '#chat-messages', 'custom-bubble-style');
 
             document.getElementById('chat-header-title').textContent = chat.name;
@@ -83,14 +85,14 @@ export async function renderChatInterface(chatId, preserveScroll = false) {
                 lockContent.innerHTML = `
                     <span class="lock-text">Watching the group chat…</span>
                     <div class="spectator-actions-container">
-                        <button id="spectator-reroll-btn" class="lock-action-btn secondary" title="重新生成上一轮对话">
+                        <button id="spectator-reroll-btn" class="lock-action-btn secondary" title="Regenerate the last turn">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4"></path>
                                 <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
                             </svg>
                         </button>
                         <button id="spectator-propel-btn" class="lock-action-btn">Advance the Story</button>
-                        <button id="spectator-edit-btn" class="lock-action-btn secondary" title="导演剪辑室：编辑AI上一轮的响应">
+                        <button id="spectator-edit-btn" class="lock-action-btn secondary" title="Edit the last reply">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
                                 <line x1="16" y1="8" x2="2" y2="22"></line>
@@ -120,14 +122,14 @@ export async function renderChatInterface(chatId, preserveScroll = false) {
                             const timeRemainingMinutes = Math.max(0, Math.ceil((cooldownMilliseconds - timeSinceBlock) / (1000 * 60)));
             
                             lockHtml = `
-                                <span class="lock-text">You blocked “${chat.name}”.</span>
+                                <span class="lock-text">You blocked “${escapeHtml(chat.name)}”.</span>
                                 <button id="unblock-btn" class="lock-action-btn">Unblock</button>
-                                <div style="margin-top: 20px; padding: 10px; border: 1px dashed #ccc; border-radius: 8px; font-size: 11px; text-align: left; color: #666; background: rgba(0,0,0,0.02);">
-                                    <strong style="color: #333;">【开发者诊断面板】</strong><br>
+                                <div style="margin-top: 20px; padding: 10px; border: 1px dashed #ccc; border-radius: 8px; font-size: 0.6875rem; text-align: left; color: #666; background: rgba(0,0,0,0.02);">
+                                    <strong>Background activity diagnostics</strong><br>
                                     - Background activity: ${runtime.state.globalSettings.enableBackgroundActivity ? '<span style="color: green;">On</span>' : '<span style="color: red;">Off</span>'}<br>
                                     - Background timer: ${isSimulationRunning ? '<span style="color: green;">Running</span>' : '<span style="color: red;">Stopped</span>'}<br>
-                                    - 当前角色状态: <strong>${chat.relationship.status}</strong><br>
-                                    - 需要冷静(小时): <strong>${cooldownHours}</strong><br>
+                                    - Relationship: <strong>Blocked</strong><br>
+                                    - Cooldown (hours): <strong>${cooldownHours}</strong><br>
                                     - Cooldown finished: ${isCooldownOver ? "<span style=\"color: green;\">Yes</span>" : `<span style="color: orange;">No (about ${timeRemainingMinutes} min left)</span>`}<br>
                                     - Can check now: ${isCooldownOver && runtime.state.globalSettings.enableBackgroundActivity ? '<span style="color: green;">Waiting for next check</span>' : '<span style="color: red;">No</span>'}
                                 </div>
@@ -142,7 +144,7 @@ export async function renderChatInterface(chatId, preserveScroll = false) {
                             break;
                         case 'pending_user_approval':
                             lockHtml = `
-                                <span class="lock-text">“${chat.name}”请求添加你为好友：<br><i>“${chat.relationship.applicationReason}”</i></span>
+                                <span class="lock-text">${escapeHtml(chat.name)} sent you a friend request.<br><i>${escapeHtml(String(chat.relationship.applicationReason ?? ''))}</i></span>
                                 <button id="accept-friend-btn" class="lock-action-btn">Accept</button>
                                 <button id="reject-friend-btn" class="lock-action-btn secondary">Decline</button>
                             `;
@@ -207,65 +209,66 @@ export async function renderChatInterface(chatId, preserveScroll = false) {
             }, 0);
         }
 
-export async function loadMoreMessages() {
-    if (runtime.isLoadingMoreMessages) return;
-    runtime.isLoadingMoreMessages = true;
-
+export function loadMoreMessages() {
+    if (olderMessagesRequest) return olderMessagesRequest;
     const messagesContainer = document.getElementById('chat-messages');
     const chat = runtime.state.chats[runtime.state.activeChatId];
-    if (!chat) {
+    if (!chat || !messagesContainer || runtime.currentRenderedCount >= chat.history.length) return;
+
+    runtime.isLoadingMoreMessages = true;
+    olderMessagesRequest = prependOlderMessages(chat, messagesContainer).finally(() => {
+        olderMessagesRequest = undefined;
         runtime.isLoadingMoreMessages = false;
-        return;
-    }
-
-    showLoader(messagesContainer, 'top'); 
-    const oldScrollHeight = messagesContainer.scrollHeight;
-
-    
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const totalMessages = chat.history.length;
-    const renderWindow = runtime.state.globalSettings.chatRenderWindow || 50;
-    const nextSliceStart = totalMessages - runtime.currentRenderedCount - renderWindow;
-    const nextSliceEnd = totalMessages - runtime.currentRenderedCount;
-    const messagesToPrepend = chat.history.slice(Math.max(0, nextSliceStart), nextSliceEnd);
-
-
-    
-    const firstVisibleMessage = messagesContainer.querySelector('.message-wrapper[data-timestamp]');
-    let nextMessageTimestamp = firstVisibleMessage ? Number(firstVisibleMessage.dataset.displayTime ?? firstVisibleMessage.dataset.timestamp) : 0;
-
-    
-    for (const msg of messagesToPrepend.reverse()) {
-        
-        
-        if (nextMessageTimestamp > 0 && (nextMessageTimestamp - (msg.replyTurnTime ?? msg.timestamp) > 600000)) {
-            
-            const timestampEl = createSystemTimestampElement(nextMessageTimestamp);
-            
-            messagesContainer.prepend(timestampEl);
-        }
-        
-        
-        await prependMessage(msg, chat);
-        
-        
-        nextMessageTimestamp = msg.replyTurnTime ?? msg.timestamp;
-    }
-
-    runtime.currentRenderedCount += messagesToPrepend.length;
-
-    
-    const newScrollHeight = messagesContainer.scrollHeight;
-    messagesContainer.scrollTop = newScrollHeight - oldScrollHeight;
-
-    hideLoader(messagesContainer); 
-    runtime.isLoadingMoreMessages = false;
+    });
+    return olderMessagesRequest;
 }
 
-export function scrollToOriginalMessage(originalTimestamp) {
+async function prependOlderMessages(chat, container) {
+    const version = renderVersion;
+    const current = () => version === renderVersion && runtime.state.chats[runtime.state.activeChatId] === chat;
+    const oldHeight = container.scrollHeight;
+    showLoader(container, 'top');
+    try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (!current()) return;
+
+        const end = chat.history.length - runtime.currentRenderedCount;
+        const windowSize = runtime.state.globalSettings.chatRenderWindow || 50;
+        const older = chat.history.slice(Math.max(0, end - windowSize), end);
+        const first = container.querySelector('.message-wrapper[data-timestamp]');
+        let nextTimestamp = Number(first?.dataset.displayTime ?? first?.dataset.timestamp ?? 0);
+        for (const message of older.reverse()) {
+            const element = await createMessageElement(message, chat, true);
+            if (!current()) return;
+            const timestamp = message.replyTurnTime ?? message.timestamp;
+            if (nextTimestamp > 0 && nextTimestamp - timestamp > 600000) {
+                container.prepend(createSystemTimestampElement(nextTimestamp));
+            }
+            if (element) container.prepend(element);
+            nextTimestamp = timestamp;
+        }
+        runtime.currentRenderedCount += older.length;
+        container.scrollTop += container.scrollHeight - oldHeight;
+    } finally {
+        if (version === renderVersion) hideLoader(container);
+    }
+}
+
+export async function scrollToOriginalMessage(originalTimestamp, chatId = runtime.state.activeChatId) {
+    const chat = runtime.state.chats[chatId];
+    const container = document.getElementById('chat-messages');
+    if (!chat || !container || !Number.isFinite(originalTimestamp)) return;
     const selector = `.message-bubble[data-timestamp="${originalTimestamp}"]`;
-    const originalMessageBubble = document.querySelector(selector);
+    const current = () => runtime.state.chats[runtime.state.activeChatId] === chat &&
+        document.getElementById('chat-interface-screen').classList.contains('active');
+    const original = chat.history.find(message => message.timestamp === originalTimestamp && !message.isHidden);
+    while (current() && original && !container.querySelector(selector) && runtime.currentRenderedCount < chat.history.length) {
+        const rendered = runtime.currentRenderedCount;
+        await loadMoreMessages();
+        if (runtime.currentRenderedCount <= rendered) break;
+    }
+    if (!current()) return;
+    const originalMessageBubble = container.querySelector(selector);
 
     if (originalMessageBubble) {
         originalMessageBubble.scrollIntoView({
@@ -282,7 +285,7 @@ export function scrollToOriginalMessage(originalTimestamp) {
 
     } else {
         
-        alert("The original message may have been deleted or may be earlier in the chat.");
+        alert('The original message could not be found.');
     }
 }
 
@@ -297,7 +300,7 @@ export async function createMessageElement(msg, chat, interactive = false) {
                 const bubble = document.createElement('div');
                 bubble.className = 'message-bubble recalled-message-placeholder';
                 bubble.dataset.timestamp = msg.timestamp; 
-                bubble.textContent = msg.content;
+                bubble.textContent = formatChatActionNotice(msg, runtime.state.globalSettings.qqActionLanguage);
                 wrapper.appendChild(bubble);
                 addLongPressListener(wrapper, () => showMessageActions(msg.timestamp));
                 if (interactive) bindMessageSelection(wrapper, bubble, msg);
@@ -310,6 +313,7 @@ export async function createMessageElement(msg, chat, interactive = false) {
                 wrapper.dataset.displayTime = msg.replyTurnTime ?? msg.timestamp;
                 const bubble = document.createElement('div');
                 bubble.className = 'message-bubble post-deleted-placeholder'; 
+                bubble.dataset.timestamp = msg.timestamp;
                 bubble.dataset.postId = msg.postId;
                 bubble.textContent = msg.content;
                 wrapper.appendChild(bubble);
@@ -325,10 +329,12 @@ export async function createMessageElement(msg, chat, interactive = false) {
             if (msg.type === 'pat_message' || msg.type === 'app_action_status') {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'message-wrapper system-pat'; 
+                wrapper.dataset.timestamp = msg.timestamp;
+                wrapper.dataset.displayTime = msg.replyTurnTime ?? msg.timestamp;
                 const bubble = document.createElement('div');
                 bubble.className = 'message-bubble system-bubble'; 
                 bubble.dataset.timestamp = msg.timestamp;
-                bubble.textContent = msg.content;
+                bubble.textContent = formatChatActionNotice(msg, runtime.state.globalSettings.qqActionLanguage);
                 wrapper.appendChild(bubble);
                 addLongPressListener(wrapper, () => showMessageActions(msg.timestamp));
                 if (interactive) bindMessageSelection(wrapper, bubble, msg);
@@ -531,16 +537,34 @@ export async function createMessageElement(msg, chat, interactive = false) {
 } else if (msg.type === 'transfer') {
                     bubble.classList.add('is-transfer', 'is-card-like');
                      let titleText, noteText;
-                    const myNickname = chat.isGroup ? (chat.settings.myNickname || '我') : '我';
+                    const myNickname = chat.settings.myNickname || (chat.isGroup ? '我' : 'You');
                     const senderDisplayName = getDisplayNameInGroup(chat, msg.senderName);
                     const receiverDisplayName = getDisplayNameInGroup(chat, msg.receiverName || chat.name);
                     if (isUser) { 
-                        if (msg.isRefund) { titleText = `退款给 ${receiverDisplayName}`; noteText = '已拒收对方转账'; } 
-                        else { titleText = `转账给 ${receiverDisplayName}`; if (msg.status === 'accepted') noteText = '对方已收款'; else if (msg.status === 'declined') noteText = '对方已拒收'; else noteText = msg.note || '等待对方处理...'; }
+                        titleText = msg.isRefund ? `Refund to ${receiverDisplayName}` : `Sent to ${receiverDisplayName}`;
+                        if (msg.isRefund) noteText = 'You declined the transfer';
+                        else if (msg.status === 'accepted') noteText = 'Accepted';
+                        else if (msg.status === 'declined') noteText = 'Declined';
+                        else noteText = msg.note || 'Awaiting acceptance';
                     } else {
-                        if (msg.isRefund) { titleText = `退款来自 ${senderDisplayName}`; noteText = '转账已被拒收'; } 
-                        else if (msg.receiverName === myNickname) { titleText = `转账给 ${myNickname}`; if (msg.status === 'accepted') noteText = '你已收款'; else if (msg.status === 'declined') noteText = '你已拒收'; else { bubble.style.cursor = 'pointer'; bubble.dataset.status = 'pending'; noteText = msg.note || '点击处理'; } } 
-                        else { titleText = `转账: ${senderDisplayName} → ${receiverDisplayName}`; noteText = msg.note || '群聊内转账'; }
+                        if (msg.isRefund) {
+                            titleText = `Refund from ${senderDisplayName}`;
+                            noteText = 'Transfer declined';
+                        } else if (!chat.isGroup || msg.receiverName === myNickname) {
+                            titleText = `Received from ${senderDisplayName}`;
+                            if (msg.status === 'accepted') noteText = 'Accepted';
+                            else if (msg.status === 'declined') noteText = 'Declined';
+                            else {
+                                noteText = msg.note || 'Tap to respond';
+                                if (!msg.bankTransferId) {
+                                    bubble.style.cursor = 'pointer';
+                                    bubble.dataset.status = 'pending';
+                                }
+                            }
+                        } else {
+                            titleText = `${senderDisplayName} → ${receiverDisplayName}`;
+                            noteText = msg.note || 'Group transfer';
+                        }
                     }
                     if (msg.bankTransferId) {
                         titleText = isUser ? 'Sent to ' + receiverDisplayName : 'Received from ' + senderDisplayName;
@@ -556,25 +580,25 @@ export async function createMessageElement(msg, chat, interactive = false) {
                     bubble.classList.add('is-waimai-request', 'is-card-like');
                      if (msg.status === 'paid' || msg.status === 'rejected') bubble.classList.add(`status-${msg.status}`);
                     const senderDisplayName = getDisplayNameInGroup(chat, msg.senderName);
-                    const requestTitle = `来自 ${senderDisplayName} 的代付请求`;
+                    const requestTitle = `Payment request from ${escapeHtml(String(senderDisplayName))}`;
+                    const paymentStatus = waimaiPaymentStatus(msg);
+                    const isPending = msg.status === 'pending' && paymentStatus !== 'Expired';
+                    const hasCountdown = isPending && Number.isFinite(Number(msg.countdownEndTime)) && Number(msg.countdownEndTime) > 0;
                     let actionButtonsHtml = '';
-                    if (msg.status === 'pending' && !isUser) { actionButtonsHtml = `<div class="waimai-user-actions"><button class="waimai-decline-btn" data-choice="rejected">Decline</button><button class="waimai-pay-btn" data-choice="paid">Pay for Order</button></div>`; }
-                    contentHtml = `<div class="waimai-card"><div class="waimai-header"><img src="https://files.catbox.moe/mq179k.png" class="icon" alt="Meituan Icon"><div class="title-group"><span class="brand">Meituan Delivery</span><span class="separator">|</span><span>Food Delivery</span></div></div><div class="waimai-catchphrase">Send a meal to someone.</div><div class="waimai-main"><div class="request-title">${requestTitle}</div><div class="payment-box"><div class="payment-label">Amount Due</div><div class="amount">¥${Number(msg.amount).toFixed(2)}</div><div class="countdown-label">Time Left<div class="countdown-timer" id="waimai-timer-${msg.timestamp}"></div></div></div><button class="waimai-details-btn">View Details</button></div>${actionButtonsHtml}</div>`;
-                       setTimeout(() => {
-        if (msg.status === 'pending') {
-            const timerElement = document.getElementById(`waimai-timer-${msg.timestamp}`);
-            if (timerElement) {
-                const timerId = startWaimaiCountdown(timerElement, msg.countdownEndTime);
-                
-                runtime.waimaiTimers[msg.timestamp] = timerId;
-            }
-        }
-    }, 0);
+                    if (isPending && !isUser && interactive) { actionButtonsHtml = `<div class="waimai-user-actions"><button class="waimai-decline-btn" data-choice="rejected">Decline</button><button class="waimai-pay-btn" data-choice="paid">Pay for Order</button></div>`; }
+                    const statusHtml = hasCountdown && interactive
+                        ? '<div class="countdown-label">Time Left<div class="countdown-timer"></div></div>'
+                        : `<div class="countdown-label">${paymentStatus}</div>`;
+                    contentHtml = `<div class="waimai-card"><div class="waimai-header"><img src="https://files.catbox.moe/mq179k.png" class="icon" alt="Meituan Icon"><div class="title-group"><span class="brand">Meituan Delivery</span><span class="separator">|</span><span>Food Delivery</span></div></div><div class="waimai-catchphrase">Send a meal to someone.</div><div class="waimai-main"><div class="request-title">${requestTitle}</div><div class="payment-box"><div class="payment-label">${isPending ? 'Amount Due' : 'Amount'}</div><div class="amount">¥${Number(msg.amount).toFixed(2)}</div>${statusHtml}</div><button class="waimai-details-btn">View Details</button></div>${actionButtonsHtml}</div>`;
+                    if (hasCountdown && interactive) setTimeout(() => {
+                        const timer = bubble.querySelector('.countdown-timer');
+                        if (timer?.isConnected) runtime.waimaiTimers[msg.timestamp] = startWaimaiCountdown(timer, msg.countdownEndTime);
+                    }, 0);
                 } else if (msg.type === 'waimai_order') {
                 bubble.classList.add('is-waimai-request', 'is-card-like'); 
                 const senderDisplayName = getDisplayNameInGroup(chat, msg.senderName);
                 
-                let recipientDisplayName = '你';
+                let recipientDisplayName = isUser ? chat.name : chat.settings.myNickname || 'You';
                 if (chat.isGroup) {
                     
                     recipientDisplayName = getDisplayNameInGroup(chat, msg.recipientName);
@@ -587,9 +611,9 @@ export async function createMessageElement(msg, chat, interactive = false) {
                 <div class="title-group"><span class="brand">Meituan Delivery</span><span class="separator">|</span><span>Food Delivery</span></div>
             </div>
             <div class="waimai-main">
-                <div class="request-title" style="margin-bottom: 12px;">${senderDisplayName} 已为${recipientDisplayName}下单，请慢用～</div>
+                <div class="request-title" style="margin-bottom: 12px;">${escapeHtml(String(senderDisplayName))} placed an order for ${escapeHtml(String(recipientDisplayName))}.</div>
                 <div class="payment-box">
-                    <div class="payment-label" style="font-size: 18px; font-weight: 600;">${msg.productInfo}</div>
+                    <div class="payment-label" style="font-size: 1.125rem; font-weight: 600;">${escapeHtml(String(msg.productInfo ?? ''))}</div>
                     <div class="amount" style="margin-top: 8px;">¥${Number(msg.amount).toFixed(2)}</div>
                 </div>
                 <button class="waimai-details-btn">View Order</button>
@@ -600,12 +624,12 @@ export async function createMessageElement(msg, chat, interactive = false) {
                      bubble.classList.add('is-red-packet', 'is-card-like');
                     const myOriginalName = runtime.state.qzoneSettings.nickname || '{{user}}';
                     const isFinished = msg.isFullyClaimed; const hasClaimed = msg.claimedBy && msg.claimedBy[myOriginalName];
-                    let cardClass = '', claimedInfoHtml = '', typeText = '拼手气红包';
-                    if (isFinished) { cardClass = 'opened'; } if (msg.packetType === 'direct') { const receiverDisplayName = getDisplayNameInGroup(chat, msg.receiverName); typeText = `专属红包: 给 ${receiverDisplayName}`; if (Object.keys(msg.claimedBy || {}).length > 0) cardClass = 'opened'; }
+                    let cardClass = '', claimedInfoHtml = '', typeText = 'Lucky Red Packet';
+                    if (isFinished) { cardClass = 'opened'; } if (msg.packetType === 'direct') { const receiverDisplayName = getDisplayNameInGroup(chat, msg.receiverName); typeText = `Red packet for ${receiverDisplayName}`; if (Object.keys(msg.claimedBy || {}).length > 0) cardClass = 'opened'; }
                     if (hasClaimed) { const myClaimedAmount = msg.claimedBy[myOriginalName] || 0; claimedInfoHtml = `<div class="rp-claimed-info">You claimed ¥${myClaimedAmount.toFixed(2)}</div>`; } 
                     else if (isFinished) { claimedInfoHtml = `<div class="rp-claimed-info">All envelopes claimed</div>`; } 
-                    else if (msg.packetType === 'direct' && Object.keys(msg.claimedBy || {}).length > 0) { const receiverDisplayName = getDisplayNameInGroup(chat, msg.receiverName); claimedInfoHtml = `<div class="rp-claimed-info">Claimed by ${receiverDisplayName}</div>`; }
-                    contentHtml = `<div class="red-packet-card ${cardClass}"><div class="rp-header"><img src="https://files.catbox.moe/lo9xhc.png" class="rp-icon"><span class="rp-greeting">${msg.greeting || '恭喜发财，大吉大利！'}</span></div><div class="rp-type">${typeText}</div>${claimedInfoHtml}</div>`;
+                    else if (msg.packetType === 'direct' && Object.keys(msg.claimedBy || {}).length > 0) { const receiverDisplayName = getDisplayNameInGroup(chat, msg.receiverName); claimedInfoHtml = `<div class="rp-claimed-info">Claimed by ${escapeHtml(String(receiverDisplayName))}</div>`; }
+                    contentHtml = `<div class="red-packet-card ${cardClass}"><div class="rp-header"><img src="https://files.catbox.moe/lo9xhc.png" class="rp-icon"><span class="rp-greeting">${escapeHtml(String(msg.greeting || 'Wishing you luck and prosperity!'))}</span></div><div class="rp-type">${escapeHtml(typeText)}</div>${claimedInfoHtml}</div>`;
                 } else if (msg.type === 'poll') {
                     bubble.classList.add('is-poll', 'is-card-like');
                     const question = escapeHtml(String(msg.question || msg.content || 'Poll'));
@@ -628,19 +652,19 @@ export async function createMessageElement(msg, chat, interactive = false) {
                         <button type="button" class="poll-action-btn">${msg.isClosed ? 'View Results' : 'End Poll'}</button></div></div>`;
                 } else if (msg.type === 'gift') {
                     bubble.classList.add('is-gift', 'is-card-like');
-                     let headerText; const myNicknameForGift = chat.settings.myNickname || '我';
+                    let headerText;
                     if (chat.isGroup) {
                         if (msg.recipients && msg.recipients.length > 0) {
                             const recipientDisplayNames = msg.recipients.map(originalName => getDisplayNameInGroup(chat, originalName));
-                            if (recipientDisplayNames.length === 1) { headerText = `送给 ${recipientDisplayNames[0]} 的礼物`; } else { headerText = `送给 ${recipientDisplayNames.slice(0, 2).join('、')}等人的礼物`; }
-                        } else { headerText = `送给大家的礼物`; }
+                            const extra = recipientDisplayNames.length - 2;
+                            headerText = `Gift for ${recipientDisplayNames.slice(0, 2).join(', ')}${extra > 0 ? ` and ${extra} more` : ''}`;
+                        } else { headerText = 'Gift for everyone'; }
                     } else {
-                        if (isUser) { headerText = `送给 ${chat.name} 的礼物`; } 
-                        else { const recipientDisplayName = chat.settings.myNickname || '你'; headerText = `送给 ${recipientDisplayName} 的礼物`; }
+                        headerText = `Gift for ${isUser ? chat.name : chat.settings.myNickname || 'You'}`;
                     }
                     const previewItems = msg.items.slice(0, 3); let previewHtml = ''; previewItems.forEach(item => { previewHtml += `<div class="gift-preview-item"><img src="${escapeHtml(imageSource(String(item.imageUrl ?? "")))}" class="gift-preview-img"><span class="gift-preview-name">${escapeHtml(String(item.name))}</span><span class="gift-preview-quantity">x${item.quantity}</span></div>`; });
-                    let moreItemsText = ''; if (msg.items.length > 3) { moreItemsText = ` 等${msg.items.length}件商品`; }
-                    contentHtml = `<div class="gift-card"><div class="gift-header"><svg class="gift-header-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18a4 4 0 0 0-7.64 0H8a4 4 0 0 0-4 4v2h20V10a4 4 0 0 0-4-4zM8 4a2 2 0 1 1-2 2a2 2 0 0 1 2-2zm12 0a2 2 0 1 1-2 2a2 2 0 0 1 2-2zM4 14v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6H4z"></path></svg><span class="gift-header-text">${headerText}</span></div><div class="gift-items-preview">${previewHtml}</div><div class="gift-footer">${msg.items.length} items${moreItemsText} · View</div></div>`;
+                    const itemCount = msg.items.length;
+                    contentHtml = `<div class="gift-card"><div class="gift-header"><svg class="gift-header-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18a4 4 0 0 0-7.64 0H8a4 4 0 0 0-4 4v2h20V10a4 4 0 0 0-4-4zM8 4a2 2 0 1 1-2 2a2 2 0 0 1 2-2zm12 0a2 2 0 1 1-2 2a2 2 0 0 1 2-2zM4 14v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6H4z"></path></svg><span class="gift-header-text">${escapeHtml(headerText)}</span></div><div class="gift-items-preview">${previewHtml}</div><div class="gift-footer">${itemCount} ${itemCount === 1 ? 'item' : 'items'} · View</div></div>`;
                 }
             } else {
                 const content = String(rawContent);
@@ -682,21 +706,6 @@ export async function createMessageElement(msg, chat, interactive = false) {
                 }
             }
             return wrapper;
-        }
-
-export async function prependMessage(msg, chat) { 
-            const messagesContainer = document.getElementById('chat-messages'); 
-            const messageEl = await createMessageElement(msg, chat, true);
-        
-            
-            if (!messageEl) return;
-        
-            const loadMoreBtn = document.getElementById('load-more-btn'); 
-            if (loadMoreBtn) { 
-                messagesContainer.insertBefore(messageEl, loadMoreBtn.nextSibling); 
-            } else { 
-                messagesContainer.prepend(messageEl); 
-            } 
         }
 
 export async function appendMessage(msg, chat, isInitialLoad = false) {

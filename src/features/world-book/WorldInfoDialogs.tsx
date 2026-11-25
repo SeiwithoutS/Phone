@@ -8,7 +8,7 @@ export function DeleteWorldBooksModal() {
           {" "}
           <span>Select Mini Prompts to Delete</span>
           {" "}
-          <label style={{ fontSize: "14px", fontWeight: "normal", display: "flex", alignItems: "center", gap: "5px" }}>
+          <label style={{ fontSize: "0.875rem", fontWeight: "normal", display: "flex", alignItems: "center", gap: "5px" }}>
             {" "}
             <input type="checkbox" id="select-all-world-books-for-clear" />
             {" Select All "}

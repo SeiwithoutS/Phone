@@ -210,7 +210,7 @@ export function CharacterPhoneScreen({ database }: { database?: LocalDatabase })
             {" "}
           </div>
         </ScreenHeader>
-        <div id="char-article-content" className="list-container" style={{ padding: "20px", fontSize: "16px", lineHeight: "1.8", overflowY: "auto" }} />
+        <div id="char-article-content" className="list-container" style={{ padding: "20px", fontSize: "1rem", lineHeight: "1.8", overflowY: "auto" }} />
       </div>
       <div id="char-taobao-screen" className="char-screen">
         <ScreenHeader>

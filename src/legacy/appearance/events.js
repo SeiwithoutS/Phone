@@ -14,53 +14,6 @@ export function bindAppearanceEditor() {
             runtime.audioPlayer.currentTime = (clickX / barWidth) * runtime.audioPlayer.duration;
         });
 
-document.getElementById('chat-messages').addEventListener('click', (e) => {
-            
-
-const placeholder = e.target.closest('.recalled-message-placeholder');
-if (placeholder) {
-    const chat = runtime.state.chats[runtime.state.activeChatId];
-    const wrapper = placeholder.closest('.message-wrapper');
-    if (chat && wrapper) {
-        const timestamp = parseInt(wrapper.dataset.timestamp);
-        const recalledMsg = chat.history.find(m => m.timestamp === timestamp);
-
-        if (recalledMsg && recalledMsg.recalledData) {
-            let originalContentText = '';
-            const recalled = recalledMsg.recalledData;
-
-            
-            switch (recalled.originalType) {
-                case 'text':
-                    originalContentText = `原文: "${recalled.originalContent}"`;
-                    break;
-                case 'user_photo':
-                case 'ai_image':
-                case 'text_image':
-                    originalContentText = `[图片/文字图] 描述: "${recalled.originalContent}"`;
-                    break;
-                case 'voice_message':
-                    originalContentText = `[语音] 内容: "${recalled.originalContent}"`;
-                    break;
-                case 'sticker':
-                    
-                    originalContentText = `[表情] 含义: "${recalled.originalMeaning || '(无)'}" \n URL: ${recalled.originalContent}`;
-                    break;
-                case 'transfer':
-                    originalContentText = `一条[转账]消息已被撤回。`;
-                    break;
-                default:
-                    
-                    originalContentText = `撤回了一条[${recalled.originalType}]类型的消息。\n内容: ${JSON.stringify(recalled.originalContent)}`;
-                    break;
-            }
-            
-
-            showCustomAlert("Recalled message", originalContentText);
-        }
-    }
-}
-});
 }
 
 export function bindAppearanceAssets() {

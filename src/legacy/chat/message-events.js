@@ -5,6 +5,7 @@ import { showCustomAlert } from '../dialogs/dialogs.js'
 import { openSharedHistoryViewer } from '../qzone/gestures.js'
 import { showGiftReceipt } from '../shopping/store.js'
 import { runtime } from '../runtime/state.js'
+import { escapeHtml } from '../../runtime/files'
 
 export function bindChatMessageActions() {
   document.getElementById('chat-messages').addEventListener('click', async (e) => {
@@ -166,18 +167,19 @@ if (voiceBody) {
                     const timestamp = parseInt(wrapper.dataset.timestamp);
                     const recalledMsg = chat.history.find(m => m.timestamp === timestamp);
                     
-                    if (recalledMsg && recalledMsg.recalledData) {
-                        let originalContentText = '';
-                        const recalled = recalledMsg.recalledData;
-                        
-                        if (recalled.originalType === 'text') {
-                            originalContentText = `原文: "${recalled.originalContent}"`;
-                        } else {
-                            originalContentText = `撤回了一条[${recalled.originalType}]类型的消息`;
-                        }
-                        showCustomAlert("Recalled message", originalContentText);
+                    if (recalledMsg?.recalledData) {
+                        const { originalType, originalContent, originalMeaning } = recalledMsg.recalledData;
+                        const content = escapeHtml(typeof originalContent === 'string' ? originalContent : JSON.stringify(originalContent) ?? '');
+                        const labels = { text: 'Original message', user_photo: 'Photo description', ai_image: 'Image description',
+                            text_image: 'Image description', voice_message: 'Voice message' };
+                        const label = Object.hasOwn(labels, originalType) ? labels[originalType] : String(originalType || 'message').replaceAll('_', ' ');
+                        let details = `${escapeHtml(label)}: “${content}”`;
+                        if (originalType === 'sticker') details = `Sticker: ${escapeHtml(String(originalMeaning || 'No description'))}\nURL: ${content}`;
+                        if (originalType === 'transfer') details = 'A transfer message was recalled.';
+                        showCustomAlert('Recalled message', details);
                     }
                 }
+                return;
             }
         
             const linkCard = e.target.closest('[data-kind="share_card"]');

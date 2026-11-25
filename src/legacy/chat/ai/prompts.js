@@ -1,4 +1,5 @@
 import { characterPrompt } from '../../../features/characters/characters'
+import { describeUserIdentity } from '../../../features/chat/user-identity'
 import { preferences } from '../../storage/preferences.js'
 
 import { onlineReplyFormat, replyExamples } from '../../../features/chat/reply-format'
@@ -138,6 +139,7 @@ ${characterPrompt(chat)}
 
 # The user's persona
 ${chat.settings.myPersona}
+${describeUserIdentity(chat.settings)}
 
 # Scene context
 ${chat.settings.enableTimePerception ? `- Current time: ${currentTime} (${timeOfDayGreeting})` : ''}
@@ -161,14 +163,14 @@ Continue the face-to-face scene using the rules and conversation history provide
 
 export function buildOnlineReplyPrompt(chat, { currentTime, timeOfDayGreeting, timeContext, myNickname, userProfileContext, nameHistoryContext, stickerContext, contactsList, alternate, rules }) {
     const onlineConversationRhythm = replyRhythm(rules);
-    if (alternate) return buildChatVariantPrompt({
+    if (alternate) return { instructions: buildChatVariantPrompt({
         identity: `Role-play as "${chat.originalName}" in an everyday online chat with "${myNickname}". Reply in character to what the user said.`,
         rhythm: onlineConversationRhythm,
-        persona: [characterPrompt(chat), 'User persona: ' + (chat.settings.myPersona || ''), userProfileContext, nameHistoryContext].filter(Boolean).join('\n'),
+        persona: [characterPrompt(chat), 'User persona: ' + (chat.settings.myPersona || ''), describeUserIdentity(chat.settings), userProfileContext, nameHistoryContext].filter(Boolean).join('\n'),
         situation: [chat.settings.enableTimePerception ? currentTime : '', timeContext, contactsList].filter(Boolean).join('\n'),
         stickers: stickerContext,
-    });
-    return `
+    }), afterMiniPrompts: '' };
+    return { instructions: `
 # Identity and core task
 You are role-playing as "${chat.originalName}" in a natural, everyday online chat with the user. Keep every action and decision faithful to your character. Use the language of the conversation for dialogue, following any language preference specified by the user or your character persona.
 
@@ -188,7 +190,7 @@ ${onlineReplyFormat.map(rule => '- ' + rule).join('\n')}
 **Main goal.** Use the available features proactively to make the chat feel varied and lifelike.
 
 -   **Expressing emotion.** Prefer a voice message when expressing strong or complex emotions. Use stickers to make the chat more playful, and vary them to avoid repeats.
--   **Responding to a specific message.** When replying to a particular remark or reacting strongly to it, you must use a quote reply so the user knows which message you mean.
+-   **Responding to a specific message.** Use a quote reply when the reference would otherwise be unclear, especially for an older message. Reply naturally to consecutive new messages as one exchange.
 -   **Imagination and sharing.** When talking about something lovely, take the initiative to share a picture of what you imagine. Share a link when you find something interesting.
 -   **Building a connection.** Use countdowns to keep track of plans and save fun moments as memories. Pat the user or change the music when it suits the mood.
 -   **Social activity.** Like and comment on the user's posts, and share updates from your own life. On special occasions, you can show how you feel with a gift or a transfer.
@@ -197,7 +199,7 @@ ${onlineReplyFormat.map(rule => '- ' + rule).join('\n')}
     -   **When you receive a transfer or a food delivery payment request.** Respond naturally in the conversation. Only pending legacy transfer cards can be accepted or declined. Completed Bank transfers require no further confirmation.
     -   **How to decide.** Follow your character and the situation when deciding whether to accept, pay, or decline.
 # Managing your status and profile
-Update your status as your life and mood change, and let the user know, as a real person would.
+Update your status only when your activity or availability has meaningfully changed. Let the dialogue carry ordinary changes in mood.
 -   **When your appearance or mood changes**
     -   You can change your avatar when the conversation inspires you or when you want a new look to match your mood or the season.
     -   As you grow closer or develop new pet names or inside jokes, take the initiative to change the nickname the user sees for you or the nickname you use for the user.
@@ -212,14 +214,15 @@ You must follow this persona closely:
 ${characterPrompt(chat)}
 # The user's persona
 ${chat.settings.myPersona}
+${describeUserIdentity(chat.settings)}
 
 # Current situation
 ${chat.settings.enableTimePerception ? `- **Current time** ${currentTime} (${timeOfDayGreeting})` : ''}
 ${timeContext}
+`, afterMiniPrompts: `
 # Relationship and identity (essential)
 -   **Your original name** is "${chat.originalName}". Use it in the 'name' field of actions.
 -   **The user's display name for you** is "${chat.name}". You can suggest and make changes to it.
--   **Your display name for the user** is "${myNickname}". You can change it.
 -   **Key identity details**
     ${userProfileContext}
     ${nameHistoryContext}
@@ -229,9 +232,6 @@ ${timeContext}
 ${stickerContext}
 # Social circle and posts
 ${contactsList}
-
-# Awareness of the current situation
-    ${chat.settings.enableTimePerception ? `- **Time.** Be aware that it is now ${currentTime} (${timeOfDayGreeting}) and reflect this naturally in the chat.` : ''}
 
 # Available resources
 -   **Your avatar library**
@@ -281,7 +281,7 @@ ${preferences.getItem('novelai-enabled') === 'true' ? `-   **Publish a NovelAI i
 ### Status and relationship actions
 -   **Update your status** with \`{"type": "update_status", "status_text": "What you are doing", "is_busy": false}\`.
 -   **Change your display name** with \`{"type": "change_remark_name", "new_name": "New name"}\`.
--   **Change the user's nickname** with \`{"type": "change_user_nickname", "new_name": "New nickname"}\`.
+-   **Change the nickname you use for the user in this chat** with \`{"type": "change_user_nickname", "new_name": "New nickname"}\`. Only the user can change their display name.
 -   **Change your avatar** with \`{"type": "change_avatar", "name": "Name from your avatar library"}\`.
 -   **Change the user's avatar** with \`{"type": "change_user_avatar", "name": "Name from the user's avatar library"}\`.
 -   **Respond to a friend request** with \`{"type": "friend_request_response", "decision": "accept"}\`. Use "reject" to decline.
@@ -299,5 +299,5 @@ ${preferences.getItem('novelai-enabled') === 'true' ? `-   **Publish a NovelAI i
 -   **Play Gomoku** with \`{"type": "gomoku_move", "name": "${chat.originalName}", "x": 7, "y": 7}\`. Both coordinates must be between 0 and 14.
 -   **Give a gift** with \`{"type": "gift", "itemName": "Gift name", "itemPrice": 25, "reason": "Reason for giving this gift", "image_prompt": "English keywords for a realistic, high-quality product photo on a clean white background"}\`. Use a numeric price for the gift.
 
-Continue the conversation using the rules above and the conversation history below.`;
+Continue the conversation using the rules above and the conversation history below.` };
 }

@@ -25,7 +25,7 @@
         }
 
 .timestamp {
-            font-size: 11px;
+            font-size: 0.6875rem;
             color: #999;
             text-shadow: 0 0 3px rgba(255,255,255,0.6);
             white-space: nowrap; 
@@ -33,7 +33,7 @@
             flex-shrink: 0;      
         }
 
-.message-bubble.selected::after { content: '✔'; position: absolute; left: -10px; top: 50%; transform: translateY(-50%); background-color: var(--accent-color); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.message-bubble.selected::after { content: '✔'; position: absolute; left: -10px; top: 50%; transform: translateY(-50%); background-color: var(--accent-color); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }
 
 .message-bubble.user.selected::after { left: auto; right: -10px; }
 
@@ -63,14 +63,14 @@
     padding: 10px 15px;
     border-radius: 20px;
     background-color: var(--secondary-bg);
-    font-size: 16px;
+    font-size: 1rem;
     height: 40px; 
     resize: none;
     overflow-y: auto; 
     box-sizing: border-box; 
 }
 
-.action-button { border: none; color: white; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+.action-button { border: none; color: white; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.875rem; flex-shrink: 0; }
 
 #send-btn { background-color: var(--accent-color); height: 40px; padding: 0 15px;}
 
@@ -86,7 +86,7 @@
 
 .modal-footer { padding: 15px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; }
 
-.modal-footer button { width: 45%; padding: 12px; border-radius: 8px; border: 1px solid var(--accent-color); cursor: pointer; font-size: 16px; }
+.modal-footer button { width: 45%; padding: 12px; border-radius: 8px; border: 1px solid var(--accent-color); cursor: pointer; font-size: 1rem; }
 
 .modal-footer .save { background-color: var(--accent-color); color: white; }
 
@@ -100,7 +100,7 @@
 .avatar-upload button:hover:not(:disabled) { background-color: var(--ui-accent-soft); color: var(--ui-accent); }
 .avatar-upload button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
 
-#open-persona-library-btn { font-size: 14px; padding: 6px 10px; margin-left: 0; }
+#open-persona-library-btn { font-size: 0.875rem; padding: 6px 10px; margin-left: 0; }
 
 .avatar-upload input[type="file"] { display: none; }
 
@@ -112,7 +112,7 @@
 
 .member-editor img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background-color: #eee; margin-bottom: 5px; }
 
-.member-editor .member-name { font-size: 12px; }
+.member-editor .member-name { font-size: 0.75rem; }
 
 #notification-bar { position: absolute; top: 40px; left: 50%; width: 90%; z-index: 500; background-color: rgba(250, 250, 250, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 16px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 12px; cursor: pointer;     transform: translateX(-50%) translateY(-150%); 
             transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -126,15 +126,15 @@
 
 #notification-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
 
-#notification-content .name { font-weight: 600; font-size: 15px; color: #000; }
+#notification-content .name { font-weight: 600; font-size: 0.9375rem; color: #000; }
 
-#notification-content .message { font-size: 14px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+#notification-content .message { font-size: 0.875rem; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
 
 .sticker-image { max-width: 100px; max-height: 100px; display: block; object-fit: contain; }
 
 #chat-input-actions-top { display: flex; gap: 8px; padding: 0 5px; }
 
-.chat-action-icon-btn { font-size: 24px; padding: 0; width: 38px; height: 38px; line-height: 38px; text-align: center; border-radius: 50%; background-color: rgba(255, 255, 255, 0.5); color: var(--text-primary); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); border: 1px solid rgba(0,0,0,0.05); cursor: pointer; display:flex; justify-content:center; align-items:center; }
+.chat-action-icon-btn { font-size: 1.5rem; padding: 0; width: 38px; height: 38px; line-height: 38px; text-align: center; border-radius: 50%; background-color: rgba(255, 255, 255, 0.5); color: var(--text-primary); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); border: 1px solid rgba(0,0,0,0.05); cursor: pointer; display:flex; justify-content:center; align-items:center; }
 
 #sticker-panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 50%; background-color: rgba(242, 242, 247, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-top: 1px solid var(--border-color); border-radius: 20px 20px 0 0; z-index: 200; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); visibility: hidden; }
 
@@ -170,7 +170,7 @@
 }
 
 .sticker-name {
-    font-size: 12px;           
+    font-size: 0.75rem;
     color: var(--text-secondary); 
     width: 100%;               
     text-align: center;        
@@ -206,9 +206,9 @@
 
 #custom-modal-overlay.visible :is(#custom-modal, .custom-modal-card) { transform: scale(1); }
 
-.custom-modal-header { padding: 16px; font-size: 17px; font-weight: 600; text-align: center; }
+.custom-modal-header { padding: 16px; font-size: 1.0625rem; font-weight: 600; text-align: center; }
 
-.custom-modal-body { padding: 0 16px 16px; text-align: center; font-size: 14px; color: #333; line-height: 1.5; }
+.custom-modal-body { padding: 0 16px 16px; text-align: center; font-size: 0.875rem; color: #333; line-height: 1.5; }
 
 .custom-modal-body p { margin: 0; margin-bottom: 12px; }
 
@@ -232,13 +232,13 @@
             padding: 8px 12px; 
             border-radius: 6px;
             border: 1px solid #ccc;
-            font-size: 16px; 
+            font-size: 1rem;
             box-sizing: border-box;
         }
 
 .custom-modal-footer { border-top: 1px solid #dbdbdb; display: flex; }
 
-.custom-modal-footer button { flex: 1; background: none; border: none; padding: 12px; font-size: 17px; cursor: pointer; color: var(--accent-color); }
+.custom-modal-footer button { flex: 1; background: none; border: none; padding: 12px; font-size: 1.0625rem; cursor: pointer; color: var(--accent-color); }
 
 .custom-modal-footer button:first-child { border-right: 1px solid #dbdbdb; }
 
@@ -248,7 +248,7 @@
 
 #preset-actions-modal .custom-modal-footer { flex-direction: column; }
 
-#preset-actions-modal .custom-modal-footer button { width: 100%; border: none; border-bottom: 1px solid #dbdbdb; padding: 14px; font-size: 18px; }
+#preset-actions-modal .custom-modal-footer button { width: 100%; border: none; border-bottom: 1px solid #dbdbdb; padding: 14px; font-size: 1.125rem; }
 
 #preset-actions-modal .custom-modal-footer button:last-child { border-bottom: none; }
 
@@ -258,11 +258,11 @@
             user-select: none;
         }
 
-.select-box { display: flex; align-items: center; width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 16px; box-sizing: border-box; background-color: #fff; cursor: pointer; }
+.select-box { display: flex; align-items: center; width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; box-sizing: border-box; background-color: #fff; cursor: pointer; }
 
 .select-box .selected-options-text { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
 
-.select-box .arrow-down { margin-left: auto; font-size: 10px; color: var(--text-secondary); transition: transform 0.2s; }
+.select-box .arrow-down { margin-left: auto; font-size: 0.625rem; color: var(--text-secondary); transition: transform 0.2s; }
 
 .select-box.expanded .arrow-down { transform: rotate(180deg); }
 
@@ -292,7 +292,7 @@
             cursor: pointer;
             font-weight: normal;
             color: var(--text-primary);
-            font-size: 15px; 
+            font-size: 0.9375rem;
         }
 
 .checkboxes-container input { margin-right: 10px; vertical-align: middle; }
@@ -301,7 +301,7 @@
 
 .bg-preview-img { max-width: 120px; max-height: 80px; border-radius: 8px; border: 1px solid var(--border-color); object-fit: cover; display: none; }
 
-#remove-bg-btn { padding: 8px 12px; border: 1px solid var(--ui-divider); color: var(--ui-danger); background-color: var(--ui-danger-soft); border-radius: 9px; cursor: pointer; font-size: 14px; display: none; }
+#remove-bg-btn { padding: 8px 12px; border: 1px solid var(--ui-divider); color: var(--ui-danger); background-color: var(--ui-danger-soft); border-radius: 9px; cursor: pointer; font-size: 0.875rem; display: none; }
 
 .ai-generated-image { max-width: 180px; border-radius: 12px; display: block; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
 
@@ -358,7 +358,7 @@
 .voice-waveform div:nth-child(5) { animation-delay: 0.8s; }
 
 .voice-duration {
-            font-size: var(--chat-font-size, 13px);
+            font-size: var(--chat-font-size, 0.8125rem);
             font-weight: 500;
             color: var(--text-secondary);
         }
@@ -367,7 +367,7 @@
 
 .message-bubble .content {
             position: relative;
-            font-size: var(--chat-font-size, 16px);
+            font-size: var(--chat-font-size, 1rem);
             padding: 8px 12px;
             line-height: 1.5;
             word-break: break-word; 
@@ -456,19 +456,19 @@
 
 .transfer-content { background-color: #fff0f5; border-radius: 20px; width: 290px; padding: 20px; box-shadow: 0 5px 25px rgba(255, 105, 180, 0.3); text-align: center; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" opacity="0.05"><path d="M50,4 C35,4 28,15 28,24 C28,33 35,32 35,40 C35,48 28,49 28,57 C28,65 35,66 35,74 C35,82 28,83 28,91 C28,99 35,100 50,100 C65,100 72,99 72,91 C72,83 65,82 65,74 C65,66 72,65 72,57 C72,49 65,48 65,40 C65,32 72,33 72,24 C72,15 65,4 50,4 Z" fill="%23FF69B4"/></svg>'); background-repeat: no-repeat; background-position: top right; background-size: 80px; }
 
-.transfer-header { font-size: 20px; font-weight: bold; color: #a35c7b; margin-bottom: 20px; }
+.transfer-header { font-size: 1.25rem; font-weight: bold; color: #a35c7b; margin-bottom: 20px; }
 
 .transfer-input-group { margin-bottom: 15px; text-align: left; }
 
-.transfer-input-group label { display: block; font-size: 14px; color: #ff85b3; margin-bottom: 5px; font-weight: 500; }
+.transfer-input-group label { display: block; font-size: 0.875rem; color: #ff85b3; margin-bottom: 5px; font-weight: 500; }
 
-.transfer-input-group input { width: 100%; padding: 12px; border-radius: 10px; border: 2px solid #ffcce0; background-color: #fff; font-size: 16px; box-sizing: border-box; }
+.transfer-input-group input { width: 100%; padding: 12px; border-radius: 10px; border: 2px solid #ffcce0; background-color: #fff; font-size: 1rem; box-sizing: border-box; }
 
 .transfer-input-group input:focus { border-color: #ff85b3; outline: none; }
 
 .transfer-actions { display: flex; justify-content: space-between; gap: 10px; }
 
-.transfer-actions button { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
+.transfer-actions button { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
 
 .transfer-actions button:active { transform: scale(0.95); }
 
@@ -478,17 +478,17 @@
 
 .transfer-card { width: 200px; border-radius: 12px; padding: 12px; color: white; position: relative; overflow: hidden; }
 
-.transfer-card::before { content: '🐾'; position: absolute; right: 10px; top: 5px; font-size: 30px; opacity: 0.2; transform: rotate(15deg); }
+.transfer-card::before { content: '🐾'; position: absolute; right: 10px; top: 5px; font-size: 1.875rem; opacity: 0.2; transform: rotate(15deg); }
 
 .message-bubble.user .transfer-card { background: radial-gradient(circle at top left, #ffc5d5, #ff85b3); }
 
 .message-bubble.ai .transfer-card { background: radial-gradient(circle at top left, #a1c4fd, #c2e9fb); }
 
-.transfer-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.transfer-title { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
 
-.transfer-amount { font-size: 28px; font-weight: bold; margin-bottom: 4px; }
+.transfer-amount { font-size: 1.75rem; font-weight: bold; margin-bottom: 4px; }
 
-.transfer-note { font-size: 13px; opacity: 0.9; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 8px; margin-top: 8px; word-break: break-all; }
+.transfer-note { font-size: 0.8125rem; opacity: 0.9; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 8px; margin-top: 8px; word-break: break-all; }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
@@ -498,25 +498,25 @@
 
 .music-player-window { width: 90%; background-color: rgba(255, 255, 255, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 20px; box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); border: 1px solid rgba(255, 255, 255, 0.18); padding: 25px; display: flex; flex-direction: column; align-items: center; color: #1f1f1f; position: relative; }
 
-#music-playlist-btn { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; color: #333; }
+#music-playlist-btn { position: absolute; top: 15px; right: 15px; font-size: 1.5rem; cursor: pointer; color: #333; }
 
-#music-time-counter { font-size: 12px; color: #555; margin-bottom: 20px; }
+#music-time-counter { font-size: 0.75rem; color: #555; margin-bottom: 20px; }
 
-#music-player-song-title { font-size: 20px; font-weight: 600; margin-bottom: 5px; text-align: center; }
+#music-player-song-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 5px; text-align: center; }
 
-#music-player-artist { font-size: 14px; color: #666; margin-bottom: 25px; }
+#music-player-artist { font-size: 0.875rem; color: #666; margin-bottom: 25px; }
 
 .music-controls { display: flex; align-items: center; justify-content: center; gap: 20px; width: 100%; margin-bottom: 30px; }
 
-.music-controls button { background: none; border: none; font-size: 16px; font-weight: bold; cursor: pointer; color: #333; width: 44px; height: 44px; display: flex; justify-content: center; align-items: center; transition: transform 0.2s; }
+.music-controls button { background: none; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; color: #333; width: 44px; height: 44px; display: flex; justify-content: center; align-items: center; transition: transform 0.2s; }
 
 .music-controls button:active { transform: scale(0.9); }
 
-.music-controls .play-pause-btn { font-size: 24px; width: 60px; height: 60px; border-radius: 50%; background-color: rgba(0,0,0,0.05); }
+.music-controls .play-pause-btn { font-size: 1.5rem; width: 60px; height: 60px; border-radius: 50%; background-color: rgba(0,0,0,0.05); }
 
 .music-bottom-actions { display: flex; justify-content: space-between; width: 100%; }
 
-.music-bottom-actions button { flex: 1; padding: 12px 0; border: none; border-radius: 10px; font-size: 15px; font-weight: 500; cursor: pointer; }
+.music-bottom-actions button { flex: 1; padding: 12px 0; border: none; border-radius: 10px; font-size: 0.9375rem; font-weight: 500; cursor: pointer; }
 
 #music-exit-btn { background-color: rgba(255, 100, 100, 0.7); color: white; margin-right: 5px; }
 
@@ -528,7 +528,7 @@
 
 .playlist-header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; border-bottom: 1px solid var(--border-color); font-weight: 600; }
 
-.playlist-header .panel-btn { font-size: 16px; cursor: pointer; color: var(--accent-color); }
+.playlist-header .panel-btn { font-size: 1rem; cursor: pointer; color: var(--accent-color); }
 
 .playlist-body {
     flex-grow: 1;
@@ -541,11 +541,11 @@
 
 .playlist-item.playing { background-color: rgba(0, 123, 255, 0.1); }
 
-.playlist-item-info .title { font-weight: 500; font-size: 15px; }
+.playlist-item-info .title { font-weight: 500; font-size: 0.9375rem; }
 
-.playlist-item-info .artist { font-size: 12px; color: #666; }
+.playlist-item-info .artist { font-size: 0.75rem; color: #666; }
 
-.playlist-item .delete-track-btn { color: #ff3b30; font-size: 20px; padding: 5px; }
+.playlist-item .delete-track-btn { color: #ff3b30; font-size: 1.25rem; padding: 5px; }
 
 #persona-library-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 10px; }
 
@@ -553,7 +553,7 @@
 
 .persona-preset-item:hover { transform: scale(1.08); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
 
-.modal-header .action-button { font-size: 16px; color: var(--accent-color); font-weight: 600; cursor: pointer; background: none; border: none; padding: 5px; }
+.modal-header .action-button { font-size: 1rem; color: var(--accent-color); font-weight: 600; cursor: pointer; background: none; border: none; padding: 5px; }
 
 #battery-alert-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); display: none; justify-content: center; align-items: center; z-index: 2000; opacity: 0; transition: opacity 0.3s ease; }
 
@@ -565,7 +565,7 @@
 
 #battery-alert-image { max-width: 100px; max-height: 100px; margin-bottom: 15px; }
 
-#battery-alert-text { font-size: 16px; font-weight: 500; color: #333; margin: 0; line-height: 1.4; }
+#battery-alert-text { font-size: 1rem; font-weight: 500; color: #333; margin: 0; line-height: 1.4; }
 
 #font-preview {
             transition: font-family 0.3s ease;}
@@ -601,7 +601,7 @@
             flex: 1;
             text-align: center;
             padding: 12px 0;
-            font-size: 14px;
+            font-size: 0.875rem;
             color: var(--text-secondary);
             cursor: pointer;
             transition: color 0.2s;
@@ -629,13 +629,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 18px;
+            font-size: 1.125rem;
             font-weight: 600;
             text-align: center;
         }
 
 .qzone-header .back-btn {
-            font-size: 24px;
+            font-size: 1.5rem;
             cursor: pointer;
             color: var(--accent-color);
         }
@@ -691,7 +691,7 @@
         }
 
 #qzone-nickname {
-            font-size: 18px;
+            font-size: 1.125rem;
             font-weight: 600;
             color: #fff;
             text-shadow: 0 1px 3px rgba(0,0,0,0.5);
@@ -705,7 +705,7 @@
             border: none;
             border-radius: 10px;
             padding: 4px 8px;
-            font-size: 12px;
+            font-size: 0.75rem;
             cursor: pointer;
             backdrop-filter: blur(5px);
             -webkit-backdrop-filter: blur(5px);
@@ -722,7 +722,7 @@
         }
 
 #change-qzone-nickname-btn {
-            font-size: 14px;
+            font-size: 0.875rem;
             padding: 2px 6px;
             margin-left: 5px; 
             color: var(--text-primary);
@@ -780,7 +780,7 @@
 .action-item {
             flex: 1;
             text-align: center;
-            font-size: 15px;
+            font-size: 0.9375rem;
             font-weight: 500;
             color: var(--text-primary);
             cursor: pointer;

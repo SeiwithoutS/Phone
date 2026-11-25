@@ -6,20 +6,20 @@ export function RedPacketDetailsModal() {
       <div className="modal-content" style={{ width: "280px", height: "auto", backgroundColor: "#f7f7f7" }}>
         <div className="modal-header" style={{ backgroundColor: "#F96259", color: "white", borderBottom: "none", paddingBottom: "5px" }}>
           <div style={{ textAlign: "center", width: "100%" }}>
-            <div id="rp-details-sender" style={{ fontSize: "16px" }} />
-            <div style={{ fontSize: "13px", opacity: "0.8" }}>{"’s Red Envelope"}</div>
+            <div id="rp-details-sender" style={{ fontSize: "1rem" }} />
+            <div style={{ fontSize: "0.8125rem", opacity: "0.8" }}>{"’s Red Envelope"}</div>
           </div>
         </div>
         <div className="modal-body" style={{ padding: "15px" }}>
-          <p id="rp-details-greeting" style={{ textAlign: "center", fontSize: "20px", color: "#333", margin: "0 0 20px 0" }} />
+          <p id="rp-details-greeting" style={{ textAlign: "center", fontSize: "1.25rem", color: "#333", margin: "0 0 20px 0" }} />
           <div id="rp-details-my-amount" style={{ textAlign: "center", display: "none", marginBottom: "20px" }}>
             {" "}
-            <span style={{ fontSize: "40px", fontWeight: "bold", color: "#E44D44" }}>0.00</span>
+            <span style={{ fontSize: "2.5rem", fontWeight: "bold", color: "#E44D44" }}>0.00</span>
             {" "}
-            <span style={{ fontSize: "18px", color: "#E44D44" }}>yuan</span>
+            <span style={{ fontSize: "1.125rem", color: "#E44D44" }}>yuan</span>
             {" "}
           </div>
-          <div id="rp-details-summary" style={{ fontSize: "13px", color: "#8a8a8a", borderTop: "1px solid #e0e0e0", paddingTop: "10px" }} />
+          <div id="rp-details-summary" style={{ fontSize: "0.8125rem", color: "#8a8a8a", borderTop: "1px solid #e0e0e0", paddingTop: "10px" }} />
           <div id="rp-details-list" style={{ maxHeight: "150px", overflowY: "auto", marginTop: "10px" }}>{" "}</div>
         </div>
         <div className="modal-footer">
@@ -68,7 +68,7 @@ export function RedPacketModal() {
               <input type="text" id="rp-group-greeting" placeholder={"Wishing you luck and prosperity!"} />
               {" "}
             </div>
-            <p id="rp-group-total" style={{ textAlign: "center", fontSize: "24px", fontWeight: "bold", margin: "10px 0" }}>{"¥ 0.00"}</p>
+            <p id="rp-group-total" style={{ textAlign: "center", fontSize: "1.5rem", fontWeight: "bold", margin: "10px 0" }}>{"¥ 0.00"}</p>
             {" "}
             <button id="send-group-packet-btn" className="form-button" type="button">Fill Red Envelope</button>
           </div>
@@ -94,7 +94,7 @@ export function RedPacketModal() {
               <input type="text" id="rp-direct-greeting" placeholder={"Wishing you luck and prosperity!"} />
               {" "}
             </div>
-            <p id="rp-direct-total" style={{ textAlign: "center", fontSize: "24px", fontWeight: "bold", margin: "10px 0" }}>{"¥ 0.00"}</p>
+            <p id="rp-direct-total" style={{ textAlign: "center", fontSize: "1.5rem", fontWeight: "bold", margin: "10px 0" }}>{"¥ 0.00"}</p>
             {" "}
             <button id="send-direct-packet-btn" className="form-button" type="button">Fill Red Envelope</button>
           </div>

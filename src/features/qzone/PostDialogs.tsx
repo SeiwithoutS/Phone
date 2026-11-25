@@ -144,7 +144,7 @@ export function RepostModal() {
         <div className="custom-modal-header">Repost</div>
         <div className="custom-modal-body">
           {" "}
-          <textarea id="repost-comment-input" placeholder="Add a comment (optional)" style={{ width: "100%", minHeight: "60px", resize: "vertical", border: "1px solid #ccc", borderRadius: "6px", padding: "8px", fontSize: "16px", boxSizing: "border-box" }} />
+          <textarea id="repost-comment-input" placeholder="Add a comment (optional)" style={{ width: "100%", minHeight: "60px", resize: "vertical", border: "1px solid #ccc", borderRadius: "6px", padding: "8px", fontSize: "1rem", boxSizing: "border-box" }} />
           {" "}
         </div>
         <div className="custom-modal-footer">

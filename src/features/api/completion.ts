@@ -80,7 +80,9 @@ export async function planContextCompletion(chat: DirectChat | GroupChat | undef
     }
   }
   const featureContext = context.filter(Boolean).join('\n')
-  return assembleContext(chat, featureContext ? { ...input, instructions: input.instructions + '\n\n' + featureContext } : input, runtime.db, config)
+  if (!featureContext) return assembleContext(chat, input, runtime.db, config)
+  const key = input.afterMiniPrompts === undefined ? 'instructions' : 'afterMiniPrompts'
+  return assembleContext(chat, { ...input, [key]: input[key] + '\n\n' + featureContext }, runtime.db, config)
 }
 
 export async function requestContextCompletion(chat: DirectChat | GroupChat | undefined, input: ContextInput, options: CompletionOptions = {}) {

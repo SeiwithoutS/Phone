@@ -64,7 +64,7 @@
 .prompt-entry-list li[data-drop=true] { outline: 2px solid var(--ui-accent); background: var(--ui-accent-soft); }
 .prompt-entry-row { display: flex; align-items: center; gap: 5px; min-height: 43px; padding-inline-end: 8px; }
 .prompt-entry-list [data-enabled=false] .prompt-entry-title { color: var(--ui-muted); }
-.prompt-entry-row .prompt-drag { min-width: 33px; touch-action: none; cursor: grab; }
+.prompt-entry-row .prompt-drag { min-width: 33px; touch-action: pinch-zoom; cursor: grab; }
 .prompt-entry-title {
   flex: 1; min-width: 0; min-height: 40px;
   display: flex; align-items: center; gap: 6px;

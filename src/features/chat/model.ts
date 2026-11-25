@@ -42,6 +42,7 @@ type ChatSettings = Record<string, unknown> & {
   aiAvatar?: string
   aiPersona?: string
   myNickname?: string
+  characterNickname?: string
   characterLocation?: string
   timeZone?: string
   userLocation?: string

@@ -7,7 +7,8 @@ export function fileDataUrl(file: Blob): Promise<string> {
   })
 }
 
-export function imageSource(value: string) {
+export function imageSource(value: unknown) {
+  if (typeof value !== 'string') return ''
   const source = value.trim()
   if (/^data:image\/(?:png|apng|jpe?g|jfif|webp|gif|avif|bmp|x-icon);base64,[\da-z+/=\s]+$/i.test(source)) return source
   try {

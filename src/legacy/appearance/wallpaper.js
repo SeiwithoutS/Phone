@@ -58,6 +58,7 @@ loadAppearancePresetsDropdown();
     document.getElementById('message-sound-toggle').checked = runtime.state.globalSettings.messageSounds !== false;
     document.getElementById('notification-sound-url-input').value = runtime.state.globalSettings.notificationSoundUrl || '';
     document.getElementById('status-bar-toggle-switch').checked = runtime.state.globalSettings.showStatusBar || false;
+    document.getElementById('qq-action-language').value = runtime.state.globalSettings.qqActionLanguage === 'vi' ? 'vi' : 'en';
     renderButtonOrderEditor();
     initializeButtonOrderEditor();
 }
@@ -104,6 +105,7 @@ document.getElementById('save-wallpaper-btn').addEventListener('click', async ()
             runtime.state.globalSettings.messageSounds = document.getElementById('message-sound-toggle').checked;
             runtime.state.globalSettings.notificationSoundUrl = document.getElementById('notification-sound-url-input').value.trim();
             runtime.state.globalSettings.showStatusBar = document.getElementById('status-bar-toggle-switch').checked;
+            runtime.state.globalSettings.qqActionLanguage = document.getElementById('qq-action-language').value === 'vi' ? 'vi' : 'en';
             
             
             await runtime.db.globalSettings.put(runtime.state.globalSettings);

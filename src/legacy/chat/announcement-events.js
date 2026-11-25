@@ -46,16 +46,16 @@ async function publishToAnnouncementBoard() {
         
             
             let contentPreview = String(message.content || '').substring(0, 50) + '...';
-            if (message.type === 'ai_image') contentPreview = '[图片] ' + contentPreview;
+            if (message.type === 'ai_image') contentPreview = '[Image] ' + contentPreview;
         
             const confirmed = await showCustomConfirm(
                 "Publish Announcement",
                 `Publish this message to Announcements? “${contentPreview}”`,
-                { confirmText: "确定发布" }
+                { confirmText: "Publish" }
             );
         
             if (confirmed) {
-                const myNickname = chat.settings.myNickname || '我';
+                const myNickname = chat.settings.myNickname || 'You';
         
                 if (!Array.isArray(chat.announcements)) {
                     chat.announcements = [];
@@ -75,7 +75,7 @@ async function publishToAnnouncementBoard() {
                 const systemMessage = {
                     role: 'system',
                     type: 'pat_message',
-                    content: `${myNickname} 发布了一条新公告`,
+                    content: `${myNickname} published a new announcement`,
                     timestamp: Date.now()
                 };
                 chat.history.push(systemMessage);

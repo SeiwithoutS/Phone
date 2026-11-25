@@ -4,6 +4,7 @@ import { renderChatList } from '../../legacy/chat/list.js'
 import { cancelReplyMode } from '../../legacy/chat/attachments.js'
 import { exitSelectionMode } from '../../legacy/chat/messages.js'
 import { openingMessage } from '../characters/characters'
+import { formatChatActionNotice } from './action-notices'
 import { removeBubbles, trimReplyTurns } from './reply-turns'
 import type { ChatMessage, ChatSession } from './model'
 
@@ -45,7 +46,7 @@ export function getSessions(chat: Chat) {
       active: session.id === activeId(chat),
       date: last?.timestamp ?? session.createdAt,
       count: session.history.filter(message => !message.isHidden).length,
-      preview: typeof last?.content === 'string' ? last.content : '',
+      preview: last ? formatChatActionNotice(last, runtime.state.globalSettings?.qqActionLanguage) : '',
       branch: Boolean(session.branchFrom),
     }
   }).sort((a, b) => Number(b.active) - Number(a.active) || b.date - a.date)

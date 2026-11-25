@@ -52,7 +52,7 @@ export function bindImageDownloads() {
                 border-radius: 8px;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.3);
                 z-index: 10000;
-                font-size: 14px;
+                font-size: 0.875rem;
                 pointer-events: none;
                 opacity: 0;
                 transform: translateY(20px);

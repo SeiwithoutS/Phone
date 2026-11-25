@@ -85,7 +85,7 @@ export function ProductEditorModal() {
           <div className="form-group">
             {" "}
             <label>Variants</label>
-            <p style={{ fontSize: "12px", color: "#888", marginTop: "-5px", marginBottom: "10px" }}>The default price applies if there are no variants.</p>
+            <p style={{ fontSize: "0.75rem", color: "#888", marginTop: "-5px", marginBottom: "10px" }}>The default price applies if there are no variants.</p>
             <div id="product-variations-container" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>{" "}</div>
             {" "}
             <button id="add-product-variation-btn" className="form-button form-button-secondary" style={{ marginTop: "15px" }} type="button">+ Add Variant</button>
@@ -117,7 +117,7 @@ export function ShoppingSettingsModal() {
             {" "}
             <label htmlFor="shopping-category-count-input">
               {" Number of Categories "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Set how many product categories to generate at once. "}</p>
+              <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Set how many product categories to generate at once. "}</p>
               {" "}
             </label>
             <div className="shopping-settings-controls">
@@ -132,7 +132,7 @@ export function ShoppingSettingsModal() {
             {" "}
             <label htmlFor="shopping-product-count-input">
               {" Products per Category "}
-              <p style={{ fontSize: "12px", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Set how many products to generate in each category. "}</p>
+              <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "#999", marginTop: "5px" }}>{" Set how many products to generate in each category. "}</p>
               {" "}
             </label>
             <div className="shopping-settings-controls">
@@ -167,7 +167,7 @@ export function VariationSelectionModal() {
             <img id="variation-product-image" style={{ width: "80px", height: "80px", borderRadius: "6px", objectFit: "cover" }} alt={""} />
             <div>
               <p id="variation-product-name" style={{ fontWeight: "500", margin: "0" }} />
-              <p id="variation-selected-price" style={{ color: "#ff5722", fontWeight: "bold", fontSize: "18px", margin: "8px 0 0" }} />
+              <p id="variation-selected-price" style={{ color: "#ff5722", fontWeight: "bold", fontSize: "1.125rem", margin: "8px 0 0" }} />
             </div>
           </div>
           <div className="form-group">

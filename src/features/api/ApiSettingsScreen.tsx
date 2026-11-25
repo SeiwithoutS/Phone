@@ -12,19 +12,17 @@ export function ApiSettingsScreen() {
         <div className="form-group">
           {" "}
           <label htmlFor="api-preset-select">Select a preset</label>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            {" "}
-            <select id="api-preset-select" style={{ flexGrow: "1" }} />
-            {" "}
-            <IconButton icon="check" id="save-api-preset-btn" label="Save API preset" />
-            {" "}
-            <IconButton icon="trash" id="delete-api-preset-btn" label="Delete API preset" />
-            {" "}
+          <div className="api-preset-controls">
+            <select id="api-preset-select" />
+            <IconButton icon="plus" id="create-api-preset-btn" label="New API preset" />
+            <IconButton icon="check" id="save-api-preset-btn" label="Save selected API preset" disabled />
+            <IconButton icon="trash" id="delete-api-preset-btn" label="Delete API preset" disabled />
           </div>
+          <p id="api-preset-status" role="status" />
         </div>
         <hr style={{ margin: "30px 0", opacity: "0.3" }} />
         <h3 style={{ marginTop: "0", borderBottom: "1px solid var(--ui-divider)", paddingBottom: "10px" }}>Chat Completion API</h3>
-        <p style={{ fontSize: "14px", color: "var(--ui-muted)", backgroundColor: "var(--ui-raised)", padding: "10px", borderRadius: "8px" }}>
+        <p style={{ fontSize: "0.875rem", color: "var(--ui-muted)", backgroundColor: "var(--ui-raised)", padding: "10px", borderRadius: "8px" }}>
           {" Choose a model with vision support to send images, such as"}
           <code style={{ backgroundColor: "var(--ui-surface)", padding: "2px 4px", borderRadius: "4px" }}>gpt-4o</code>
           {"or"}
@@ -80,47 +78,36 @@ export function ApiSettingsScreen() {
             {"Temperature "}
             <span id="api-temperature-value">0.8</span>
           </label>
-          <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Higher values make replies more varied. Lower values make them more predictable. Suggested range 0.7–1.0. "}</p>
+          <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Higher values make replies more varied. Lower values make them more predictable. Suggested range 0.7–1.0. "}</p>
           {" "}
           <input type="range" id="api-temperature-slider" min="0" max="2" step="0.1" style={{ width: "100%", marginTop: "8px" }} defaultValue="0.8" />
         </div>
         <hr style={{ margin: "30px 0", opacity: "0.3" }} />
         <h3 style={{ borderBottom: "1px solid var(--ui-divider)", paddingBottom: "10px" }}>Background Activity</h3>
-        <div className="form-group" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          {" "}
-          <label htmlFor="background-activity-switch" style={{ marginBottom: "0" }}>
-            {" Enable background character activity "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Master switch for character activity while EPhone is open. Set permissions and scheduled messages per character in QQ → Chat Settings → Features. Background requests count toward API usage. "}</p>
+        <div className="form-group api-setting-row">
+          <label htmlFor="background-activity-switch">Enable background character activity
+            <small>Master switch for character activity while EPhone is open. Set permissions and scheduled messages per character in QQ → Chat Settings → Features. Background requests count toward API usage.</small>
           </label>
-          {" "}
-          <input type="checkbox" id="background-activity-switch" style={{ width: "auto", height: "20px" }} />
-          {" "}
+          <label className="toggle-switch">
+            <input type="checkbox" id="background-activity-switch" role="switch" />
+            <span className="slider" />
+          </label>
         </div>
-        <div className="form-group" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "10px" }}>
-          {" "}
-          <label htmlFor="background-interval-input" style={{ marginBottom: "0" }}>
-            {" Check interval (seconds) "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" How often EPhone checks whether an activity is due. Suggested range 60–300 seconds. "}</p>
-            {" "}
+        <div className="form-group api-setting-row">
+          <label htmlFor="background-interval-input">Check interval (seconds)
+            <small>How often EPhone checks whether an activity is due. Suggested range 60–300 seconds.</small>
           </label>
-          {" "}
-          <input type="number" id="background-interval-input" min="30" style={{ width: "80px", textAlign: "center" }} defaultValue="60" />
-          {" "}
+          <input type="number" id="background-interval-input" min="30" defaultValue="60" />
         </div>
-        <div className="form-group" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "10px" }}>
-          {" "}
-          <label htmlFor="block-cooldown-input" style={{ marginBottom: "0" }}>
-            {" Cooldown after blocking (hours) "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" A blocked character may send a new friend request after this cooldown. "}</p>
-            {" "}
+        <div className="form-group api-setting-row">
+          <label htmlFor="block-cooldown-input">Cooldown after blocking (hours)
+            <small>A blocked character may send a new friend request after this cooldown.</small>
           </label>
-          {" "}
-          <input type="number" id="block-cooldown-input" min="0.1" step="0.1" style={{ width: "80px", textAlign: "center" }} defaultValue="1" />
-          {" "}
+          <input type="number" id="block-cooldown-input" min="0.1" step="0.1" defaultValue="1" />
         </div>
         <hr style={{ margin: "30px 0", opacity: "0.3" }} />
         <h3 style={{ borderBottom: "1px solid var(--ui-divider)", paddingBottom: "10px" }}>Voice Messages (MiniMax TTS)</h3>
-        <p style={{ fontSize: "14px", color: "var(--ui-muted)", backgroundColor: "var(--ui-raised)", padding: "10px", borderRadius: "8px" }}>
+        <p style={{ fontSize: "0.875rem", color: "var(--ui-muted)", backgroundColor: "var(--ui-raised)", padding: "10px", borderRadius: "8px" }}>
           {" Prefix an AI reply with "}
           <code style={{ backgroundColor: "var(--ui-surface)", padding: "2px 4px", borderRadius: "4px" }}>{"[V]"}</code>
           {" to turn it into a playable voice message."}
@@ -146,7 +133,7 @@ export function ApiSettingsScreen() {
           {" "}
           <label htmlFor="chat-list-render-window-input" style={{ marginBottom: "0" }}>
             {" Chat list page size "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Number of conversations loaded each time you scroll. Default 30. "}</p>
+            <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Number of conversations loaded each time you scroll. Default 30. "}</p>
             {" "}
           </label>
           {" "}
@@ -157,7 +144,7 @@ export function ApiSettingsScreen() {
           {" "}
           <label htmlFor="chat-render-window-input" style={{ marginBottom: "0" }}>
             {" Initial messages per chat "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Number of recent messages shown when opening a chat. Higher values take longer to load. "}</p>
+            <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Number of recent messages shown when opening a chat. Higher values take longer to load. "}</p>
             {" "}
           </label>
           {" "}
@@ -166,11 +153,11 @@ export function ApiSettingsScreen() {
         </div>
         <hr style={{ margin: "30px 0", opacity: "0.3" }} />
         <h3 style={{ borderBottom: "1px solid var(--ui-divider)", paddingBottom: "10px" }}>Image Generation</h3>
-        <div className="form-group" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="form-group api-setting-row">
           {" "}
-          <label htmlFor="enable-ai-drawing-switch" style={{ marginBottom: "0" }}>
+          <label htmlFor="enable-ai-drawing-switch">
             {" Enable AI image generation "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" When disabled, generated images use placeholders to reduce bandwidth and API costs. "}</p>
+            <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" When disabled, generated images use placeholders to reduce bandwidth and API costs. "}</p>
             {" "}
           </label>
           {" "}
@@ -184,16 +171,16 @@ export function ApiSettingsScreen() {
           {" "}
         </div>
         <hr style={{ margin: "20px 0", opacity: ".3" }} />
-        <div className="form-group" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <label htmlFor="novelai-switch" style={{ marginBottom: "0" }}>
+        <div className="form-group api-setting-row">
+          <label htmlFor="novelai-switch">
             {" Enable NovelAI image generation "}
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Generate anime-style images with the NovelAI API. "}</p>
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Triple-click an image to download it. Use the test dialog to try a model or artist tags. "}</p>
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" 429 — Rate limit. Wait a few seconds and retry. "}</p>
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" 403 — Account or subscription limit. Try a smaller size or check available credits. "}</p>
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" 403 can also occur if image generation is disabled. Check the setting and image size. "}</p>
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" 401 — Check your NovelAI API key and permissions. "}</p>
-            <p style={{ fontSize: "12px", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" If the browser reports Failed to fetch, check the proxy settings below. "}</p>
+            <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Generate anime-style images with the NovelAI API. "}</p>
+            <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" Triple-click an image to download it. Use the test dialog to try a model or artist tags. "}</p>
+            <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" 429 — Rate limit. Wait a few seconds and retry. "}</p>
+            <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" 403 — Account or subscription limit. Try a smaller size or check available credits. "}</p>
+            <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" 403 can also occur if image generation is disabled. Check the setting and image size. "}</p>
+            <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" 401 — Check your NovelAI API key and permissions. "}</p>
+            <p style={{ fontSize: "0.75rem", fontWeight: "normal", color: "var(--ui-muted)", marginTop: "5px" }}>{" If the browser reports Failed to fetch, check the proxy settings below. "}</p>
           </label>
           <label className="toggle-switch">
             <input type="checkbox" id="novelai-switch" />
@@ -209,15 +196,15 @@ export function ApiSettingsScreen() {
               <option value="nai-diffusion-3">NAI Diffusion Anime V3 (Legacy)</option>
               <option value="nai-diffusion-furry-3">NAI Diffusion Furry V3 (Legacy)</option>
             </select>
-            <p style={{ fontSize: "12px", color: "var(--ui-muted)", marginTop: "5px" }}>{" Requires an API key with an Opus subscription. "}</p>
+            <p style={{ fontSize: "0.75rem", color: "var(--ui-muted)", marginTop: "5px" }}>{" Requires an API key with an Opus subscription. "}</p>
           </div>
           <div className="form-group">
             <label htmlFor="novelai-api-key" style={{ color: "var(--ui-text)" }}>NovelAI API Key</label>
             <div style={{ position: "relative" }}>
               <input type="password" id="novelai-api-key" placeholder="pst-xxxxxxxxxxxxxxxx" style={{ backgroundColor: "var(--ui-raised)", color: "var(--ui-text)", border: "1px solid var(--ui-divider)", paddingRight: "40px" }} />
-              <span id="novelai-key-toggle" style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", cursor: "pointer", userSelect: "none", fontSize: "18px" }}>{"🧐"}</span>
+              <span id="novelai-key-toggle" style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", cursor: "pointer", userSelect: "none", fontSize: "1.125rem" }}>{"🧐"}</span>
             </div>
-            <p style={{ fontSize: "12px", color: "var(--ui-muted)", marginTop: "5px" }}>
+            <p style={{ fontSize: "0.75rem", color: "var(--ui-muted)", marginTop: "5px" }}>
               {" Get your key from "}
               <a href="https://novelai.net" target="_blank" style={{ color: "#007bff" }}>NovelAI</a>
               {" Get an API Key "}
@@ -230,9 +217,9 @@ export function ApiSettingsScreen() {
         </div>
         <hr style={{ margin: "30px 0", opacity: "0.3" }} />
         <h3 style={{ borderBottom: "1px solid var(--ui-divider)", paddingBottom: "10px" }}>Storage Optimization</h3>
-        <p id="total-image-size-display" style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "15px", textAlign: "center" }}>{" Calculating local image size… "}</p>
+        <p id="total-image-size-display" style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginBottom: "15px", textAlign: "center" }}>{" Calculating local image size… "}</p>
         <button className="form-button form-button-secondary" id="compress-images-btn" style={{ backgroundColor: "var(--ui-positive-soft)", color: "var(--ui-positive)", borderColor: "var(--ui-divider)" }} type="button">{" Compress Local Images "}</button>
-        <p style={{ fontSize: "12px", color: "#8a8a8a", marginTop: "8px", lineHeight: "1.5" }}>
+        <p style={{ fontSize: "0.75rem", color: "#8a8a8a", marginTop: "8px", lineHeight: "1.5" }}>
           {" Convert local images such as avatars, stickers, and chat media to JPEG to reduce storage usage. "}
           <br />
           <strong style={{ color: "#ff3b30" }}>Compression is permanent and reduces image quality. Back up your data first.</strong>

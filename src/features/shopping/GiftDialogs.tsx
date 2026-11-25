@@ -28,7 +28,7 @@ export function GiftRecipientModal() {
           {" "}
           <span>Select Gift Recipient</span>
           {" "}
-          <label style={{ fontSize: "14px", fontWeight: "normal", display: "flex", alignItems: "center", gap: "5px" }}>
+          <label style={{ fontSize: "0.875rem", fontWeight: "normal", display: "flex", alignItems: "center", gap: "5px" }}>
             {" "}
             <input type="checkbox" id="select-all-recipients" />
             {" Select All "}

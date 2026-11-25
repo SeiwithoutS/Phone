@@ -20,10 +20,10 @@ button, input, select, textarea { accent-color: var(--ui-accent); }
 }
 .settings-tools .ui-icon-button:not(:disabled):hover, .sound-controls .ui-icon-button:hover,
 .launcher-setting-row .ui-icon-button:hover { background: var(--ui-accent-soft); }
-.message-sound-card { align-self: stretch; display: grid; gap: 10px; margin: 0; }
+.message-sound-card { align-self: stretch; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 0; }
 .message-sound-heading { display: flex; align-items: center; gap: 12px; }
 .message-sound-heading > .ui-icon { color: var(--ui-accent); }
-.message-sound-heading label[for] { flex: 1; }
+.message-sound-heading label[for] { flex: 1; min-width: 0; }
 .message-sound-heading .toggle-switch { flex: none; }
 .message-sound-heading small, .bank-currency-row small { display: block; color: var(--ui-muted); margin-top: 4px; }
 .message-sound-card > .sound-controls { justify-content: space-between; }
@@ -34,7 +34,7 @@ button, input, select, textarea { accent-color: var(--ui-accent); }
 #wallpaper-screen .bg-upload-container .ui-icon-button { border: 1px solid var(--ui-divider); background: var(--ui-surface); }
 #wallpaper-screen .bg-upload-container .ui-icon-button:hover { background: var(--ui-accent-soft); }
 #wallpaper-screen .form-group > div:has(> select + .ui-icon-button) { flex-wrap: wrap; }
-#wallpaper-screen .form-group select:has(+ .ui-icon-button) { width: auto; min-width: 40%; }
+#wallpaper-screen .form-group select:has(+ .ui-icon-button) { flex: 1; min-width: 0; }
 .bank-currency-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .phone-app-stack .bank-currency-row select { width: auto; min-width: 86px; }
 #wallpaper-screen :is(#icon-settings-grid, #cphone-icon-settings-grid) {
@@ -116,3 +116,6 @@ button, input, select, textarea { accent-color: var(--ui-accent); }
   .launcher-setting-row { grid-template-columns: 48px minmax(0, 1fr); }
   .launcher-setting-actions { grid-column: 2; justify-self: end; }
 }
+.font-preset-controls { display: flex; align-items: center; gap: 6px; }
+.font-preset-controls select { flex: 1; min-width: 0; }
+#app-font-size { margin-inline: 0; }

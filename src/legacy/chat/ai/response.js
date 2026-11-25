@@ -1,4 +1,6 @@
 import { recordVote } from '../../../features/chat/chat-features'
+import { formatChatActionNotice } from '../../../features/chat/action-notices'
+import { changeCharacterNickname } from '../../../features/chat/user-identity'
 import { maySendImages } from '../../../features/api/image-input'
 import { getGeminiResponseText } from '../../api/client.js'
 import { showIncomingCallModal, startVideoCall } from '../../calls/calls.js'
@@ -207,34 +209,15 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
 
                 }
                 continue;
-            case 'change_user_nickname':
-                if (!chat.isGroup && msgData.new_name) {
-                    const newNickname = msgData.new_name.trim();
-                    if (newNickname) {
-                        chat.settings.myNickname = newNickname;
-
-                        const systemMessage = {
-                            role: 'system',
-                            type: 'pat_message',
-                            content: `“${chat.name}” 将对你的称呼修改为 “${newNickname}”`,
-                            timestamp: messageTimestamp++
-                        };
-                        record(systemMessage);
-
-                        const hiddenMemoryMessage = {
-                            role: 'system',
-                            content: `[System notice: You changed the user's nickname to "${newNickname}".]`,
-                            timestamp: messageTimestamp++,
-                            isHidden: true
-                        };
-                        record(hiddenMemoryMessage);
-
-                        if (isViewingThisChat) {
-                            appendMessage(systemMessage, chat);
-                        }
-                    }
+            case 'change_user_nickname': {
+                const notices = changeCharacterNickname(chat, msgData.new_name, messageTimestamp);
+                if (notices) {
+                    messageTimestamp += notices.length;
+                    notices.forEach(record);
+                    if (isViewingThisChat) appendMessage(notices[0], chat);
                 }
                 continue;
+            }
             case 'change_remark_name':
                 if (!chat.isGroup && msgData.new_name) {
                     const oldName = chat.name;
@@ -253,7 +236,7 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                         const systemMessage = {
                             role: 'system',
                             type: 'pat_message',
-                            content: `“${chat.originalName}” 将备注修改为 “${newName}”`,
+                            content: `“${chat.originalName}” changed their display name to “${newName}”`,
                             timestamp: messageTimestamp++
                         };
                         record(systemMessage);
@@ -285,7 +268,7 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                     const systemNotice = {
                         role: 'system',
                         type: 'pat_message',
-                        content: `[${chat.name} 更换了头像]`,
+                        content: `[${chat.name} changed their avatar]`,
                         timestamp: messageTimestamp++
                     };
                     record(systemNotice);
@@ -308,7 +291,7 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                     const systemNotice = {
                         role: 'system',
                         type: 'pat_message',
-                        content: `[${chat.name} 更换了你的头像]`,
+                        content: `[${chat.name} changed your avatar]`,
                         timestamp: messageTimestamp++
                     };
                     record(systemNotice);
@@ -386,8 +369,8 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                 } else {
                     patterName = chat.name;
                 }
-                const suffix = msgData.suffix ? ` ${msgData.suffix.trim()}` : '';
-                const patText = `${patterName} 拍了拍我${suffix}`;
+                const suffix = typeof msgData.suffix === 'string' ? msgData.suffix.trim() : '';
+                const patText = [patterName, 'nudged you', suffix].filter(Boolean).join(' ');
 
                 const patMessage = {
                     role: 'system',
@@ -404,7 +387,7 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                     setTimeout(() => phoneScreen.classList.remove('pat-animation'), 500);
                     appendMessage(patMessage, chat);
                 } else {
-                    showNotification(chatId, patText);
+                    showNotification(chatId, formatChatActionNotice(patMessage, runtime.state.globalSettings.qqActionLanguage));
                 }
                 continue;
             case 'update_status':
@@ -415,7 +398,7 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                 const statusUpdateMessage = {
                     role: 'system',
                     type: 'pat_message',
-                    content: `[${chat.name}的状态已更新为: ${msgData.status_text}]`,
+                    content: `[${chat.name} updated their status: ${msgData.status_text}]`,
                     timestamp: messageTimestamp++
                 };
                 record(statusUpdateMessage);
@@ -455,7 +438,7 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                             const musicChangeMessage = {
                                 role: 'system',
                                 type: 'pat_message',
-                                content: `[♪ ${changerName} 为你切歌: 《${track.name}》 - ${track.artist}]`,
+                                content: `[♪ ${changerName} changed the song to “${track.name}” - ${track.artist}]`,
                                 timestamp: messageTimestamp++
                             };
                             record(musicChangeMessage);
@@ -518,10 +501,10 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                 if (!chat.isGroup && chat.relationship?.status === 'pending_ai_approval') {
                     if (msgData.decision === 'accept') {
                         chat.relationship.status = 'friend';
-                        aiMessage = { ...baseMessage, content: "我通过了你的好友申请，我们现在是好友啦！" };
+                        aiMessage = { ...baseMessage, content: 'I accepted your friend request. We’re friends now!' };
                     } else {
                         chat.relationship.status = 'blocked_by_ai';
-                        aiMessage = { ...baseMessage, content: "抱歉，我拒绝了你的好友申请。" };
+                        aiMessage = { ...baseMessage, content: 'I declined your friend request.' };
                     }
                     chat.relationship.applicationReason = '';
                 }
@@ -636,7 +619,7 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                         const aiClaimedMessage = {
                             role: 'system',
                             type: 'pat_message',
-                            content: `${claimerDisplayName} 领取了 ${senderDisplayName} 的红包`,
+                            content: `${claimerDisplayName} claimed a share of ${senderDisplayName}’s red packet`,
                             timestamp: messageTimestamp++
                         };
                         record(aiClaimedMessage);
@@ -647,7 +630,7 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                             const finishedMessage = {
                                 role: 'system',
                                 type: 'pat_message',
-                                content: `${senderDisplayName} 的红包已被领完`,
+                                content: `${senderDisplayName}’s red packet has been fully claimed`,
                                 timestamp: messageTimestamp++
                             };
                             record(finishedMessage);
@@ -732,7 +715,7 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                     const systemMessage = {
                         role: 'system',
                         type: 'pat_message',
-                        content: `${changerDisplayName} 将群名修改为 “${chat.name}”`,
+                        content: `${changerDisplayName} changed the group name to “${chat.name}”`,
                         timestamp: messageTimestamp++
                     };
                     record(systemMessage);
@@ -758,7 +741,7 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                         const systemMessage = {
                             role: 'system',
                             type: 'pat_message',
-                            content: `${changerDisplayName} 更换了群头像`,
+                            content: `${changerDisplayName} changed the group avatar`,
                             timestamp: messageTimestamp++
                         };
                         record(systemMessage);
@@ -865,9 +848,9 @@ export async function applyChatAiResponse(chat, chatId, data, replyToUserTimesta
                     case 'waimai_request': notificationText = `[Delivery payment requested]`; break;
                     case 'ai_image': notificationText = `[Image]`; break;
                     case 'voice_message': notificationText = `[Voice message]`; break;
-                    case 'sticker': notificationText = aiMessage.meaning ? `[Sticker: ${aiMessage.meaning}]` : '[表情]'; break;
+                    case 'sticker': notificationText = aiMessage.meaning ? `[Sticker: ${aiMessage.meaning}]` : '[Sticker]'; break;
                     case 'offline_text': notificationText = aiMessage.dialogue ? `「${aiMessage.dialogue}」` : `[${aiMessage.description.substring(0, 20)}...]`; break;
-                    default: notificationText = String(aiMessage.content || '');
+                    default: notificationText = formatChatActionNotice(aiMessage, runtime.state.globalSettings.qqActionLanguage);
                 }
                 const finalNotifText = chat.isGroup ? `${aiMessage.senderName}: ${notificationText}` : notificationText;
                 showNotification(chatId, finalNotifText.substring(0, 40) + (finalNotifText.length > 40 ? '...' : ''));

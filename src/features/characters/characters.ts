@@ -75,7 +75,7 @@ export async function saveCharacter(draft: CharacterDraft) {
   const linkedLoreBookIds = [...new Set([...(existing?.settings.linkedLoreBookIds || []), ...(lorebook ? [lorebook.id] : [])])]
   const preferred = runtime.state.personaPresets.find(entry => entry.id === runtime.db.getPreference('default-persona'))
   const defaults = {
-    myPersona: preferred?.persona || '', myNickname: preferred?.name || 'Me', maxMemory: 10, myAvatar: preferred?.avatar || runtime.defaultAvatar,
+    myPersona: preferred?.persona || '', myNickname: preferred?.name || 'Me', characterNickname: '', maxMemory: 10, myAvatar: preferred?.avatar || runtime.defaultAvatar,
     userLocation: preferred?.location ?? '', userTimeZone: preferred?.timeZone ?? '',
     background: '', theme: 'default', fontSize: 13, customCss: '', linkedWorldBookIds: [],
     aiAvatarLibrary: [], myAvatarLibrary: [], enableBackgroundActivity: true, actionCooldownMinutes: 15,

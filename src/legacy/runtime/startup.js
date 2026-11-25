@@ -1,6 +1,6 @@
 import { preferences } from '../storage/preferences.js'
 import { renderApiSettings } from '../api/settings.js'
-import { applyCustomFont } from '../appearance/fonts.js'
+import { applyAppFontSize, applyCustomFont } from '../appearance/fonts.js'
 import { applyAppIcons } from '../appearance/icons.js'
 import { applyGlobalCss, applyScopedCss, applyTheme } from '../appearance/theme.js'
 import { applyGlobalWallpaper, renderWallpaperScreen } from '../appearance/wallpaper.js'
@@ -110,6 +110,7 @@ updateUnreadIndicator(controls.storedCount);
 if (runtime.state.globalSettings && runtime.state.globalSettings.fontUrl) {
                         applyCustomFont(runtime.state.globalSettings.fontUrl);
                     }
+applyAppFontSize();
 
 updateClock();
 

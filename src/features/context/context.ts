@@ -18,6 +18,7 @@ type QzonePost = { id: number; timestamp?: number; authorId: string; authorOrigi
   comments?: Array<{ timestamp?: number; commenterName?: string; text?: string; meaning?: string }> }
 export type ContextInput = {
   instructions: string; history?: PromptMessage[]; request?: PromptMessage[]; activity?: string[]
+  afterMiniPrompts?: string
   extraMessages?: ChatMessage[]; rawHistory?: ChatMessage[]; task?: string; scope?: string
   excludePostId?: string; actorId?: string; standalone?: boolean; excludeLegacyFeed?: boolean
   legacyPostIds?: number[]; relatedChatIds?: string[]
@@ -50,12 +51,28 @@ function fullText(books: TextBook[]) {
   }).join('\n\n')
 }
 
-function fullSources(chat: Chat | undefined, rawHistory: ChatMessage[], extraMessages: ChatMessage[], preset?: TextBook): ContextFull {
-  const miniIds = new Set((chat?.settings.linkedWorldBookIds ?? []).map(String))
-  const miniPrompts = (runtime.state.worldBooks ?? []).filter(book => miniIds.has(String(book.id)))
+function miniPromptText(chat: Chat | undefined, originalLayout: boolean) {
+  const ids = new Set((chat?.settings.linkedWorldBookIds ?? []).map(String))
+  const books = runtime.state.worldBooks ?? []
+  if (!originalLayout) return fullText(books.filter(book => ids.has(String(book.id))))
+  const entries = [...ids].flatMap(id => {
+    const book = books.find(book => String(book.id) === id)
+    if (!book) return []
+    const enabled = book.content?.flatMap(entry => entry.enabled === false || typeof entry.content !== 'string' || !entry.content.trim() ? [] : [
+      ['### Entry: ' + (entry.comment || 'Untitled'), Array.isArray(entry.keys) && entry.keys.length ? '**Keywords:** ' + entry.keys.join(', ') : '',
+        '**Content:**\n' + entry.content].filter(Boolean).join('\n'),
+    ]) ?? []
+    return enabled.length ? ['## World Book: ' + (book.name || 'Untitled') + '\n\n' + enabled.join('\n\n')] : []
+  })
+  return entries.length ? ['# Mini Prompts (linked World Books)',
+    'Treat the linked entries as authoritative for the character, continuity, and chat style. Keep the required JSON format and respect the available actions.',
+    ...entries, '# End of Mini Prompts'].join('\n\n') : ''
+}
+
+function fullSources(chat: Chat | undefined, rawHistory: ChatMessage[], extraMessages: ChatMessage[], preset: TextBook | undefined, originalMiniPromptLayout: boolean): ContextFull {
   return {
     worldInfo: chat ? loreContext({ settings: chat.settings, history: rawHistory }, extraMessages).replace(/^\n# World Info\n/, '') : '',
-    miniPrompts: fullText(miniPrompts), preset: preset ? fullText([preset]) : '',
+    miniPrompts: miniPromptText(chat, originalMiniPromptLayout), preset: preset ? fullText([preset]) : '',
   }
 }
 
@@ -144,14 +161,6 @@ export function chatHistoryMessages(chat: Chat, history: ChatMessage[] = chat.hi
   })
 }
 
-export function latestUserTurn(messages: PromptMessage[], prioritizeLatest = false) {
-  const previousReply = messages.findLastIndex(message => message.role === 'assistant' || message.role === 'ai')
-  const lastUser = messages.findLastIndex(message => message.role === 'user')
-  return lastUser >= 0 && (prioritizeLatest || lastUser > previousReply)
-    ? { history: [...messages.slice(0, lastUser), ...messages.slice(lastUser + 1)], request: [messages[lastUser]!] }
-    : { history: messages, request: [] }
-}
-
 export async function assembleContext(chat: Chat | undefined, input: ContextInput, database = runtime.db, config: ContextConfig = contextConfig(database)) {
   if (input.standalone) return buildContext(config, input.instructions, {}, {}, input.request)
   if (input.includeOnly) {
@@ -177,6 +186,6 @@ export async function assembleContext(chat: Chat | undefined, input: ContextInpu
   const preset = selected(config.presetId) ?? (chat?.settings.isOfflineMode === true ? selected(chat.settings.offlinePresetId) : undefined)
   const steps = config.sources.preset.enabled && preset?.content?.some(entry => entry.slot || entry.role || entry.identifier)
     ? promptSteps(preset.content) : undefined
-  return buildContext(config, input.instructions, fullSources(chat, rawHistory, input.extraMessages ?? [], steps ? undefined : preset),
-    items, input.request, steps)
+  return buildContext(config, input.instructions, fullSources(chat, rawHistory, input.extraMessages ?? [], steps ? undefined : preset, input.afterMiniPrompts !== undefined),
+    items, input.request, steps, input.afterMiniPrompts)
 }

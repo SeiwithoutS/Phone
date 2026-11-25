@@ -4,7 +4,7 @@
 
 .world-book-card .card-title {
             font-weight: 600;
-            font-size: 15px;
+            font-size: 0.9375rem;
             color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
@@ -12,7 +12,7 @@
         }
 
 .world-book-card .card-content-preview {
-            font-size: 13px;
+            font-size: 0.8125rem;
             color: var(--text-secondary);
             line-height: 1.5;
             display: -webkit-box;
@@ -76,18 +76,18 @@
 
 .search-result-item .title {
     font-weight: 500;
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--text-primary);
 }
 
 .search-result-item .artist {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--text-secondary);
     margin-top: 4px;
 }
 
 .search-result-item .source {
-    font-size: 10px;
+    font-size: 0.625rem;
     color: var(--accent-color);
     background-color: rgba(0, 123, 255, 0.1);
     padding: 2px 6px;
@@ -204,7 +204,7 @@
     width: 100%;           
     margin-top: 15px;      
     text-align: center;    
-    font-size: 14px;       
+    font-size: 0.875rem;
     color: #333;           
     font-weight: 500;      
     transition: opacity 0.3s ease; 
@@ -287,9 +287,9 @@
 
 .profile-info { display: flex; flex-direction: column; }
 
-#profile-name { font-size: 20px; font-weight: 600; color: #1f1f1f; }
+#profile-name { font-size: 1.25rem; font-weight: 600; color: #1f1f1f; }
 
-#profile-id { font-size: 14px; color: #8a8a8a; }
+#profile-id { font-size: 0.875rem; color: #8a8a8a; }
 
 .profile-section {
     background-color: #ffffff; 
@@ -311,19 +311,19 @@
 }
 
 .profile-section-icon {
-    font-size: 20px;
+    font-size: 1.25rem;
     opacity: 0.5;
 }
 
 .profile-section label {
-    font-size: 15px;
+    font-size: 0.9375rem;
     font-weight: 600;
     color: #555; 
     margin: 0; 
 }
 
 .profile-section p {
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: #333;
     line-height: 1.7;
     margin: 0;
@@ -334,7 +334,7 @@
 
 #profile-thoughts-history-view .profile-header { justify-content: space-between; padding-bottom: 15px; }
 
-#profile-thoughts-history-view .profile-header span { font-size: 18px; font-weight: 600; }
+#profile-thoughts-history-view .profile-header span { font-size: 1.125rem; font-weight: 600; }
 
 #history-back-btn { width: 36px; height: 36px; background: none; border: none; cursor: pointer; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s; padding: 0; }
 
@@ -354,13 +354,13 @@
 
 .thought-card { background-color: #ffffff; border-radius: 16px; padding: 15px 20px; border: 1px solid #eee; }
 
-.thought-header { font-size: 12px; color: #b0b0b0; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
+.thought-header { font-size: 0.75rem; color: #b0b0b0; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
 
-.thought-content .label { display: flex; align-items: center; gap: 6px; font-weight: 600; color: #a0a0a0; font-size: 13px; margin-bottom: 6px; }
+.thought-content .label { display: flex; align-items: center; gap: 6px; font-weight: 600; color: #a0a0a0; font-size: 0.8125rem; margin-bottom: 6px; }
 
 .thought-content .label svg { width: 16px; height: 16px; }
 
-.thought-content .text { font-size: 14px; color: #555; line-height: 1.7; white-space: pre-wrap; padding-left: 22px; }
+.thought-content .text { font-size: 0.875rem; color: #555; line-height: 1.7; white-space: pre-wrap; padding-left: 22px; }
 
 .thought-content .jottings { margin-top: 15px; }
 
@@ -378,7 +378,7 @@
 }
 
 #qzone-more-actions-btn {
-    font-size: 24px;      
+    font-size: 1.5rem;
     font-weight: bold;    
     padding: 0 10px;      
     border-radius: 50%;   
@@ -434,7 +434,7 @@
 
 .clear-posts-item.selected .checkbox::after {
     content: '✔';
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: bold;
 }
 
@@ -461,7 +461,7 @@
     border: none;
     background-color: rgba(0,0,0,0.05);
     color: var(--text-secondary);
-    font-size: 20px;
+    font-size: 1.25rem;
     line-height: 26px;
     text-align: center;
     cursor: pointer;
@@ -534,7 +534,7 @@
     max-width: 180px; 
     margin-top: 0;
     padding: 12px; 
-    font-size: 15px;
+    font-size: 0.9375rem;
     font-weight: 600; 
     border-radius: 8px; 
     border: none; 

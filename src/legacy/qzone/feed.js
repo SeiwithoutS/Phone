@@ -814,7 +814,7 @@ export async function openClearPostsSelectorModal() {
             separator.textContent = opt.text;
             separator.style.cssText = `
                 padding: 10px 18px 5px;
-                font-size: 13px;
+                font-size: 0.8125rem;
                 font-weight: 500;
                 color: var(--text-secondary);
                 background-color: #f0f2f5;

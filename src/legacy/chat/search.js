@@ -1,10 +1,10 @@
-import { createMessageElement, loadMoreMessages, scrollToOriginalMessage } from './conversation.js'
+import { createMessageElement, scrollToOriginalMessage } from './conversation.js'
+import { formatChatActionNotice } from '../../features/chat/action-notices'
 import { showScreen } from '../../app/routes'
 import { runtime } from '../runtime/state.js'
 
 export function openSearchHistoryScreen() {
     if (!runtime.state.activeChatId) return;
-    const chat = runtime.state.chats[runtime.state.activeChatId];
     
     
     document.getElementById('keyword-search-input').value = '';
@@ -46,17 +46,18 @@ export async function handleSearchHistory() {
             } else if (msg.quote) {
                  contentString = msg.content;
             }
-            return contentString.toLowerCase().includes(keyword);
+            const displayed = formatChatActionNotice(msg, runtime.state.globalSettings.qqActionLanguage);
+            return String(contentString ?? '').toLowerCase().includes(keyword) || displayed.toLowerCase().includes(keyword);
         });
     }
 
     
     if (dateValue) {
-        const selectedDate = new Date(dateValue);
-        const startOfDay = new Date(selectedDate.setHours(0, 0, 0, 0)).getTime();
-        const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999)).getTime();
+        const selectedDate = new Date(`${dateValue}T00:00:00`);
+        const startOfDay = selectedDate.getTime();
+        const nextDay = selectedDate.setDate(selectedDate.getDate() + 1);
         
-        results = results.filter(msg => msg.timestamp >= startOfDay && msg.timestamp <= endOfDay);
+        results = results.filter(msg => msg.timestamp >= startOfDay && msg.timestamp < nextDay);
     }
     
     
@@ -99,39 +100,11 @@ export async function renderSearchResults(results) {
     }
 }
 
-export async function jumpToOriginalMessage(timestamp) {
+export function jumpToOriginalMessage(timestamp) {
     const chatId = runtime.state.activeChatId;
-    if (!chatId) return;
-
-    
+    if (!runtime.state.chats[chatId]) return;
     showScreen('chat-interface-screen');
-
-    
-    setTimeout(async () => {
-        const messagesContainer = document.getElementById('chat-messages');
-        const selector = `.message-bubble[data-timestamp="${timestamp}"]`;
-        let targetMessage = messagesContainer.querySelector(selector);
-        let attempts = 0; 
-        const maxAttempts = 20; 
-
-        
-        while (!targetMessage && attempts < maxAttempts) {
-            const loadMoreBtn = document.getElementById('load-more-btn');
-            if (loadMoreBtn) {
-                console.log(`目标消息未找到, 正在加载更多历史记录... (尝试 ${attempts + 1})`);
-                await loadMoreMessages(); 
-                targetMessage = messagesContainer.querySelector(selector);
-                attempts++;
-            } else {
-                
-                break;
-            }
-        }
-
-        
-        scrollToOriginalMessage(timestamp);
-
-    }, 200); 
+    setTimeout(() => scrollToOriginalMessage(timestamp, chatId), 200);
 }
 
 export async function clearSearchFilters() {
